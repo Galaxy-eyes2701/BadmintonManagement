@@ -1,0 +1,8 @@
+D:\KY_8\PRN232\BadmintonManagement\backend\obj\Debug\net9.0\backend.csproj.AssemblyReference.cache
+D:\KY_8\PRN232\BadmintonManagement\backend\obj\Debug\net9.0\rpswa.dswa.cache.json
+D:\KY_8\PRN232\BadmintonManagement\backend\obj\Debug\net9.0\backend.GeneratedMSBuildEditorConfig.editorconfig
+D:\KY_8\PRN232\BadmintonManagement\backend\obj\Debug\net9.0\backend.AssemblyInfoInputs.cache
+D:\KY_8\PRN232\BadmintonManagement\backend\obj\Debug\net9.0\backend.AssemblyInfo.cs
+D:\KY_8\PRN232\BadmintonManagement\backend\obj\Debug\net9.0\backend.csproj.CoreCompileInputs.cache
+D:\KY_8\PRN232\BadmintonManagement\backend\obj\Debug\net9.0\backend.MvcApplicationPartsAssemblyInfo.cs
+D:\KY_8\PRN232\BadmintonManagement\backend\obj\Debug\net9.0\backend.MvcApplicationPartsAssemblyInfo.cache
