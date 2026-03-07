@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
+using backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -105,9 +107,34 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // ======================
+// Authorization Policies
+// ======================
+builder.Services.AddScoped<IAuthorizationHandler, RoleAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy =>
+        policy.Requirements.Add(new RoleRequirement("Admin")));
+    
+    options.AddPolicy("StaffOnly", policy =>
+        policy.Requirements.Add(new RoleRequirement("Staff")));
+    
+    options.AddPolicy("CustomerOnly", policy =>
+        policy.Requirements.Add(new RoleRequirement("Customer")));
+    
+    options.AddPolicy("AdminOrStaff", policy =>
+        policy.Requirements.Add(new RoleRequirement("Admin", "Staff")));
+});
+
+// ======================
 // Database Context
 builder.Services.AddDbContext<BadmintonManagementContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// ======================
+// Custom Services
+// ======================
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
 
 
 // ======================
