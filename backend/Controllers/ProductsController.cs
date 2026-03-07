@@ -1,6 +1,6 @@
 using backend.Models;
-using backend.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Controllers
 {
@@ -8,49 +8,56 @@ namespace backend.Controllers
     [ApiController]
     public class ProductsController : ControllerBase
     {
-        private readonly IProductService _productService;
+        private readonly BadmintonManagementContext _context;
 
-        public ProductsController(IProductService productService)
+        public ProductsController(BadmintonManagementContext context)
         {
-            _productService = productService;
+            _context = context;
         }
 
+        // 1. Lấy danh sách (Có phân loại)
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+        public async Task<IActionResult> GetProducts()
         {
-            var products = await _productService.GetAllProductsAsync();
+            var products = await _context.Products.Include(p => p.Category).ToListAsync();
             return Ok(products);
         }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Product>> GetProduct(int id)
-        {
-            var product = await _productService.GetProductByIdAsync(id);
-            if (product == null) return NotFound("Không tìm thấy sản phẩm");
-            return Ok(product);
-        }
-
+        // 2. Thêm mới
         [HttpPost]
-        public async Task<ActionResult<Product>> CreateProduct(Product product)
+        public async Task<IActionResult> CreateProduct([FromBody] Product product)
         {
-            var createdProduct = await _productService.CreateProductAsync(product);
-            return CreatedAtAction(nameof(GetProduct), new { id = createdProduct.Id }, createdProduct);
+            _context.Products.Add(product);
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true, message = "Thêm sản phẩm thành công!", data = product });
         }
 
+        // 3. Cập nhật
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProduct(int id, Product product)
+        public async Task<IActionResult> UpdateProduct(int id, [FromBody] Product product)
         {
-            var success = await _productService.UpdateProductAsync(id, product);
-            if (!success) return NotFound("Không tìm thấy sản phẩm để cập nhật");
-            return NoContent();
+            if (id != product.Id) return BadRequest();
+            _context.Entry(product).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true, message = "Cập nhật thành công!" });
         }
 
+        // 4. Xóa
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
-            var success = await _productService.DeleteProductAsync(id);
-            if (!success) return NotFound("Không tìm thấy sản phẩm để xóa");
-            return NoContent();
+            var product = await _context.Products.FindAsync(id);
+            if (product == null) return NotFound();
+            _context.Products.Remove(product);
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true, message = "Đã xóa sản phẩm!" });
+        }
+
+        // 5. Lấy danh mục (Để làm dropdown chọn Đồ uống/Dụng cụ)
+        [HttpGet("categories")]
+        public async Task<IActionResult> GetCategories()
+        {
+            return Ok(await _context.Categories.ToListAsync());
         }
     }
 }

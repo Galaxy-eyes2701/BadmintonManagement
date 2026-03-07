@@ -9,5 +9,6 @@ namespace backend.Services
 
         // Hàm phục vụ Dashboard (Biểu đồ doanh thu)
         Task<object> GetRevenueReportAsync(int month, int year);
+        Task<object> GetRecentTransactionsAsync(int limit = 5);
     }
 }

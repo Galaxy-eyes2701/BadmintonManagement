@@ -6,7 +6,6 @@ const PaymentResult = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    // Trạng thái: 'processing' (Đang xử lý), 'success' (Thành công), 'error' (Thất bại)
     const [status, setStatus] = useState('processing');
     const [message, setMessage] = useState('Đang xác thực giao dịch...');
     const [txnData, setTxnData] = useState(null);
@@ -21,17 +20,14 @@ const PaymentResult = () => {
             }
 
             try {
-                // Gọi API Backend để xác thực chữ ký và lưu DB
-                const response = await axios.get(`http://localhost:5281/api/payments/vnpay-return?${queryString}`);
+                const response = await axios.get(`http://localhost:5043/api/payments/vnpay-return?${queryString}`);
 
                 if (response.data.success) {
                     setStatus('success');
-
-                    // Bóc tách dữ liệu từ URL để hiển thị lên Bill
                     const amount = parseInt(searchParams.get('vnp_Amount')) / 100;
                     const txnRef = searchParams.get('vnp_TxnRef');
                     const bankCode = searchParams.get('vnp_BankCode');
-                    const payDateRaw = searchParams.get('vnp_PayDate'); // Định dạng: yyyyMMddHHmmss
+                    const payDateRaw = searchParams.get('vnp_PayDate');
 
                     setTxnData({
                         amount,
@@ -49,7 +45,6 @@ const PaymentResult = () => {
         verifyPayment();
     }, [searchParams]);
 
-    // Hàm chuyển đổi "20260307163405" thành "16:34, 07/03/2026"
     const formatVnpayDate = (dateStr) => {
         if (!dateStr || dateStr.length !== 14) return dateStr;
         const year = dateStr.substring(0, 4);
@@ -64,7 +59,6 @@ const PaymentResult = () => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     };
 
-    // 1. MÀN HÌNH ĐANG XỬ LÝ (LOADING)
     if (status === 'processing') {
         return (
             <div className="bg-[#f4f7fa] min-h-screen flex items-center justify-center">
@@ -77,7 +71,6 @@ const PaymentResult = () => {
         );
     }
 
-    // 2. MÀN HÌNH LỖI HOẶC HỦY GIAO DỊCH
     if (status === 'error') {
         return (
             <div className="bg-[#f4f7fa] min-h-screen flex flex-col items-center justify-center p-4">
@@ -91,17 +84,16 @@ const PaymentResult = () => {
                     <h1 className="text-3xl font-bold tracking-tight text-[#001f3f]">Thanh toán thất bại</h1>
                     <p className="text-slate-500 mt-2 text-center">{message}</p>
                     <button
-                        onClick={() => navigate('/')}
+                        onClick={() => navigate('/admin/revenue')} // Đã sửa lại đường dẫn
                         className="mt-8 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 rounded-xl transition-all"
                     >
-                        Quay lại trang chủ
+                        Quay lại Dashboard
                     </button>
                 </div>
             </div>
         );
     }
 
-    // 3. MÀN HÌNH THÀNH CÔNG (Giao diện chuẩn của bạn)
     return (
         <div className="bg-[#f4f7fa] text-slate-900 min-h-screen flex flex-col font-display">
             <div className="flex-grow flex flex-col items-center justify-center p-4">
@@ -116,7 +108,7 @@ const PaymentResult = () => {
                             </div>
                         </div>
                         <h1 className="mt-8 text-3xl font-bold tracking-tight text-[#001f3f]">Thanh toán thành công!</h1>
-                        <p className="text-slate-500 mt-2 text-center">Giao dịch của bạn đã được xử lý và hoàn tất.</p>
+                        <p className="text-slate-500 mt-2 text-center">Đơn hàng POS đã được ghi nhận.</p>
                     </div>
 
                     <div className="w-full bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
@@ -143,7 +135,7 @@ const PaymentResult = () => {
                             </div>
                             <div className="flex justify-between items-center py-1">
                                 <span className="text-slate-500 text-sm">Đơn vị cung cấp</span>
-                                <span className="font-medium text-[#001f3f] text-sm">BadmintonPro Center</span>
+                                <span className="font-medium text-[#001f3f] text-sm">SMASH HUB Center</span>
                             </div>
 
                             <div className="my-4 border-t border-dashed border-slate-200"></div>
@@ -155,39 +147,23 @@ const PaymentResult = () => {
                                 </span>
                             </div>
                         </div>
-
-                        <div className="px-6 py-4 bg-slate-50 flex justify-center">
-                            <button className="flex items-center gap-2 text-[#0056b3] hover:text-[#007bff] transition-colors text-sm font-semibold">
-                                <span className="material-symbols-outlined text-lg">download</span>
-                                Tải biên lai PDF
-                            </button>
-                        </div>
                     </div>
 
                     <div className="w-full mt-8 space-y-3">
                         <button
-                            onClick={() => navigate('/')}
+                            onClick={() => navigate('/admin/revenue')} // Đã sửa lại đường dẫn
                             className="w-full bg-gradient-to-r from-[#001f3f] to-[#0056b3] hover:from-[#0056b3] hover:to-[#007bff] text-white font-bold py-4 rounded-xl shadow-lg shadow-[#0056b3]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                         >
-                            Về trang chủ
+                            Quay lại Dashboard
                             <span className="material-symbols-outlined">arrow_forward</span>
                         </button>
-                        <button className="w-full bg-white text-slate-600 font-medium py-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-                            Liên hệ hỗ trợ
-                        </button>
                     </div>
-
-                    <p className="mt-8 text-slate-400 text-xs text-center">
-                        Bạn sẽ nhận được email xác nhận trong vòng vài phút.<br />
-                        Cảm ơn bạn đã tin dùng dịch vụ của chúng tôi.
-                    </p>
                 </div>
             </div>
-
             <footer className="p-6 text-center">
                 <div className="flex items-center justify-center gap-2 text-slate-400">
                     <span className="material-symbols-outlined text-sm">shield</span>
-                    <span className="text-xs">Giao dịch được bảo mật bởi chuẩn PCI DSS & VNPay</span>
+                    <span className="text-xs">Giao dịch được bảo mật bởi VNPay</span>
                 </div>
             </footer>
         </div>

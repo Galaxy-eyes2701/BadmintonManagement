@@ -7,10 +7,11 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. THÊM CONTROLLERS
-builder.Services.AddControllers();
-
-// 2. CẤU HÌNH SWAGGER (Tích hợp nút nhập Token JWT)
+builder.Services.AddControllers(); builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    // Cắt đứt vòng lặp vô tận khi Entity Framework móc nối các bảng
+    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -39,26 +40,23 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// 3. CẤU HÌNH DATABASE (Entity Framework Core)
 builder.Services.AddDbContext<BadmintonManagementContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 4. CẤU HÌNH CORS (Cho phép React/Vue gọi API mà không bị chặn)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000") // Port của Vite và CRA
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Cần thiết nếu dùng Cookie/Token
+              .AllowCredentials();
     });
 });
 
-// 5. CẤU HÌNH JWT AUTHENTICATION (Đọc từ appsettings)
-var jwtKey = builder.Configuration["Jwt:Key"];
-var jwtIssuer = builder.Configuration["Jwt:Issuer"];
-var jwtAudience = builder.Configuration["Jwt:Audience"];
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "THIS_IS_SUPER_SECRET_KEY_FOR_BADMINTON_MANAGEMENT_123456";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "BadmintonAPI";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "BadmintonClient";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -75,36 +73,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// ==========================================================
-// 6. ĐĂNG KÝ DEPENDENCY INJECTION (DI) CHO TEAM
-// ==========================================================
-
-// -> Tầng Repository (Dùng chung)
-
-// builder.Services.AddScoped<IAuthService, AuthService>();
-// builder.Services.AddScoped<ICourtService, CourtService>();
-
+// ĐĂNG KÝ DI CỦA ANH ĐẠI
 builder.Services.AddScoped<IPosService, PosService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 
-
 var app = builder.Build();
 
-// ==========================================================
-// 7. CẤU HÌNH PIPELINE (MIDDLEWARE)
-// ==========================================================
-
-// Dùng Swagger ở cả môi trường Dev và lúc Deploy để dễ test
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
-// BẮT BUỘC: Dùng CORS trước khi Auth
 app.UseCors("AllowAll");
 
-// BẮT BUỘC: Auth trước khi gọi Controller
 app.UseAuthentication();
 app.UseAuthorization();
 

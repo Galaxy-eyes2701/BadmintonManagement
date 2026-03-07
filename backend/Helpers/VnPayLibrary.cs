@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -11,15 +9,9 @@ namespace backend.Helpers
         private SortedList<string, string> _requestData = new SortedList<string, string>(new VnPayCompare());
         private SortedList<string, string> _responseData = new SortedList<string, string>(new VnPayCompare());
 
-        // ==========================================
-        // PHẦN 1: TẠO URL GỬI YÊU CẦU LÊN VNPAY
-        // ==========================================
         public void AddRequestData(string key, string value)
         {
-            if (!string.IsNullOrEmpty(value))
-            {
-                _requestData.Add(key, value);
-            }
+            if (!string.IsNullOrEmpty(value)) _requestData.Add(key, value);
         }
 
         public string CreateRequestUrl(string baseUrl, string vnp_HashSecret)
@@ -35,33 +27,20 @@ namespace backend.Helpers
             string queryString = data.ToString();
             baseUrl += "?" + queryString;
             String signData = queryString;
-            if (signData.Length > 0)
-            {
-                signData = signData.Remove(data.Length - 1, 1);
-            }
+            if (signData.Length > 0) signData = signData.Remove(data.Length - 1, 1);
             string vnp_SecureHash = HmacSHA512(vnp_HashSecret, signData);
             baseUrl += "vnp_SecureHash=" + vnp_SecureHash;
-
             return baseUrl;
         }
 
-        // ==========================================
-        // PHẦN 2: HỨNG VÀ KIỂM TRA KẾT QUẢ TỪ VNPAY
-        // ==========================================
         public void AddResponseData(string key, string value)
         {
-            if (!string.IsNullOrEmpty(value))
-            {
-                _responseData.Add(key, value);
-            }
+            if (!string.IsNullOrEmpty(value)) _responseData.Add(key, value);
         }
 
         public string GetResponseData(string key)
         {
-            if (_responseData.TryGetValue(key, out string retValue))
-            {
-                return retValue;
-            }
+            if (_responseData.TryGetValue(key, out string? retValue) && retValue != null) return retValue;
             return "";
         }
 
@@ -75,14 +54,8 @@ namespace backend.Helpers
         private string GetResponseRawData()
         {
             StringBuilder data = new StringBuilder();
-            if (_responseData.ContainsKey("vnp_SecureHashType"))
-            {
-                _responseData.Remove("vnp_SecureHashType");
-            }
-            if (_responseData.ContainsKey("vnp_SecureHash"))
-            {
-                _responseData.Remove("vnp_SecureHash");
-            }
+            if (_responseData.ContainsKey("vnp_SecureHashType")) _responseData.Remove("vnp_SecureHashType");
+            if (_responseData.ContainsKey("vnp_SecureHash")) _responseData.Remove("vnp_SecureHash");
             foreach (KeyValuePair<string, string> kv in _responseData)
             {
                 if (!string.IsNullOrEmpty(kv.Value))
@@ -90,16 +63,10 @@ namespace backend.Helpers
                     data.Append(WebUtility.UrlEncode(kv.Key) + "=" + WebUtility.UrlEncode(kv.Value) + "&");
                 }
             }
-            if (data.Length > 0)
-            {
-                data.Remove(data.Length - 1, 1);
-            }
+            if (data.Length > 0) data.Remove(data.Length - 1, 1);
             return data.ToString();
         }
 
-        // ==========================================
-        // PHẦN 3: CÁC HÀM TIỆN ÍCH BẢO MẬT
-        // ==========================================
         private string HmacSHA512(string key, string inputData)
         {
             var hash = new StringBuilder();
@@ -108,17 +75,14 @@ namespace backend.Helpers
             using (var hmac = new HMACSHA512(keyBytes))
             {
                 byte[] hashValue = hmac.ComputeHash(inputBytes);
-                foreach (var theByte in hashValue)
-                {
-                    hash.Append(theByte.ToString("x2"));
-                }
+                foreach (var theByte in hashValue) hash.Append(theByte.ToString("x2"));
             }
             return hash.ToString();
         }
 
         public class VnPayCompare : IComparer<string>
         {
-            public int Compare(string x, string y)
+            public int Compare(string? x, string? y)
             {
                 if (x == y) return 0;
                 if (x == null) return -1;
