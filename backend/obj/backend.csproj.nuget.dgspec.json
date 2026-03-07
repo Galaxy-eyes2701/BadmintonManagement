@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "D:\\KY_8\\PRN232\\BadmintonManagement\\backend\\backend.csproj": {}
+    "D:\\Prn232_Project\\BadmintonManagement\\backend\\backend.csproj": {}
   },
   "projects": {
-    "D:\\KY_8\\PRN232\\BadmintonManagement\\backend\\backend.csproj": {
+    "D:\\Prn232_Project\\BadmintonManagement\\backend\\backend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\KY_8\\PRN232\\BadmintonManagement\\backend\\backend.csproj",
+        "projectUniqueName": "D:\\Prn232_Project\\BadmintonManagement\\backend\\backend.csproj",
         "projectName": "backend",
-        "projectPath": "D:\\KY_8\\PRN232\\BadmintonManagement\\backend\\backend.csproj",
-        "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-        "outputPath": "D:\\KY_8\\PRN232\\BadmintonManagement\\backend\\obj\\",
+        "projectPath": "D:\\Prn232_Project\\BadmintonManagement\\backend\\backend.csproj",
+        "packagesPath": "C:\\Users\\emkob\\.nuget\\packages\\",
+        "outputPath": "D:\\Prn232_Project\\BadmintonManagement\\backend\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\emkob\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -92,7 +92,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
