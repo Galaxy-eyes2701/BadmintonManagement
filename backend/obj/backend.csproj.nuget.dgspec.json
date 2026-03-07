@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "D:\\KY_8\\PRN232\\BadmintonManagement\\backend\\backend.csproj": {}
+    "E:\\ky_8\\PRN232\\project\\BadmintonManagement\\backend\\backend.csproj": {}
   },
   "projects": {
-    "D:\\KY_8\\PRN232\\BadmintonManagement\\backend\\backend.csproj": {
+    "E:\\ky_8\\PRN232\\project\\BadmintonManagement\\backend\\backend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\KY_8\\PRN232\\BadmintonManagement\\backend\\backend.csproj",
+        "projectUniqueName": "E:\\ky_8\\PRN232\\project\\BadmintonManagement\\backend\\backend.csproj",
         "projectName": "backend",
-        "projectPath": "D:\\KY_8\\PRN232\\BadmintonManagement\\backend\\backend.csproj",
-        "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-        "outputPath": "D:\\KY_8\\PRN232\\BadmintonManagement\\backend\\obj\\",
+        "projectPath": "E:\\ky_8\\PRN232\\project\\BadmintonManagement\\backend\\backend.csproj",
+        "packagesPath": "C:\\Users\\fpt shop\\.nuget\\packages\\",
+        "outputPath": "E:\\ky_8\\PRN232\\project\\BadmintonManagement\\backend\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\fpt shop\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -50,6 +50,10 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "BCrypt.Net-Next": {
+              "target": "Package",
+              "version": "[4.0.3, )"
+            },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
               "version": "[8.0.0, )"
@@ -92,7 +96,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
