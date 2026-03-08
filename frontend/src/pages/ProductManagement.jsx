@@ -222,8 +222,22 @@ const ProductManagement = () => {
                                     <input required type="number" min="0" value={formData.stockQuantity} onChange={e => setFormData({ ...formData, stockQuantity: parseInt(e.target.value) })} className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#0d7ff2] text-sm" />
                                 </div>
                                 <div className="flex-1">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Đơn giá (VND)</label>
-                                    <input required type="number" min="0" value={formData.unitPrice} onChange={e => setFormData({ ...formData, unitPrice: parseInt(e.target.value) })} className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#0d7ff2] text-sm" />
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Đơn giá (VND) *</label>
+                                    <div className="relative">
+                                        <input
+                                            required
+                                            type="text"
+                                            value={formData.unitPrice === 0 ? '' : formData.unitPrice.toLocaleString('en-US')}
+                                            onChange={e => {
+                                                // Lọc bỏ dấu phẩy và chữ cái, chỉ lấy số nguyên
+                                                const rawValue = e.target.value.replace(/,/g, '').replace(/\D/g, '');
+                                                setFormData({ ...formData, unitPrice: rawValue ? parseInt(rawValue, 10) : 0 });
+                                            }}
+                                            className="w-full px-3 py-2 pr-8 border border-slate-200 rounded-lg outline-none focus:border-[#0d7ff2] text-sm"
+                                            placeholder="VD: 15,000"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">đ</span>
+                                    </div>
                                 </div>
                             </div>
 

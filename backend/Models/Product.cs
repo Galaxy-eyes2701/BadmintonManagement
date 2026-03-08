@@ -15,7 +15,7 @@ public partial class Product
 
     public decimal UnitPrice { get; set; }
     public string? ImageUrl { get; set; }
-    public virtual Category Category { get; set; } = null!;
+    public virtual Category? Category { get; set; } = null!;
 
-    public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+    public virtual ICollection<OrderDetail>? OrderDetails { get; set; } = new List<OrderDetail>();
 }

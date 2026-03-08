@@ -33,7 +33,11 @@ const MainLayout = () => {
               return <div key={index} className="text-[10px] font-bold text-slate-500 tracking-wider uppercase mt-6 mb-2 px-3">{item.title}</div>;
             }
             return (
-              <NavLink key={index} to={item.path} className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${isActive ? 'bg-[#38bdf8]/10 text-[#38bdf8] font-semibold' : 'hover:bg-slate-800/50 hover:text-white'}`}>
+              <NavLink
+                key={index}
+                to={item.path}
+                className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${isActive ? 'bg-[#38bdf8]/10 text-[#38bdf8] font-semibold' : 'hover:bg-slate-800/50 hover:text-white'}`}
+              >
                 <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                 <span className="text-sm">{item.label}</span>
               </NavLink>
@@ -41,7 +45,9 @@ const MainLayout = () => {
           })}
         </nav>
       </aside>
-      <main className="flex-1 flex flex-col relative overflow-hidden">
+
+      {/* KHU VỰC HIỂN THỊ NỘI DUNG CHÍNH NẰM Ở ĐÂY */}
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-[#F8FAFC]">
         <Outlet />
       </main>
     </div>
