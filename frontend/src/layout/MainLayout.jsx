@@ -4,17 +4,17 @@ import { NavLink, Outlet } from 'react-router-dom';
 const MainLayout = () => {
   const menuItems = [
     { title: 'TỔNG QUAN & BÁN HÀNG (N3)', isHeader: true },
-    { path: '/admin/pos', icon: 'point_of_sale', label: 'Máy POS Bán hàng' },
-    { path: '/admin/revenue', icon: 'monitoring', label: 'Báo cáo Doanh thu' },
-    { path: '/admin/products', icon: 'inventory_2', label: 'Quản lý Kho / Nước' },
-    { path: '/admin/vouchers', icon: 'local_activity', label: 'Mã Giảm giá' },
+    { path: '/staff/pos', icon: 'point_of_sale', label: 'Máy POS Bán hàng' },
+    { path: '/staff/revenue', icon: 'monitoring', label: 'Báo cáo Doanh thu' },
+    { path: '/staff/products', icon: 'inventory_2', label: 'Quản lý Kho / Nước' },
+    { path: '/staff/vouchers', icon: 'local_activity', label: 'Mã Giảm giá' },
 
     { title: 'NGHIỆP VỤ ĐẶT SÂN (N1)', isHeader: true },
-    { path: '/admin/bookings', icon: 'calendar_month', label: 'Quản lý Booking' },
+    { path: '/staff/bookings', icon: 'calendar_month', label: 'Quản lý Booking' },
 
     { title: 'CƠ SỞ VẬT CHẤT & GIÁ (N2)', isHeader: true },
-    { path: '/admin/courts', icon: 'stadium', label: 'Quản lý Sân bãi' },
-    { path: '/admin/pricing', icon: 'payments', label: 'Cấu hình Giá động' },
+    { path: '/staff/courts', icon: 'stadium', label: 'Quản lý Sân bãi' },
+    { path: '/staff/pricing', icon: 'payments', label: 'Cấu hình Giá động' },
   ];
 
   return (

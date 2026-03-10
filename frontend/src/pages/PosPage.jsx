@@ -5,21 +5,32 @@ import 'react-toastify/dist/ReactToastify.css';
 
 const PosPage = () => {
     const [products, setProducts] = useState([]);
+    const [activeBookings, setActiveBookings] = useState([]);
     const [cart, setCart] = useState([]);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState('Tất cả');
+    const [selectedBookingId, setSelectedBookingId] = useState('');
 
-    const fetchProducts = async () => {
+    // STATE CHO MODAL MÃ QR NGÂN HÀNG
+    const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
+    const fetchData = async () => {
         try {
-            const response = await axios.get('http://localhost:5043/api/pos/products');
-            setProducts(response.data);
+            // ĐÃ FIX: Đổi từ api/pos/products thành api/products cho khớp với Backend
+            const resProducts = await axios.get('http://localhost:5043/api/products');
+            setProducts(resProducts.data);
+
+            const resBookings = await axios.get('http://localhost:5043/api/pos/active-bookings');
+            setActiveBookings(resBookings.data);
         } catch (error) {
-            toast.error('Không thể tải danh sách sản phẩm');
+            console.error("Lỗi API POS:", error);
+            toast.error('Không thể tải dữ liệu POS. Hãy kiểm tra Backend.');
         }
     };
 
     useEffect(() => {
-        fetchProducts();
+        fetchData();
     }, []);
 
     const addToCart = (product) => {
@@ -51,24 +62,31 @@ const PosPage = () => {
         }).filter((item) => item.quantity > 0));
     };
 
+    // HÀM XỬ LÝ THANH TOÁN (THÊM LUỒNG CHUYỂN KHOẢN NGÂN HÀNG)
     const handleCheckout = async (method) => {
         if (cart.length === 0) return toast.warning('Giỏ hàng trống!');
 
         const subTotal = cart.reduce((sum, item) => sum + item.product.unitPrice * item.quantity, 0);
+        const bookingIdToSave = selectedBookingId ? parseInt(selectedBookingId) : null;
 
-        // BƯỚC 1: Luôn tạo Order trước để lưu nước/vợt vào Database, trừ tồn kho
         const payload = {
-            bookingId: null,
+            bookingId: bookingIdToSave,
             items: cart.map((item) => ({ productId: item.product.id, quantity: item.quantity }))
         };
 
         try {
+            // Tạo Hóa đơn Order trước để trừ tồn kho
             await axios.post('http://localhost:5043/api/pos/create-order', payload);
 
-            // BƯỚC 2: Rẽ nhánh thanh toán
+            if (method === 'GhiSo') {
+                toast.success('Đã ghi sổ nợ vào hóa đơn sân thành công!');
+                setCart([]); setSelectedBookingId(''); fetchData();
+                return;
+            }
+
             if (method === 'VNPay') {
                 const payResponse = await axios.post('http://localhost:5043/api/payments/process', {
-                    bookingId: 9999, // Mã ảo đẩy cho VNPay để lấy link
+                    bookingId: 9999,
                     amount: subTotal,
                     paymentMethod: 'VNPAY'
                 });
@@ -76,12 +94,16 @@ const PosPage = () => {
                     window.location.href = payResponse.data.paymentUrl;
                     return;
                 }
+            } else if (method === 'Chuyển khoản') {
+                toast.success(`Xác nhận Chuyển khoản thành công!`);
+                setCart([]); fetchData();
+                setIsQrModalOpen(false); // Đóng modal QR
             } else {
-                toast.success(`Thanh toán Tiền mặt thành công!`);
-                setCart([]); fetchProducts();
+                toast.success(`Thu Tiền mặt thành công!`);
+                setCart([]); fetchData();
             }
         } catch (error) {
-            toast.error('Lỗi thanh toán');
+            toast.error('Lỗi xử lý giao dịch');
         }
     };
 
@@ -149,9 +171,10 @@ const PosPage = () => {
                 <aside className="w-[30%] bg-white flex flex-col shadow-[-4px_0_15px_rgba(0,0,0,0.02)]">
                     <div className="p-6 pb-4 border-b border-slate-100">
                         <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <span className="material-symbols-outlined text-[#0d7ff2]">shopping_cart</span> Giỏ hàng hiện tại
+                            <span className="material-symbols-outlined text-[#0d7ff2]">shopping_cart</span> Giỏ hàng
                         </h2>
                     </div>
+
                     <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
                         {cart.length === 0 && <p className="text-slate-400 text-center mt-10 text-sm">Chưa có sản phẩm nào được chọn</p>}
                         {cart.map((item) => (
@@ -171,22 +194,92 @@ const PosPage = () => {
                             </div>
                         ))}
                     </div>
+
+                    <div className="px-6 py-4 bg-white border-t border-slate-200">
+                        <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-slate-400 text-sm">stadium</span> Gắn vào hóa đơn sân (Tùy chọn)
+                        </label>
+                        <select
+                            value={selectedBookingId}
+                            onChange={(e) => setSelectedBookingId(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#0d7ff2] text-sm bg-slate-50 font-medium text-slate-700"
+                        >
+                            <option value="">-- Thu tiền mặt ngay (Khách vãng lai) --</option>
+                            {activeBookings.map(b => (
+                                <option key={b.id} value={b.id}>
+                                    {b.courtName} - Khách: {b.customerName} ({b.time})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="p-6 bg-slate-50/80 border-t border-slate-200 space-y-4">
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-lg font-bold text-slate-800">Tổng cộng:</span>
                             <span className="text-2xl font-black text-[#0d7ff2]">{formatCurrency(totalAmount)}</span>
                         </div>
+
                         <div className="space-y-3">
-                            <button onClick={() => handleCheckout('Tiền mặt')} className="w-full bg-[#1e293b] hover:bg-slate-800 text-white font-bold py-4 rounded-[12px] flex items-center justify-center gap-3 transition-colors">
-                                <span className="material-symbols-outlined">payments</span> Tiền mặt (COD)
-                            </button>
-                            <button onClick={() => handleCheckout('VNPay')} className="w-full bg-gradient-to-r from-[#0d7ff2] to-[#38bdf8] hover:opacity-90 text-white font-bold py-4 rounded-[12px] flex items-center justify-center gap-3 transition-opacity">
-                                <span className="material-symbols-outlined">qr_code_2</span> Quét mã VNPay
-                            </button>
+                            {selectedBookingId ? (
+                                <button onClick={() => handleCheckout('GhiSo')} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-[12px] flex items-center justify-center gap-3 transition-colors shadow-sm">
+                                    <span className="material-symbols-outlined">edit_document</span> Ghi Sổ Nợ Vào Sân
+                                </button>
+                            ) : (
+                                <>
+                                    <button onClick={() => handleCheckout('Tiền mặt')} className="w-full bg-[#1e293b] hover:bg-slate-800 text-white font-bold py-3 rounded-[12px] flex items-center justify-center gap-2 transition-colors">
+                                        <span className="material-symbols-outlined">payments</span> Tiền Mặt
+                                    </button>
+
+                                    <div className="flex gap-3">
+                                        <button onClick={() => {
+                                            if (cart.length === 0) return toast.warning('Giỏ hàng trống!');
+                                            setIsQrModalOpen(true);
+                                        }} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[12px] flex items-center justify-center gap-2 transition-colors">
+                                            <span className="material-symbols-outlined text-lg">account_balance</span> Chuyển Khoản
+                                        </button>
+
+                                        <button onClick={() => handleCheckout('VNPay')} className="flex-1 bg-gradient-to-r from-[#0d7ff2] to-[#38bdf8] hover:opacity-90 text-white font-bold py-3 rounded-[12px] flex items-center justify-center gap-2 transition-opacity">
+                                            <span className="material-symbols-outlined text-lg">qr_code_2</span> VNPay
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </aside>
             </main>
+
+            {/* --- POPUP MÃ QR CHUYỂN KHOẢN --- */}
+            {isQrModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-[fadeIn_0.2s_ease-out] flex flex-col items-center p-8">
+                        <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
+                            <span className="material-symbols-outlined text-2xl">qr_code_scanner</span>
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-800 mb-1">Mã QR Thanh Toán</h2>
+                        <p className="text-sm text-slate-500 mb-6 text-center">Yêu cầu khách quét mã bằng ứng dụng Ngân hàng (Momo, ZaloPay...)</p>
+
+                        <div className="w-56 h-56 bg-slate-50 rounded-xl overflow-hidden border border-slate-200 p-2 mb-6 shadow-sm">
+                            <img src="/images/qr.jpg" alt="Mã QR Ngân Hàng" className="w-full h-full object-contain rounded-lg mix-blend-multiply" />
+                        </div>
+
+                        <div className="w-full bg-slate-50 border border-slate-100 p-4 rounded-xl mb-8 text-center">
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Số tiền cần thanh toán</p>
+                            <p className="text-3xl font-black text-[#0d7ff2]">{formatCurrency(totalAmount)}</p>
+                        </div>
+
+                        <div className="flex gap-3 w-full">
+                            <button onClick={() => setIsQrModalOpen(false)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors">
+                                Hủy bỏ
+                            </button>
+                            <button onClick={() => handleCheckout('Chuyển khoản')} className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2">
+                                <span className="material-symbols-outlined text-lg">check_circle</span>
+                                Đã Nhận Tiền
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

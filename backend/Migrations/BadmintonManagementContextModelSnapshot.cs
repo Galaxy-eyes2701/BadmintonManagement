@@ -53,7 +53,7 @@ namespace backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Bookings");
+                    b.ToTable("Bookings", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.BookingDetail", b =>
@@ -88,7 +88,7 @@ namespace backend.Migrations
 
                     b.HasIndex("TimeSlotId");
 
-                    b.ToTable("BookingDetails");
+                    b.ToTable("BookingDetails", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Branch", b =>
@@ -115,7 +115,7 @@ namespace backend.Migrations
                     b.HasKey("Id")
                         .HasName("PK__Branches__3214EC07751FBD12");
 
-                    b.ToTable("Branches");
+                    b.ToTable("Branches", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Category", b =>
@@ -134,7 +134,7 @@ namespace backend.Migrations
                     b.HasKey("Id")
                         .HasName("PK__Categori__3214EC07C30C2D00");
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Court", b =>
@@ -168,7 +168,7 @@ namespace backend.Migrations
 
                     b.HasIndex("CourtTypeId");
 
-                    b.ToTable("Courts");
+                    b.ToTable("Courts", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.CourtType", b =>
@@ -191,7 +191,7 @@ namespace backend.Migrations
                     b.HasKey("Id")
                         .HasName("PK__CourtTyp__3214EC0704480FD9");
 
-                    b.ToTable("CourtTypes");
+                    b.ToTable("CourtTypes", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.FixedSchedule", b =>
@@ -229,7 +229,7 @@ namespace backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("FixedSchedules");
+                    b.ToTable("FixedSchedules", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Order", b =>
@@ -243,6 +243,9 @@ namespace backend.Migrations
                     b.Property<int?>("BookingId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(12, 2)");
 
@@ -251,7 +254,7 @@ namespace backend.Migrations
 
                     b.HasIndex("BookingId");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.OrderDetail", b =>
@@ -281,7 +284,7 @@ namespace backend.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("OrderDetails");
+                    b.ToTable("OrderDetails", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Payment", b =>
@@ -322,7 +325,7 @@ namespace backend.Migrations
 
                     b.HasIndex("BookingId");
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.PriceConfig", b =>
@@ -353,7 +356,7 @@ namespace backend.Migrations
                     b.HasIndex(new[] { "CourtTypeId", "TimeSlotId", "DayOfWeek" }, "UQ_Price")
                         .IsUnique();
 
-                    b.ToTable("PriceConfigs");
+                    b.ToTable("PriceConfigs", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Product", b =>
@@ -383,7 +386,7 @@ namespace backend.Migrations
 
                     b.HasIndex("CategoryId");
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.TimeSlot", b =>
@@ -403,7 +406,7 @@ namespace backend.Migrations
                     b.HasKey("Id")
                         .HasName("PK__TimeSlot__3214EC0704890D44");
 
-                    b.ToTable("TimeSlots");
+                    b.ToTable("TimeSlots", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.User", b =>
@@ -413,9 +416,6 @@ namespace backend.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -448,7 +448,7 @@ namespace backend.Migrations
                     b.HasIndex(new[] { "Phone" }, "UQ__Users__5C7E359EB2F0C04F")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Voucher", b =>
@@ -479,7 +479,7 @@ namespace backend.Migrations
                     b.HasIndex(new[] { "Code" }, "UQ__Vouchers__A25C5AA7DDA386C0")
                         .IsUnique();
 
-                    b.ToTable("Vouchers");
+                    b.ToTable("Vouchers", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Booking", b =>

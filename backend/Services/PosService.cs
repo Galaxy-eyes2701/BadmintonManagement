@@ -22,7 +22,38 @@ namespace backend.Services
         {
             return await _context.Products.Include(p => p.Category).ToListAsync();
         }
+        public async Task<IEnumerable<object>> GetActiveBookingsAsync()
+        {
+            // 1. Kéo dữ liệu về bộ nhớ C# trước (Dùng Include để lấy các bảng liên quan)
+            var bookings = await _context.Bookings
+                .Include(b => b.User)
+                .Include(b => b.BookingDetails)
+                    .ThenInclude(bd => bd.Court)
+                .Include(b => b.BookingDetails)
+                    .ThenInclude(bd => bd.TimeSlot)
+                .Where(b => b.Status == "confirmed")
+                .ToListAsync();
 
+            // 2. Dùng C# để map dữ liệu (Tránh hoàn toàn lỗi dịch SQL của EF Core)
+            var result = new List<object>();
+
+            foreach (var b in bookings)
+            {
+                var firstDetail = b.BookingDetails.FirstOrDefault();
+                if (firstDetail != null)
+                {
+                    result.Add(new
+                    {
+                        id = b.Id,
+                        courtName = firstDetail.Court?.Name ?? "Sân chờ",
+                        customerName = b.User?.FullName ?? "Khách vãng lai",
+                        time = $"{firstDetail.TimeSlot?.StartTime:HH:mm} - {firstDetail.PlayDate:dd/MM}"
+                    });
+                }
+            }
+
+            return result;
+        }
         public async Task<Order> CreateOrderAsync(CreateOrderDto orderDto)
         {
             // BẮT ĐẦU TRANSACTION: Đảm bảo toàn vẹn dữ liệu

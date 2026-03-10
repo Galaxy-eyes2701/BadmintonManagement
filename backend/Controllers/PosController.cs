@@ -28,6 +28,11 @@ namespace backend.Controllers
             var products = await _posService.GetProductsAsync();
             return Ok(products);
         }
+        [HttpGet("active-bookings")]
+        public async Task<IActionResult> GetActiveBookings()
+        {
+            return Ok(await _posService.GetActiveBookingsAsync());
+        }
 
         [HttpPost("create-order")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto orderDto)
