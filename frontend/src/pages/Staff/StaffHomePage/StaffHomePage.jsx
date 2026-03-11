@@ -1,4 +1,4 @@
-import useAuth from "../hooks/useAuth.jsx";
+import useAuth from "../../../hooks/useAuth.jsx";
 
 const StaffHomePage = () => {
   const auth = useAuth();
@@ -9,8 +9,7 @@ const StaffHomePage = () => {
         <div className="bm-hero-content">
           <h1>Trang chủ Nhân viên</h1>
           <p>
-            Chào{" "}
-            <strong>{auth?.user?.username || "nhân viên"}</strong>. Quản lý
+            Chào <strong>{auth?.user?.username || "nhân viên"}</strong>. Quản lý
             lịch, check-in người chơi và hỗ trợ vận hành sân.
           </p>
           <div className="bm-hero-actions">
@@ -24,4 +23,3 @@ const StaffHomePage = () => {
 };
 
 export default StaffHomePage;
-

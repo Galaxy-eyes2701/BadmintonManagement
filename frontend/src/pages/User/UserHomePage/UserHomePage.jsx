@@ -1,4 +1,4 @@
-import useAuth from "../hooks/useAuth.jsx";
+import useAuth from "../../../hooks/useAuth.jsx";
 
 const UserHomePage = () => {
   const auth = useAuth();
@@ -9,9 +9,8 @@ const UserHomePage = () => {
         <div className="bm-hero-content">
           <h1>Trang chủ Người dùng</h1>
           <p>
-            Xin chào{" "}
-            <strong>{auth?.user?.username || "bạn"}</strong>! Đặt sân nhanh,
-            theo dõi lịch chơi và tham gia giải đấu dễ dàng.
+            Xin chào <strong>{auth?.user?.username || "bạn"}</strong>! Đặt sân
+            nhanh, theo dõi lịch chơi và tham gia giải đấu dễ dàng.
           </p>
           <div className="bm-hero-actions">
             <button className="bm-btn-primary">Đặt sân ngay</button>
@@ -24,4 +23,3 @@ const UserHomePage = () => {
 };
 
 export default UserHomePage;
-

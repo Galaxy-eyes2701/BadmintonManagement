@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../utils/api";
+import api from "../../../utils/api";
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -145,4 +145,3 @@ const RegisterPage = () => {
 };
 
 export default RegisterPage;
-

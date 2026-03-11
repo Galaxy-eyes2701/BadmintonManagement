@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import useAuth from "../hooks/useAuth.jsx";
-import api from "../utils/api";
+import useAuth from "../../../hooks/useAuth.jsx";
+import api from "../../../utils/api.js";
 
 const LoginPage = ({ isAdmin = false }) => {
   const navigate = useNavigate();
@@ -85,7 +85,7 @@ const LoginPage = ({ isAdmin = false }) => {
 
         <form className="bm-auth-form" onSubmit={handleSubmit}>
           <div className="bm-form-group">
-              <label>Số điện thoại</label>
+            <label>Số điện thoại</label>
             <input
               type="text"
               placeholder={isAdmin ? "admin" : "Nhập số điện thoại"}
@@ -150,4 +150,3 @@ const LoginPage = ({ isAdmin = false }) => {
 };
 
 export default LoginPage;
-
