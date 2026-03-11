@@ -1,0 +1,588 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+}
+
+.header {
+    height: 64px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    flex-shrink: 0;
+    z-index: 50;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.headerIcon {
+    background-color: #0d7ff2;
+    color: white;
+    padding: 8px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.headerTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.headerSearch {
+    flex: 1;
+    max-width: 576px;
+    padding: 0 48px;
+    position: relative;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+}
+
+.searchInput {
+    width: 100%;
+    background-color: #f1f5f9;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 16px 10px 40px;
+    font-size: 0.875rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.searchInput:focus {
+    background-color: #ffffff;
+    box-shadow: 0 0 0 2px rgba(13, 127, 242, 0.2);
+}
+
+.main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.productsSection {
+    width: 70%;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border-right: 1px solid #e2e8f0;
+}
+
+.categoryNav {
+    padding: 16px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    gap: 8px;
+}
+
+.catBtn {
+    padding: 8px 24px;
+    font-weight: 500;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+.catBtn:hover {
+    background-color: #e2e8f0;
+}
+
+.catBtnActive {
+    background-color: #0d7ff2;
+    color: white;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.productGridWrapper {
+    padding: 24px;
+    overflow-y: auto;
+    background-color: #f8fafc;
+    flex: 1;
+}
+
+.productGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.productCard {
+    background-color: #ffffff;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border: 1px solid #f1f5f9;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s;
+}
+
+.productCard:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.imgWrapper {
+    position: relative;
+    width: 100%;
+    height: 128px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #f1f5f9;
+    overflow: hidden;
+    position: relative;
+}
+
+.imgWrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 8px;
+    transition: transform 0.3s;
+}
+
+.productCard:hover .imgWrapper img {
+    transform: scale(1.1);
+}
+
+.emptyImg {
+    font-size: 2.5rem;
+    color: #cbd5e1;
+}
+
+.stockBadge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.stockHigh {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+.stockLow {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+.prodName {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 0.875rem;
+    margin-bottom: 4px;
+}
+
+.prodPrice {
+    color: #0d7ff2;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-top: auto;
+}
+
+/* Sidebar Cart */
+.sidebar {
+    width: 30%;
+    background-color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 15px rgba(0, 0, 0, 0.02);
+}
+
+.cartHeader {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.cartTitle {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.cartList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.emptyText {
+    color: #94a3b8;
+    text-align: center;
+    margin-top: 40px;
+    font-size: 0.875rem;
+}
+
+.cartItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.itemInfo {
+    flex: 1;
+}
+
+.itemName {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.itemUnitPrice {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.itemControls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.qtyBox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.qtyBtn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.qtyValue {
+    font-size: 0.875rem;
+    font-weight: 700;
+    min-width: 20px;
+    text-align: center;
+}
+
+.itemTotal {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.bookingSelectBox {
+    padding: 16px 24px;
+    background-color: #ffffff;
+    border-top: 1px solid #e2e8f0;
+}
+
+.selectLabel {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.selectInput {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    outline: none;
+    font-size: 0.875rem;
+    background-color: #f8fafc;
+    font-weight: 500;
+    color: #334155;
+}
+
+.selectInput:focus {
+    border-color: #0d7ff2;
+}
+
+.checkoutArea {
+    padding: 24px;
+    background-color: rgba(248, 250, 252, 0.8);
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.totalRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.totalLabel {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.totalValue {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #0d7ff2;
+}
+
+.btnFull {
+    width: 100%;
+    font-weight: 700;
+    padding: 12px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btnOrange {
+    background-color: #f97316;
+    color: white;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.btnOrange:hover {
+    background-color: #ea580c;
+}
+
+.btnDark {
+    background-color: #1e293b;
+    color: white;
+}
+
+.btnDark:hover {
+    background-color: #0f172a;
+}
+
+.btnGreen {
+    background-color: #16a34a;
+    color: white;
+    flex: 1;
+    font-weight: 700;
+    padding: 12px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btnGreen:hover {
+    background-color: #15803d;
+}
+
+.btnGradient {
+    background: linear-gradient(to right, #0d7ff2, #38bdf8);
+    color: white;
+    flex: 1;
+    font-weight: 700;
+    padding: 12px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btnGradient:hover {
+    opacity: 0.9;
+}
+
+.btnRow {
+    display: flex;
+    gap: 12px;
+}
+
+/* QR Modal */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.modalContent {
+    background-color: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 384px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.qrIcon {
+    width: 48px;
+    height: 48px;
+    background-color: #dcfce7;
+    color: #16a34a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.modalTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 4px;
+}
+
+.modalDesc {
+    font-size: 0.875rem;
+    color: #64748b;
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.qrBox {
+    width: 224px;
+    height: 224px;
+    background-color: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    padding: 8px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.qrBox img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.amountBox {
+    width: 100%;
+    background-color: #f8fafc;
+    border: 1px solid #f1f5f9;
+    padding: 16px;
+    border-radius: 12px;
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.amountBox p:first-child {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 4px;
+}
+
+.amountBox p:last-child {
+    font-size: 1.875rem;
+    font-weight: 900;
+    color: #0d7ff2;
+    margin: 0;
+}
+
+.modalActions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.btnCancel {
+    flex: 1;
+    padding: 12px;
+    background-color: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btnCancel:hover {
+    background-color: #e2e8f0;
+}
