@@ -1,4 +1,6 @@
+using backend.Interface.Repository;
 using backend.Models;
+using backend.Repository;
 using backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -119,10 +121,14 @@ builder.Services.AddScoped<IAuthorizationHandler, RoleAuthorizationHandler>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 
-// 2. DI CỦA ANH ĐẠI
+// 2. DI
 builder.Services.AddScoped<IPosService, PosService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IBranchRepository, BranchRepository>();
+builder.Services.AddScoped<ICourtTypeRepository, CourtTypeRepository>();
+builder.Services.AddScoped<ICourtRepository, CourtRepository>();
+builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
 
 var app = builder.Build();
 
