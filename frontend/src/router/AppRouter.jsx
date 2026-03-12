@@ -3,12 +3,14 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 
 import AdminLayout from "../layout/AdminLayout.jsx";
 import StaffLayout from "../layout/StaffLayout.jsx";
+import MainLayout from "../layout/MainLayout.jsx";
 
 import AdminProtectedRoute from "./AdminProtectedRoute.jsx";
 import PageNotFound from "../pages/PageNotFound.jsx";
 import LoginPage from "../pages/User/LoginPage/LoginPage.jsx";
 import RegisterPage from "../pages/User/RegisterPage/RegisterPage.jsx";
 import ForgotPasswordPage from "../pages/User/ForgotPasswordPage/ForgotPasswordPage.jsx";
+import UserHomePage from "../pages/User/UserHomePage/UserHomePage.jsx";
 
 // --- IMPORT CÁC TRANG CỦA STAFF (ĐÀI) ---
 import StaffSchedule from "../pages/Staff/StaffSchedule/StaffSchedule.jsx";
@@ -38,6 +40,15 @@ const router = createBrowserRouter([
   { path: "/register", element: <RegisterPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/payment-result", element: <PaymentResult /> },
+
+  // 🟢 LUỒNG USER: TRANG CHỦ NGƯỜI DÙNG
+  {
+  path: "/user",
+  element: <MainLayout />,
+  children: [
+    { index: true, element: <UserHomePage /> }
+  ]
+},
 
   // Trang Login Admin riêng của bạn Đồng code
   { path: "/admin/login", element: <AdminLogin /> },

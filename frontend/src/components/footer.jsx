@@ -4,7 +4,7 @@ const Footer = () => {
       <div className="bm-footer-inner">
         <span>© {new Date().getFullYear()} Badminton Management</span>
         <span className="bm-footer-divider">•</span>
-        <span>Thiết kế bởi PRN232</span>
+       
       </div>
     </footer>
   );
