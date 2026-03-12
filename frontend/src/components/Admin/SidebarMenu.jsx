@@ -55,21 +55,25 @@ const SidebarMenu = () => {
                   : ""
               }
             >
-              Quản lý người dùng
+              Quản lý tài khoản
             </div>
           </li>
           <li
             className={`${styles.menuItem} ${
-              isActiveMenuItem("/admin/product") ? styles.active : ""
+              isActiveMenuItem("/admin/branchcourtmanagement")
+                ? styles.active
+                : ""
             }`}
-            onClick={() => handleNavigation("/admin/product")}
+            onClick={() => handleNavigation("/admin/branchcourtmanagement")}
           >
             <div
               className={
-                isActiveMenuItem("/admin/product") ? styles.highlight : ""
+                isActiveMenuItem("/admin/branchcourtmanagement")
+                  ? styles.highlight
+                  : ""
               }
             >
-              Quản lý sản phẩm
+              Quản lý Cơ sở & Sân
             </div>
           </li>
           <li

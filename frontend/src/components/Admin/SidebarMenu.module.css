@@ -1,6 +1,6 @@
 .hamburgerBtn {
   font-size: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0d5e58 0%, #0f766e 100%);
   border: none;
   color: white;
   cursor: pointer;
@@ -14,7 +14,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 15px rgba(15, 118, 110, 0.3);
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
   transform: translate3d(0, 0, 0);
@@ -35,8 +35,8 @@ html {
 
 .hamburgerBtn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  box-shadow: 0 6px 20px rgba(15, 118, 110, 0.4);
+  background: linear-gradient(135deg, #0a4a44 0%, #0d5e58 100%);
 }
 
 .hamburgerBtn:active {
@@ -86,8 +86,8 @@ html {
   bottom: 0;
   background: linear-gradient(
     135deg,
-    rgba(102, 126, 234, 0.1) 0%,
-    rgba(118, 75, 162, 0.1) 100%
+    rgba(15, 118, 110, 0.1) 0%,
+    rgba(13, 94, 88, 0.1) 100%
   );
   pointer-events: none;
 }
@@ -102,7 +102,7 @@ html {
   flex-direction: column;
   gap: 15px;
   padding: 25px 25px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0d5e58 0%, #0f766e 100%);
   position: relative;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -184,16 +184,16 @@ html {
 .sidebarMenu li:hover {
   background: linear-gradient(
     135deg,
-    rgba(102, 126, 234, 0.1) 0%,
-    rgba(118, 75, 162, 0.1) 100%
+    rgba(15, 118, 110, 0.1) 0%,
+    rgba(13, 94, 88, 0.1) 100%
   );
-  border-left-color: #667eea;
+  border-left-color: #14b8a6;
   color: #e2e8f0;
   padding-left: 30px;
 }
 
 .sidebarMenu li:hover::before {
-  color: #667eea;
+  color: #14b8a6;
   transform: scale(1.2);
 }
 
@@ -201,8 +201,8 @@ html {
   font-weight: 700 !important;
   background: linear-gradient(
     135deg,
-    rgba(102, 126, 234, 0.2) 0%,
-    rgba(118, 75, 162, 0.2) 100%
+    rgba(15, 118, 110, 0.2) 0%,
+    rgba(13, 94, 88, 0.2) 100%
   ) !important;
   border-left-color: #fbbf24 !important;
   color: #fbbf24 !important;
@@ -270,12 +270,12 @@ html {
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #14b8a6, #0f766e);
   border-radius: 3px;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #5a67d8, #6b46c1);
+  background: linear-gradient(135deg, #0d5e58, #0a4a44);
 }
 
 /* Animation enhancements */
@@ -390,7 +390,7 @@ html {
 .hamburgerBtn:focus,
 .closeBtn:focus,
 .sidebarMenu li:focus {
-  outline: 2px solid #667eea;
+  outline: 2px solid #14b8a6;
   outline-offset: 2px;
 }
 
@@ -436,21 +436,21 @@ html {
 .sidebarMenu .menuItem:hover {
   background: linear-gradient(
     135deg,
-    rgba(102, 126, 234, 0.1) 0%,
-    rgba(118, 75, 162, 0.1) 100%
+    rgba(15, 118, 110, 0.1) 0%,
+    rgba(13, 94, 88, 0.1) 100%
   );
-  border-left-color: #667eea;
+  border-left-color: #14b8a6;
   color: #e2e8f0;
   padding-left: 30px;
 }
 
 .sidebarMenu .menuItem:hover::before {
-  color: #667eea;
+  color: #14b8a6;
   transform: scale(1.2);
 }
 
 .sidebarMenu .menuItem:focus {
-  outline: 2px solid #667eea;
+  outline: 2px solid #14b8a6;
   outline-offset: 2px;
 }
 
@@ -458,8 +458,8 @@ html {
   font-weight: 700 !important;
   background: linear-gradient(
     135deg,
-    rgba(102, 126, 234, 0.2) 0%,
-    rgba(118, 75, 162, 0.2) 100%
+    rgba(15, 118, 110, 0.2) 0%,
+    rgba(13, 94, 88, 0.2) 100%
   ) !important;
   border-left-color: #fbbf24 !important;
   color: #fbbf24 !important;

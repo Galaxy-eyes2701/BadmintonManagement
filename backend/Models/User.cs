@@ -18,6 +18,7 @@ public partial class User
     public string Role { get; set; } = null!;
 
     public int? LoyaltyPoints { get; set; }
+    public string Status { get; set; } = "active";
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 

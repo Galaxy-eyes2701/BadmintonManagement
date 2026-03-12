@@ -29,76 +29,82 @@ const Pagination = ({
 
   const { pageNumbers, startPage, endPage } = getPageNumbers();
 
-  const indexOfFirstItem = (currentPage - 1) * itemsPerPage + 1;
+  const indexOfFirstItem =
+    totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const indexOfLastItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-  if (totalPages <= 1) return null;
+  // ✅ KHÔNG return null nữa — luôn hiển thị để giữ selector mục/trang
 
   return (
     <div className={styles.pagination}>
       <div className={styles.paginationInfo}>
-        Hiển thị {indexOfFirstItem}-{indexOfLastItem} trong tổng số {totalItems}{" "}
-        sản phẩm
+        {totalItems === 0
+          ? "Không có dữ liệu"
+          : `Hiển thị ${indexOfFirstItem}-${indexOfLastItem} trong tổng số ${totalItems} sản phẩm`}
       </div>
 
-      <div className={styles.paginationControls}>
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className={styles.paginationButton}
-        >
-          « Trước
-        </button>
-
-        {startPage > 1 && (
-          <>
-            <button
-              onClick={() => onPageChange(1)}
-              className={styles.paginationButton}
-            >
-              1
-            </button>
-            {startPage > 2 && (
-              <span className={styles.paginationDots}>...</span>
-            )}
-          </>
-        )}
-
-        {pageNumbers.map((number) => (
+      {/* Chỉ hiện nút phân trang khi có > 1 trang */}
+      {totalPages > 1 && (
+        <div className={styles.paginationControls}>
           <button
-            key={number}
-            onClick={() => onPageChange(number)}
-            className={`${styles.paginationButton} ${
-              currentPage === number ? styles.activePage : ""
-            }`}
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={styles.paginationButton}
           >
-            {number}
+            « Trước
           </button>
-        ))}
 
-        {endPage < totalPages && (
-          <>
-            {endPage < totalPages - 1 && (
-              <span className={styles.paginationDots}>...</span>
-            )}
+          {startPage > 1 && (
+            <>
+              <button
+                onClick={() => onPageChange(1)}
+                className={styles.paginationButton}
+              >
+                1
+              </button>
+              {startPage > 2 && (
+                <span className={styles.paginationDots}>...</span>
+              )}
+            </>
+          )}
+
+          {pageNumbers.map((number) => (
             <button
-              onClick={() => onPageChange(totalPages)}
-              className={styles.paginationButton}
+              key={number}
+              onClick={() => onPageChange(number)}
+              className={`${styles.paginationButton} ${
+                currentPage === number ? styles.activePage : ""
+              }`}
             >
-              {totalPages}
+              {number}
             </button>
-          </>
-        )}
+          ))}
 
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className={styles.paginationButton}
-        >
-          Tiếp »
-        </button>
-      </div>
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && (
+                <span className={styles.paginationDots}>...</span>
+              )}
+              <button
+                onClick={() => onPageChange(totalPages)}
+                className={styles.paginationButton}
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
 
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={styles.paginationButton}
+          >
+            Tiếp »
+          </button>
+        </div>
+      )}
+
+      {/* Selector mục/trang — LUÔN hiển thị */}
       <div className={styles.itemsPerPageSelector}>
         <label>
           Hiển thị:
