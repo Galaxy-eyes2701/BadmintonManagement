@@ -94,6 +94,11 @@ const PosPage = () => {
         return matchSearch && matchCategory;
     });
 
+    const handlePrint = () => {
+        if (cart.length === 0) return toast.warning('Chưa có sản phẩm để in hóa đơn!');
+        window.print();
+    };
+
     return (
         <div className={styles.container}>
             <ToastContainer position="top-right" autoClose={3000} />
@@ -174,6 +179,15 @@ const PosPage = () => {
                             <span className={styles.totalValue}>{formatCurrency(totalAmount)}</span>
                         </div>
 
+                        {/* NÚT IN HÓA ĐƠN */}
+                        <button
+                            onClick={handlePrint}
+                            className={styles.btnFull}
+                            style={{ backgroundColor: '#f1f5f9', color: '#475569', marginBottom: '12px', border: '1px dashed #cbd5e1' }}
+                        >
+                            <span className="material-symbols-outlined">print</span> In Phiếu Tạm Tính
+                        </button>
+
                         <div>
                             {selectedBookingId ? (
                                 <button onClick={() => handleCheckout('GhiSo')} className={`${styles.btnFull} ${styles.btnOrange}`}>
@@ -199,6 +213,7 @@ const PosPage = () => {
                 </aside>
             </main>
 
+            {/* QR Modal */}
             {isQrModalOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
@@ -219,6 +234,57 @@ const PosPage = () => {
                     </div>
                 </div>
             )}
+
+            {/* =========================================================
+                GIAO DIỆN HÓA ĐƠN CHỈ DÀNH CHO MÁY IN 
+                Lưu ý: Đã gắn id="print-section"
+            ========================================================= */}
+            <div id="print-section">
+                <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                    <h2 style={{ margin: 0, fontSize: '20px', textTransform: 'uppercase' }}>SÂN CẦU LÔNG FPT</h2>
+                    <p style={{ margin: '5px 0', fontSize: '12px' }}>Khu Công Nghệ Cao Hòa Lạc, Thạch Thất</p>
+                    <p style={{ margin: '5px 0', fontSize: '12px' }}>SĐT: 0988.123.456</p>
+                    <hr style={{ borderTop: '1px dashed #000', margin: '10px 0' }} />
+                    <h3 style={{ fontSize: '16px', margin: '10px 0' }}>PHIẾU THANH TOÁN (POS)</h3>
+                    <p style={{ textAlign: 'left', fontSize: '12px', margin: '4px 0' }}>Ngày: {new Date().toLocaleString('vi-VN')}</p>
+                    <p style={{ textAlign: 'left', fontSize: '12px', margin: '4px 0' }}>
+                        Khách hàng: {selectedBookingId
+                            ? activeBookings.find(b => b.id.toString() === selectedBookingId.toString())?.customerName || 'Khách đặt sân'
+                            : 'Khách vãng lai'}
+                    </p>
+                </div>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px', fontSize: '12px' }}>
+                    <thead>
+                        <tr style={{ borderBottom: '1px solid #000' }}>
+                            <th style={{ textAlign: 'left', padding: '6px 0' }}>Tên món</th>
+                            <th style={{ textAlign: 'center' }}>SL</th>
+                            <th style={{ textAlign: 'right' }}>T.Tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {cart.map((item, idx) => (
+                            <tr key={idx}>
+                                <td style={{ padding: '6px 0' }}>{item.product.name}</td>
+                                <td style={{ textAlign: 'center' }}>{item.quantity}</td>
+                                <td style={{ textAlign: 'right' }}>{(item.product.unitPrice * item.quantity).toLocaleString()}đ</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                <hr style={{ borderTop: '1px dashed #000', margin: '10px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
+                    <span>TỔNG CỘNG:</span>
+                    <span>{formatCurrency(totalAmount)}</span>
+                </div>
+
+                <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '12px', fontStyle: 'italic' }}>
+                    <p style={{ margin: '4px 0' }}>Cảm ơn quý khách và hẹn gặp lại!</p>
+                    <p style={{ margin: '4px 0' }}>Phần mềm quản lý bởi Nhóm 1</p>
+                </div>
+            </div>
+
         </div>
     );
 };

@@ -1,0 +1,350 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    overflow-y: auto;
+}
+
+.header {
+    height: 80px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    flex-shrink: 0;
+}
+
+.title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.btnAdd {
+    background-color: #0d7ff2;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btnAdd:hover {
+    background-color: #0b6bce;
+    box-shadow: 0 4px 12px rgba(13, 127, 242, 0.2);
+}
+
+.mainContent {
+    padding: 32px;
+    max-width: 1280px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+}
+
+.card {
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Vạch màu bên trái thẻ tùy theo trạng thái */
+.cardActive::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background-color: #10b981;
+}
+
+.cardWarning::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background-color: #f59e0b;
+}
+
+.cardExpired::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background-color: #94a3b8;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.teamName {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 4px 0;
+}
+
+.phone {
+    font-size: 0.875rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-block;
+}
+
+.badgeActive {
+    background-color: #ecfdf5;
+    color: #059669;
+}
+
+.badgeWarning {
+    background-color: #fffbeb;
+    color: #d97706;
+}
+
+.badgeExpired {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+.infoRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    font-size: 0.875rem;
+    color: #475569;
+}
+
+.icon {
+    color: #0d7ff2;
+    font-size: 20px;
+}
+
+.divider {
+    height: 1px;
+    background-color: #e2e8f0;
+    margin: 16px 0;
+}
+
+.actionArea {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.actionBtn {
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.actionBtn:hover {
+    background: #f8fafc;
+    color: #0d7ff2;
+    border-color: #0d7ff2;
+}
+
+/* Modal CSS */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modalContent {
+    background-color: #ffffff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 500px;
+    padding: 24px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.modalTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.closeBtn:hover {
+    color: #ef4444;
+}
+
+.formGroup {
+    margin-bottom: 16px;
+}
+
+.formGroup label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
+}
+
+.formInput,
+.formSelect {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: #1e293b;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.formInput:focus,
+.formSelect:focus {
+    border-color: #0d7ff2;
+    box-shadow: 0 0 0 3px rgba(13, 127, 242, 0.1);
+}
+
+.row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.actionBtns {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btnCancel {
+    flex: 1;
+    padding: 10px;
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btnCancel:hover {
+    background: #e2e8f0;
+}
+
+.btnSubmit {
+    flex: 1;
+    padding: 10px;
+    background: #0d7ff2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btnSubmit:hover {
+    background: #0b6bce;
+}
+
+/* --- Filter Tabs CSS --- */
+.filterContainer {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.filterBtn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filterBtn:hover {
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.filterBtnActive {
+    background: #0f172a;
+    color: white;
+    border-color: #0f172a;
+}
+
+.filterBtnActive:hover {
+    background: #1e293b;
+    color: white;
+}

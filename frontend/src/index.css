@@ -38,3 +38,62 @@ button {
 #root {
   min-height: 100vh;
 }
+
+/* =========================================
+   CẤU HÌNH IN HÓA ĐƠN (GLOBAL PRINT CSS)
+========================================= */
+
+/* 1. MẶC ĐỊNH: Ẩn tịt tờ hóa đơn trên màn hình máy tính/điện thoại */
+@media screen {
+  #print-section {
+    display: none !important;
+  }
+}
+
+/* 2. KHI BẤM IN: Tung chiêu cuối */
+@media print {
+
+  /* Xóa Header/Footer ngày tháng link localhost của trình duyệt */
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  /* Ép TẤT CẢ mọi thứ phá vỡ overflow (để không bị nuốt nội dung) */
+  * {
+    overflow: visible !important;
+  }
+
+  /* Làm tàng hình toàn bộ web (Kể cả cái Menu đen bên trái) */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* CHỈ CHO PHÉP phôi hóa đơn hiện hình */
+  #print-section,
+  #print-section * {
+    visibility: visible !important;
+  }
+
+  /* Nhấc tờ hóa đơn lên góc trái trên cùng tờ giấy in */
+  #print-section {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 80mm !important;
+    /* Form 80mm của máy in siêu thị */
+    margin: 10px auto !important;
+    padding: 10px !important;
+    background-color: white !important;
+    display: block !important;
+  }
+
+  /* Fix lỗi chữ nhạt: Ép mực đen 100% */
+  #print-section h2,
+  #print-section h3,
+  #print-section p,
+  #print-section table,
+  #print-section span {
+    color: black !important;
+  }
+}

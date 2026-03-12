@@ -3,17 +3,19 @@ import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './BookingManagement.module.css';
-
+import Pagination from "../../../components/Admin/Pagination.jsx";
 const BookingManagement = () => {
     const [bookings, setBookings] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState(''); // STATE LỌC TRẠNG THÁI
+    const [statusFilter, setStatusFilter] = useState('');
     const [loading, setLoading] = useState(false);
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(5);
 
     const fetchBookings = async () => {
         setLoading(true);
         try {
-            // GỌI API CÓ CẢ SEARCH VÀ STATUS
             const res = await axios.get(`http://localhost:5043/api/staff/bookings?search=${searchTerm}&status=${statusFilter}`);
             setBookings(res.data);
         } catch (error) {
@@ -24,11 +26,13 @@ const BookingManagement = () => {
     };
 
     useEffect(() => {
+        setCurrentPage(1);
+
         const delayDebounceFn = setTimeout(() => {
             fetchBookings();
         }, 300);
         return () => clearTimeout(delayDebounceFn);
-    }, [searchTerm, statusFilter]); // Tự động gọi lại khi 1 trong 2 cái này đổi
+    }, [searchTerm, statusFilter]);
 
     const handleCancelBooking = async (id) => {
         if (window.confirm('Bạn có chắc chắn muốn HỦY lịch đặt sân này không? Sân sẽ được làm trống ngay lập tức.')) {
@@ -53,6 +57,11 @@ const BookingManagement = () => {
         }
     };
 
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentBookings = bookings.slice(indexOfFirstItem, indexOfLastItem); // Chỉ lấy data của trang hiện tại
+    const totalPages = Math.ceil(bookings.length / itemsPerPage);
+
     return (
         <div className={styles.container}>
             <ToastContainer position="top-right" autoClose={3000} />
@@ -74,7 +83,6 @@ const BookingManagement = () => {
                         />
                     </div>
 
-                    {/* BỘ LỌC TRẠNG THÁI */}
                     <select
                         className={styles.filterSelect}
                         value={statusFilter}
@@ -91,7 +99,7 @@ const BookingManagement = () => {
                     <table className={styles.table}>
                         <thead>
                             <tr>
-                                <th style={{ width: '50px', textAlign: 'center' }}>STT</th> {/* CỘT STT */}
+                                <th style={{ width: '50px', textAlign: 'center' }}>STT</th>
                                 <th>Mã Đơn</th>
                                 <th>Khách hàng</th>
                                 <th>Thông tin Sân</th>
@@ -106,10 +114,13 @@ const BookingManagement = () => {
                             ) : bookings.length === 0 ? (
                                 <tr><td colSpan="7" style={{ textAlign: 'center', padding: '32px' }}>Không tìm thấy kết quả nào.</td></tr>
                             ) : (
-                                bookings.map((b, index) => (
+                                // MAP QUA currentBookings THAY VÌ bookings
+                                currentBookings.map((b, index) => (
                                     <tr key={b.id}>
-                                        {/* HIỂN THỊ STT TỪ 1 TRỞ XUỐNG */}
-                                        <td style={{ textAlign: 'center', fontWeight: 700, color: '#94a3b8' }}>{index + 1}</td>
+                                        {/* Tính toán STT chuẩn xác dù ở bất kỳ trang nào */}
+                                        <td style={{ textAlign: 'center', fontWeight: 700, color: '#94a3b8' }}>
+                                            {indexOfFirstItem + index + 1}
+                                        </td>
                                         <td style={{ fontWeight: 700 }}>#{b.id}</td>
                                         <td>
                                             <div className={styles.customerCol}>
@@ -150,6 +161,20 @@ const BookingManagement = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {bookings.length > 0 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        itemsPerPage={itemsPerPage}
+                        totalItems={bookings.length}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={(newSize) => {
+                            setItemsPerPage(newSize);
+                            setCurrentPage(1);
+                        }}
+                    />
+                )}
             </div>
         </div>
     );

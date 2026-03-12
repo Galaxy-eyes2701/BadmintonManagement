@@ -586,3 +586,60 @@
 .btnCancel:hover {
     background-color: #e2e8f0;
 }
+
+/* =========================================
+   1. TRÊN MÀN HÌNH MÁY TÍNH (WEB) -> ÉP ẨN ĐI
+========================================= */
+@media screen {
+    .printArea {
+        display: none !important;
+        /* Khóa chặt, không cho lọt ra UI */
+    }
+}
+
+/* =========================================
+   2. TRÊN GIẤY MÁY IN -> ÉP HIỂN THỊ
+========================================= */
+@media print {
+
+    /* Xóa Header/Footer (Ngày, giờ, localhost) của trình duyệt */
+    @page {
+        margin: 0;
+    }
+
+    /* Ẩn toàn bộ giao diện web của POS đi */
+    .header,
+    .main,
+    .modalOverlay {
+        display: none !important;
+    }
+
+    /* Tháo bỏ giới hạn của cái khung màn hình */
+    .container {
+        height: auto !important;
+        overflow: visible !important;
+        background-color: white !important;
+        display: block !important;
+    }
+
+    /* Bung tờ hóa đơn ra giấy */
+    .printArea {
+        display: block !important;
+        /* Ép buộc hiện lên khi in */
+        width: 80mm !important;
+        /* Khổ giấy máy in siêu thị */
+        margin: 20px auto !important;
+        padding: 10px;
+        font-family: 'Courier New', Courier, monospace;
+        color: black !important;
+        background-color: white !important;
+    }
+
+    /* Đảm bảo chữ in ra màu đen đậm, không bị mờ */
+    .printArea table,
+    .printArea p,
+    .printArea h2,
+    .printArea h3 {
+        color: black !important;
+    }
+}

@@ -37,9 +37,31 @@ namespace backend.Controllers
         [HttpGet("active-bookings")]
         public async Task<IActionResult> GetActiveBookings()
         {
-            return Ok(await _posService.GetActiveBookingsAsync());
-        }
+            // Lấy ngày hôm nay (bỏ phần giờ phút đi)
+            var today = DateOnly.FromDateTime(DateTime.Now);
 
+            // Tìm những đơn đặt sân ĐÃ XÁC NHẬN và CÓ LỊCH ĐÁ VÀO HÔM NAY
+            var bookings = await _context.Bookings
+                .Include(b => b.User)
+                .Include(b => b.BookingDetails)
+                    .ThenInclude(bd => bd.Court)
+                .Include(b => b.BookingDetails)
+                    .ThenInclude(bd => bd.TimeSlot)
+                .Where(b => b.Status == "confirmed")
+                .Where(b => b.BookingDetails.Any(bd => bd.PlayDate == today)) // <-- Thêm dòng then chốt này
+                .Select(b => new
+                {
+                    id = b.Id,
+                    customerName = b.User != null ? b.User.FullName : "Khách vãng lai",
+                    courtName = b.BookingDetails.FirstOrDefault().Court.Name,
+                    time = b.BookingDetails.FirstOrDefault().TimeSlot != null
+                           ? $"{b.BookingDetails.FirstOrDefault().TimeSlot.StartTime:hh\\:mm} - {b.BookingDetails.FirstOrDefault().TimeSlot.EndTime:hh\\:mm}"
+                           : ""
+                })
+                .ToListAsync();
+
+            return Ok(bookings);
+        }
         [HttpGet("booking-bill/{bookingId}")]
         public async Task<IActionResult> GetFinalBookingBill(int bookingId)
         {
