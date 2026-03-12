@@ -1,18 +1,21 @@
 using backend.Models;
+using backend.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Controllers
 {
-    [Route("api/[controller]")] // Hoặc [Route("api/staff")] đều chạy ngon với Frontend của anh
+    [Route("api/[controller]")]
     [ApiController]
     public class StaffController : ControllerBase
     {
         private readonly BadmintonManagementContext _context;
+        private readonly EmailService _emailService;
 
-        public StaffController(BadmintonManagementContext context)
+        public StaffController(BadmintonManagementContext context, EmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
         }
 
         // =======================================================
@@ -98,14 +101,11 @@ namespace backend.Controllers
                 query = query.Where(b => b.Status == status);
             }
 
-            // MẸO CHỐNG PHỒNG DATA: Thay vì lấy ALL, ta OrderBy thời gian tạo và chỉ lấy 150 record mới nhất!
-            // Khi nào khách cần tìm ngày cũ thì gõ vào ô Search.
             var bookings = await query
                 .OrderByDescending(b => b.CreatedAt)
                 .Take(150)
                 .ToListAsync();
 
-            // ... Đoạn code Select(b => new { ... }) bên dưới giữ nguyên không đổi ...
             var result = bookings.Select(b => new
             {
                 id = b.Id,
@@ -124,49 +124,7 @@ namespace backend.Controllers
 
             return Ok(result);
         }
-        // =======================================================
-        // PHẦN 5: HỦY HỢP ĐỒNG CỐ ĐỊNH & GIẢI PHÓNG SÂN
-        // =======================================================
-        [HttpPut("fixed-schedules/{id}/cancel")]
-        public async Task<IActionResult> CancelFixedSchedule(int id)
-        {
-            // 1. Tìm hợp đồng
-            var fs = await _context.FixedSchedules.FindAsync(id);
-            if (fs == null) return NotFound("Không tìm thấy hợp đồng");
-            if (fs.Status == "cancelled") return BadRequest("Hợp đồng này đã bị hủy từ trước!");
-            if (fs.Status == "expired") return BadRequest("Hợp đồng đã hết hạn, không thể hủy!");
 
-            // 2. Đổi trạng thái hợp đồng thành Đã hủy
-            fs.Status = "cancelled";
-
-            // 3. THUẬT TOÁN GIẢI PHÓNG SÂN TƯƠNG LAI
-            // Tìm các Booking chưa đá (PlayDate >= ngày hôm nay) của ông khách này, đúng sân này, đúng ca này.
-            var today = DateOnly.FromDateTime(DateTime.Now);
-
-            var futureBookings = await _context.BookingDetails
-                .Include(bd => bd.Booking)
-                .Where(bd => bd.Booking.UserId == fs.UserId
-                          && bd.CourtId == fs.CourtId
-                          && bd.TimeSlotId == fs.TimeSlotId
-                          && bd.PlayDate >= today
-                          && bd.Booking.Status == "confirmed")
-                .ToListAsync();
-
-            int freedCount = 0;
-            foreach (var detail in futureBookings)
-            {
-                detail.Booking.Status = "cancelled"; // Hủy đơn khóa sân đi
-                freedCount++;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = "Đã hủy hợp đồng thành công!",
-                freedCourts = freedCount // Trả về frontend số sân đã được nhả ra
-            });
-        }
         [HttpPut("bookings/{id}/cancel")]
         public async Task<IActionResult> CancelBooking(int id)
         {
@@ -257,7 +215,6 @@ namespace backend.Controllers
                 timeInfo = $"Thứ {x.fs.DayOfWeek} ({x.t?.StartTime:hh\\:mm} - {x.t?.EndTime:hh\\:mm})",
                 duration = $"{x.fs.StartDate:dd/MM/yyyy} - {x.fs.EndDate:dd/MM/yyyy}",
 
-                // 👇 👇 👇 ĐÃ SỬA CHỖ NÀY: Ưu tiên trạng thái đã hủy trong DB lên hàng đầu
                 status = x.fs.Status == "cancelled" ? "cancelled"
                        : x.fs.EndDate < today ? "expired"
                        : x.fs.EndDate <= today.AddDays(7) ? "warning"
@@ -268,34 +225,44 @@ namespace backend.Controllers
 
             return Ok(result);
         }
-        // =======================================================
-        // PHẦN 4: API HỖ TRỢ ĐỔ DỮ LIỆU RA DROPDOWN (FORM TẠO HỢP ĐỒNG)
-        // =======================================================
-        [HttpGet("setup-data")]
-        public async Task<IActionResult> GetSetupData()
+
+        [HttpPut("fixed-schedules/{id}/cancel")]
+        public async Task<IActionResult> CancelFixedSchedule(int id)
         {
-            // 1. Lấy danh sách khách hàng
-            var customers = await _context.Users
-                .Where(u => u.Role == "Customer")
-                .Select(u => new { u.Id, u.FullName, u.Phone })
+            var fs = await _context.FixedSchedules.FindAsync(id);
+            if (fs == null) return NotFound("Không tìm thấy hợp đồng");
+            if (fs.Status == "cancelled") return BadRequest("Hợp đồng này đã bị hủy từ trước!");
+            if (fs.Status == "expired") return BadRequest("Hợp đồng đã hết hạn, không thể hủy!");
+
+            fs.Status = "cancelled";
+
+            var today = DateOnly.FromDateTime(DateTime.Now);
+
+            var futureBookings = await _context.BookingDetails
+                .Include(bd => bd.Booking)
+                .Where(bd => bd.Booking.UserId == fs.UserId
+                          && bd.CourtId == fs.CourtId
+                          && bd.TimeSlotId == fs.TimeSlotId
+                          && bd.PlayDate >= today
+                          && bd.Booking.Status == "confirmed")
                 .ToListAsync();
 
-            // 2. Lấy danh sách sân
-            var courts = await _context.Courts
-                .Select(c => new { c.Id, c.Name })
-                .ToListAsync();
+            int freedCount = 0;
+            foreach (var detail in futureBookings)
+            {
+                detail.Booking.Status = "cancelled";
+                freedCount++;
+            }
 
-            // 3. Lấy danh sách ca đá (TimeSlots)
-            var timeSlots = await _context.TimeSlots
-                .Select(t => new
-                {
-                    t.Id,
-                    time = $"{t.StartTime:hh\\:mm} - {t.EndTime:hh\\:mm}"
-                })
-                .ToListAsync();
+            await _context.SaveChangesAsync();
 
-            return Ok(new { customers, courts, timeSlots });
+            return Ok(new
+            {
+                message = "Đã hủy hợp đồng thành công!",
+                freedCourts = freedCount
+            });
         }
+
         [HttpPost("fixed-schedules")]
         public async Task<IActionResult> CreateFixedSchedule([FromBody] CreateFixedScheduleDto dto)
         {
@@ -307,7 +274,7 @@ namespace backend.Controllers
 
             if (startDate > endDate) return BadRequest("Ngày bắt đầu phải trước ngày kết thúc!");
 
-            // --- BƯỚC MỚI: TẠO DANH SÁCH CÁC NGÀY SẼ ĐÁ ---
+            // 1. CHỐNG TRÙNG LỊCH
             var playDates = new List<DateOnly>();
             var tempDate = startDate;
             while (tempDate <= endDate)
@@ -320,23 +287,21 @@ namespace backend.Controllers
 
             if (!playDates.Any()) return BadRequest("Không có ngày nào phù hợp trong khoảng thời gian này!");
 
-            // --- BƯỚC MỚI: QUÉT KIỂM TRA TRÙNG LỊCH (DOUBLE BOOKING) ---
             var conflictingBookings = await _context.BookingDetails
                 .Include(bd => bd.Booking)
                 .Where(bd => bd.CourtId == dto.CourtId
                           && bd.TimeSlotId == dto.TimeSlotId
-                          && playDates.Contains(bd.PlayDate) // Tìm xem có ngày nào trùng không
+                          && playDates.Contains(bd.PlayDate)
                           && bd.Booking.Status != "cancelled")
                 .ToListAsync();
 
             if (conflictingBookings.Any())
             {
-                // Lấy ra danh sách các ngày bị trùng để báo cho Lễ tân biết
                 var conflictDates = string.Join(", ", conflictingBookings.Select(x => x.PlayDate.ToString("dd/MM/yyyy")));
                 return BadRequest($"LỖI TRÙNG LỊCH: Sân và Ca này đã có khách đặt vào các ngày ({conflictDates}). Vui lòng chọn sân hoặc ca khác!");
             }
 
-            // --- NẾU SÂN TRỐNG 100% THÌ MỚI CHO LƯU (GIỮ NGUYÊN NHƯ CŨ) ---
+            // 2. LƯU HỢP ĐỒNG
             var fixedSchedule = new FixedSchedule
             {
                 UserId = dto.UserId,
@@ -352,7 +317,7 @@ namespace backend.Controllers
             _context.FixedSchedules.Add(fixedSchedule);
             await _context.SaveChangesAsync();
 
-            // Sinh lịch... (Đoạn while sinh lịch bên dưới anh giữ nguyên như cũ nhé)
+            // 3. TỰ ĐỘNG SINH LỊCH (BOOKINGS)
             var currentDate = startDate;
             int totalBookingsCreated = 0;
             while (currentDate <= endDate)
@@ -374,9 +339,68 @@ namespace backend.Controllers
             }
             await _context.SaveChangesAsync();
 
+            // 4. GỬI EMAIL THÔNG BÁO CHO KHÁCH HÀNG
+            try
+            {
+                var customer = await _context.Users.FindAsync(dto.UserId);
+                var court = await _context.Courts.FindAsync(dto.CourtId);
+                var timeSlot = await _context.TimeSlots.FindAsync(dto.TimeSlotId);
+
+                if (customer != null && !string.IsNullOrEmpty(customer.Email))
+                {
+                    string subject = "Xác nhận Đăng ký Hợp đồng Sân Cầu Lông FPT";
+                    string body = $@"
+                        <div style='font-family: Arial; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;'>
+                            <h2 style='color: #0d7ff2;'>SÂN CẦU LÔNG FPT</h2>
+                            <h3>Xin chào {customer.FullName},</h3>
+                            <p>Chúng tôi xin xác nhận bạn đã đăng ký thành công Hợp đồng khách ruột với thông tin sau:</p>
+                            <ul>
+                                <li><b>Sân thi đấu:</b> {court?.Name}</li>
+                                <li><b>Thời gian:</b> Thứ {dto.DayOfWeek} hàng tuần ({timeSlot?.StartTime:hh\:mm} - {timeSlot?.EndTime:hh\:mm})</li>
+                                <li><b>Thời hạn:</b> Từ {startDate:dd/MM/yyyy} đến {endDate:dd/MM/yyyy}</li>
+                                <li><b>Tổng tiền thanh toán:</b> <span style='color: #16a34a; font-weight: bold;'>{dto.TotalPrice:N0} VNĐ</span></li>
+                            </ul>
+                            <p>Hệ thống đã tự động khóa sân bảo lưu cho bạn trong suốt thời gian trên.</p>
+                            <p>Cảm ơn bạn đã tin tưởng. Chúc team có những trận cầu nảy lửa!</p>
+                            <br/>
+                            <p><i>Ban quản lý Sân Cầu Lông FPT</i></p>
+                        </div>";
+
+                    _ = _emailService.SendEmailAsync(customer.Email, subject, body);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Lỗi gửi email: " + ex.Message);
+            }
+
             return Ok(new { message = "Tạo Hợp đồng thành công!", autoBookings = totalBookingsCreated });
         }
 
-    }
+        // =======================================================
+        // PHẦN 4: API HỖ TRỢ ĐỔ DỮ LIỆU RA DROPDOWN (FORM TẠO HỢP ĐỒNG)
+        // =======================================================
+        [HttpGet("setup-data")]
+        public async Task<IActionResult> GetSetupData()
+        {
+            var customers = await _context.Users
+                .Where(u => u.Role == "Customer")
+                .Select(u => new { u.Id, u.FullName, u.Phone })
+                .ToListAsync();
 
+            var courts = await _context.Courts
+                .Select(c => new { c.Id, c.Name })
+                .ToListAsync();
+
+            var timeSlots = await _context.TimeSlots
+                .Select(t => new
+                {
+                    t.Id,
+                    time = $"{t.StartTime:hh\\:mm} - {t.EndTime:hh\\:mm}"
+                })
+                .ToListAsync();
+
+            return Ok(new { customers, courts, timeSlots });
+        }
+    }
 }
