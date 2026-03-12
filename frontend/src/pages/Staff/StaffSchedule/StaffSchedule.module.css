@@ -1,0 +1,583 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+}
+
+/* Header */
+.header {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    letter-spacing: -0.025em;
+}
+
+.datePickerWrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #f1f5f9;
+    padding: 4px;
+    border-radius: 12px;
+}
+
+.dateBtn {
+    border: none;
+    background: transparent;
+    padding: 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.dateBtn:hover {
+    background-color: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    color: #1e293b;
+}
+
+.dateDisplay {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.dateDisplay span.icon {
+    color: #0d7ff2;
+    font-size: 1.125rem;
+}
+
+.dateInput {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-weight: 600;
+    color: #1e293b;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+}
+
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.legendItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.dotEmpty {
+    background-color: #0d7ff2;
+    box-shadow: 0 0 0 4px rgba(13, 127, 242, 0.1);
+}
+
+.dotBooked {
+    background-color: #6366f1;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+.dotMaintenance {
+    background-color: #94a3b8;
+    box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.1);
+}
+
+.divider {
+    height: 32px;
+    width: 1px;
+    background-color: #e2e8f0;
+}
+
+/* Grid Area */
+.scrollArea {
+    flex: 1;
+    overflow: auto;
+    padding: 32px;
+}
+
+.gridWrapper {
+    min-width: 1000px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Dùng biến CSS --cols để chia cột động theo số lượng sân */
+.gridHeader {
+    display: grid;
+    grid-template-columns: 100px repeat(var(--cols), 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background-color: #f8fafc;
+    padding-bottom: 8px;
+}
+
+.timeSpacer {
+    height: 56px;
+}
+
+.courtHeader {
+    background-color: #ffffff;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.courtName {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.875rem;
+}
+
+.badgeMaintain {
+    font-size: 0.625rem;
+    background-color: #f1f5f9;
+    color: #64748b;
+    padding: 4px 8px;
+    border-radius: 9999px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.gridBody {
+    display: grid;
+    grid-template-columns: 100px repeat(var(--cols), 1fr);
+    gap: 16px;
+}
+
+.timeCol {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.timeSlot {
+    height: 128px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding-top: 8px;
+    padding-right: 16px;
+    text-align: right;
+}
+
+.timeText {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.amPm {
+    font-size: 0.625rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.courtCol {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.courtColMaintenance {
+    background-color: rgba(241, 245, 249, 0.5);
+    border-radius: 16px;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.maintenanceWatermark {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: rotate(-45deg);
+    opacity: 0.05;
+    pointer-events: none;
+    font-size: 4rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5em;
+    color: #000;
+}
+
+.slotCard {
+    height: 128px;
+    border-radius: 12px;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.slotEmpty {
+    background-color: #ffffff;
+    border: 2px dashed #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #cbd5e1;
+}
+
+.slotEmpty:hover {
+    border-color: rgba(13, 127, 242, 0.5);
+    background-color: rgba(13, 127, 242, 0.05);
+    color: #0d7ff2;
+}
+
+.addIcon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+}
+
+.addText {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.slotBooked {
+    background-color: #4f46e5;
+    padding: 16px;
+    color: white;
+    box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+}
+
+.slotBooked:hover {
+    background-color: #4338ca;
+}
+
+.slotBgIcon {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 3rem;
+    opacity: 0.1;
+}
+
+.customerRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    z-index: 1;
+}
+
+.customerName {
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.statusBadge {
+    font-size: 0.625rem;
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 4px 8px;
+    border-radius: 9999px;
+    font-weight: 600;
+}
+
+.phoneRow {
+    font-size: 0.75rem;
+    color: #e0e7ff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 1;
+    margin-bottom: auto;
+}
+
+.timeTag {
+    font-size: 0.625rem;
+    font-weight: 600;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 4px 8px;
+    border-radius: 6px;
+    align-self: flex-start;
+    z-index: 1;
+}
+
+.slotMaintenance {
+    background-color: rgba(241, 245, 249, 0.5);
+    border: 1px dashed #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    gap: 8px;
+    z-index: 1;
+}
+
+/* Footer */
+.footer {
+    height: 64px;
+    background-color: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 32px;
+    flex-shrink: 0;
+}
+
+.footerLeft {
+    display: flex;
+    gap: 32px;
+    font-size: 0.875rem;
+}
+
+.statItem {
+    display: flex;
+    gap: 8px;
+    color: #64748b;
+}
+
+.statValue {
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.statPrimary {
+    color: #0d7ff2;
+}
+
+.footerRight {
+    display: flex;
+    gap: 16px;
+}
+
+.btnPrimary {
+    background-color: #0d7ff2;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(13, 127, 242, 0.2);
+    transition: all 0.2s;
+}
+
+.btnPrimary:hover {
+    background-color: #2563eb;
+    transform: translateY(-1px);
+}
+
+/* Checkout Modal */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modalContent {
+    background-color: #ffffff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 448px;
+    padding: 24px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    transform: translateY(0);
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.modalTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+
+.closeBtn:hover {
+    color: #ef4444;
+}
+
+.billRow {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 0.875rem;
+    color: #475569;
+}
+
+.billRow strong {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.billRow.deduct {
+    color: #059669;
+}
+
+.billRow.deduct strong {
+    color: #059669;
+}
+
+.divider {
+    height: 1px;
+    background-color: #e2e8f0;
+    margin: 16px 0;
+    border-style: dashed;
+}
+
+.totalRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.totalAmount {
+    font-size: 1.5rem;
+    color: #0d7ff2;
+    font-weight: 900;
+}
+
+.actionBtns {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btnComplete {
+    flex: 1;
+    background-color: #10b981;
+    color: white;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.btnComplete:hover {
+    background-color: #059669;
+}
+
+.btnCancel {
+    flex: 1;
+    background-color: #f1f5f9;
+    color: #475569;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btnCancel:hover {
+    background-color: #e2e8f0;
+}
