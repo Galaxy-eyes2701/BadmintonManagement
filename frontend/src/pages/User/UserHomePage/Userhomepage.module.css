@@ -1,0 +1,259 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap");
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  font-family: "Nunito", sans-serif;
+}
+
+/* ── HERO ── */
+.hero {
+  background: linear-gradient(135deg, #0d5e58 0%, #0f766e 55%, #14b8a6 100%);
+  border-radius: 24px;
+  padding: 52px 48px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  bottom: -80px;
+  left: 30%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+.heroBadge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.heroTitle {
+  margin: 0 0 16px;
+  font-size: 2.4rem;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+}
+
+.heroName {
+  color: #fcd34d;
+}
+
+.heroDesc {
+  margin: 0 0 28px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.75);
+  max-width: 520px;
+  line-height: 1.6;
+}
+
+.heroActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btnPrimary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fcd34d;
+  color: #0d5e58;
+  border: none;
+  padding: 13px 28px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(252, 211, 77, 0.4);
+}
+
+.btnPrimary:hover {
+  background: #fbbf24;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(252, 211, 77, 0.5);
+}
+
+.btnOutline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  padding: 13px 28px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  backdrop-filter: blur(8px);
+}
+
+.btnOutline:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-2px);
+}
+
+/* ── QUICK CARDS ── */
+.quickCards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.cardGreen {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-color: #a7f3d0;
+}
+
+.cardBlue {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-color: #bfdbfe;
+}
+
+.cardPurple {
+  background: linear-gradient(135deg, #fdf4ff, #f3e8ff);
+  border-color: #e9d5ff;
+}
+
+.cardIcon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.cardTitle {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.cardDesc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.cardArrow {
+  margin-left: auto;
+  font-size: 1.2rem;
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+
+.card:hover .cardArrow {
+  transform: translateX(4px);
+}
+
+/* ── FEATURES ── */
+.sectionTitle {
+  margin: 0 0 24px;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.featureCard {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px 20px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.featureCard:hover {
+  border-color: #14b8a6;
+  box-shadow: 0 4px 16px rgba(15, 118, 110, 0.1);
+  transform: translateY(-2px);
+}
+
+.featureIcon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.featureTitle {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.featureDesc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .quickCards {
+    grid-template-columns: 1fr;
+  }
+  .featureGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .hero {
+    padding: 36px 24px;
+  }
+  .heroTitle {
+    font-size: 1.8rem;
+  }
+}
