@@ -1,5 +1,9 @@
 import React from "react";
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Navigate,
+} from "react-router-dom";
 
 import AdminLayout from "../layout/AdminLayout.jsx";
 import StaffLayout from "../layout/StaffLayout.jsx";
@@ -35,6 +39,7 @@ import BranchCourtManager from "../pages/Admin/BranchCourtManager/BranchCourtMan
 import AccountManager from "../pages/Admin/AccountManager/AccountManager.jsx";
 import RevenueDashboard from "../pages/Staff/RevenueDashboard/RevenueDashboard.jsx";
 import VoucherManagement from "../pages/Staff/VoucherManagement/VoucherManagement.jsx";
+import PriceConfigManager from "../pages/Admin/PriceConfigManager/PriceConfigManager.jsx";
 
 const router = createBrowserRouter([
   // ROOT → redirect to login
@@ -99,6 +104,7 @@ const router = createBrowserRouter([
       { path: "vouchers", element: <VoucherManagement /> },
       { path: "branchcourtmanagement", element: <BranchCourtManager /> },
       { path: "user", element: <AccountManager /> },
+      { path: "priceconfig", element: <PriceConfigManager /> },
     ],
   },
 

@@ -78,6 +78,20 @@ const SidebarMenu = () => {
           </li>
           <li
             className={`${styles.menuItem} ${
+              isActiveMenuItem("/admin/priceconfig") ? styles.active : ""
+            }`}
+            onClick={() => handleNavigation("/admin/priceconfig")}
+          >
+            <div
+              className={
+                isActiveMenuItem("/admin/priceconfig") ? styles.highlight : ""
+              }
+            >
+              Quản lý giá cả
+            </div>
+          </li>
+          <li
+            className={`${styles.menuItem} ${
               isActiveMenuItem("/admin/order") ? styles.active : ""
             }`}
             onClick={() => handleNavigation("/admin/order")}
