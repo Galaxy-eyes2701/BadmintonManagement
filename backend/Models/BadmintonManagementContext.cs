@@ -52,7 +52,7 @@ public partial class BadmintonManagementContext : DbContext
             var ConnectionString = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build().GetConnectionString("MyCnn");
             optionsBuilder.UseSqlServer(ConnectionString);
         }
-        
+
     }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
