@@ -93,8 +93,20 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
+    
+    // THÊM ĐOẠN NÀY ĐỂ XEM LỖI THẬT
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine("JWT FAILED: " + context.Exception.GetType().Name + " - " + context.Exception.Message);
+            return Task.CompletedTask;
+        }
+    };
 });
 
+Console.WriteLine("JWT KEY BEING USED: " + jwtKey);
+Console.WriteLine("JWT KEY LENGTH: " + jwtKey.Length);
 // ======================
 // Authorization Policies (Từ nhánh main)
 // ======================
@@ -138,7 +150,7 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+//  app.UseHttpsRedirection();
 
 // Sử dụng policy AllowAll theo nhánh của bạn
 app.UseCors("AllowAll");
