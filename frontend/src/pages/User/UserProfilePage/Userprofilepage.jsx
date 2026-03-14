@@ -59,9 +59,7 @@ const UserProfilePage = () => {
     fetchProfile();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-const s = JSON.parse(localStorage.getItem("authState"));
-const p = JSON.parse(atob(s.token.split('.')[1]));
-console.log(JSON.stringify(p, null, 2));
+
 
   if (loading) return (
     <div className={styles.loadingWrap}><div className={styles.spinner} /><p>Đang tải hồ sơ...</p></div>

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 using backend.Services;
 using backend.DTOs;
 
@@ -17,8 +17,33 @@ namespace backend.Controllers
             _bookingService = bookingService;
         }
 
-        // ── GET /api/bookings/available-courts ──────────────────────────────
-        /// <summary>Xem sân trống theo ngày</summary>
+        // Lấy userId từ token thủ công — không dùng [Authorize]
+        private int? GetUserIdFromToken()
+        {
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                return null;
+
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                var jwt = handler.ReadJwtToken(token);
+
+                var idClaim = jwt.Claims.FirstOrDefault(c =>
+                    c.Type == ClaimTypes.NameIdentifier ||
+                    c.Type == "nameid" ||
+                    c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier" ||
+                    c.Type == "sub");
+
+                if (idClaim != null && int.TryParse(idClaim.Value, out int userId))
+                    return userId;
+            }
+            catch { }
+            return null;
+        }
+
+        // GET /api/bookings/available-courts
         [HttpGet("available-courts")]
         public async Task<IActionResult> GetAvailableCourts(
             [FromQuery] DateTime date,
@@ -26,8 +51,7 @@ namespace backend.Controllers
             [FromQuery] int? courtTypeId = null)
         {
             if (date == default)
-                return BadRequest(new { message = "Vui lòng cung cấp ngày hợp lệ (date=YYYY-MM-DD)" });
-
+                return BadRequest(new { message = "Vui lòng cung cấp ngày hợp lệ" });
             if (date.Date < DateTime.Today)
                 return BadRequest(new { message = "Không thể xem lịch sân trong quá khứ" });
 
@@ -35,24 +59,19 @@ namespace backend.Controllers
             return Ok(new { success = true, date = date.ToString("dd/MM/yyyy"), data = result });
         }
 
-        // ── POST /api/bookings ───────────────────────────────────────────────
-        /// Đặt sân
+        // POST /api/bookings
         [HttpPost]
-        [Authorize]
         public async Task<IActionResult> CreateBooking([FromBody] CreateBookingDto dto)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
+            var userId = GetUserIdFromToken();
+            if (userId == null) return Unauthorized(new { message = "Vui lòng đăng nhập" });
 
             if (dto.Slots == null || dto.Slots.Count == 0)
                 return BadRequest(new { message = "Vui lòng chọn ít nhất 1 slot" });
 
-            // Validate ngày không trong quá khứ
             foreach (var slot in dto.Slots)
-            {
                 if (slot.PlayDate.Date < DateTime.Today)
                     return BadRequest(new { message = "Không thể đặt sân ngày trong quá khứ" });
-            }
 
             try
             {
@@ -69,64 +88,37 @@ namespace backend.Controllers
             }
         }
 
-        // ── DELETE /api/bookings/{id} ────────────────────────────────────────
-        /// Hủy booking
+        // DELETE /api/bookings/{id}
         [HttpDelete("{id}")]
-        [Authorize]
         public async Task<IActionResult> CancelBooking(int id)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
+            var userId = GetUserIdFromToken();
+            if (userId == null) return Unauthorized(new { message = "Vui lòng đăng nhập" });
 
             var result = await _bookingService.CancelBookingAsync(id, userId.Value);
-
             if (!result)
-                return BadRequest(new
-                {
-                    success = false,
-                    message = "Không thể hủy booking. Booking không tồn tại, đã thanh toán, hoặc đã bị hủy trước đó."
-                });
+                return BadRequest(new { success = false, message = "Không thể hủy booking." });
 
             return Ok(new { success = true, message = "Hủy booking thành công" });
         }
 
-        // ── GET /api/bookings/my ─────────────────────────────────────────────
-        /// <summary>Lịch sử booking của user hiện tại</summary>
+        // GET /api/bookings/my
         [HttpGet("my")]
-        [Authorize]
         public async Task<IActionResult> GetMyBookings()
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
+            var userId = GetUserIdFromToken();
+            if (userId == null) return Unauthorized(new { message = "Vui lòng đăng nhập" });
 
             var result = await _bookingService.GetUserBookingsAsync(userId.Value);
             return Ok(new { success = true, total = result.Count, data = result });
         }
 
-        // ── GET /api/bookings/{id} ───────────────────────────────────────────
-        /// <summary>Chi tiết booking</summary>
-        [HttpGet("{id}")]
-        [Authorize]
-        public async Task<IActionResult> GetBookingById(int id)
-        {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
-
-            var result = await _bookingService.GetBookingByIdAsync(id, userId.Value);
-            if (result == null)
-                return NotFound(new { success = false, message = "Không tìm thấy booking" });
-
-            return Ok(new { success = true, data = result });
-        }
-
-        // ── GET /api/bookings/my/profile ─────────────────────────────────────
-        /// <summary>Hồ sơ + điểm tích lũy</summary>
+        // GET /api/bookings/my/profile
         [HttpGet("my/profile")]
-        [Authorize]
         public async Task<IActionResult> GetMyProfile()
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
+            var userId = GetUserIdFromToken();
+            if (userId == null) return Unauthorized(new { message = "Vui lòng đăng nhập" });
 
             try
             {
@@ -139,23 +131,33 @@ namespace backend.Controllers
             }
         }
 
-        // ── GET /api/bookings/my/orders ──────────────────────────────────────
-        /// <summary>Hóa đơn mua hàng của user</summary>
+        // GET /api/bookings/my/orders
         [HttpGet("my/orders")]
-        [Authorize]
         public async Task<IActionResult> GetMyOrders()
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
+            var userId = GetUserIdFromToken();
+            if (userId == null) return Unauthorized(new { message = "Vui lòng đăng nhập" });
 
             var result = await _bookingService.GetUserOrdersAsync(userId.Value);
             return Ok(new { success = true, total = result.Count, data = result });
         }
 
-        // ── POST /api/bookings/validate-voucher ──────────────────────────────
-        /// Kiểm tra voucher
+        // GET /api/bookings/{id}
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetBookingById(int id)
+        {
+            var userId = GetUserIdFromToken();
+            if (userId == null) return Unauthorized(new { message = "Vui lòng đăng nhập" });
+
+            var result = await _bookingService.GetBookingByIdAsync(id, userId.Value);
+            if (result == null)
+                return NotFound(new { success = false, message = "Không tìm thấy booking" });
+
+            return Ok(new { success = true, data = result });
+        }
+
+        // POST /api/bookings/validate-voucher
         [HttpPost("validate-voucher")]
-        [Authorize]
         public async Task<IActionResult> ValidateVoucher([FromBody] ValidateVoucherRequest req)
         {
             if (string.IsNullOrWhiteSpace(req.Code))
@@ -163,15 +165,6 @@ namespace backend.Controllers
 
             var result = await _bookingService.ValidateVoucherAsync(req.Code, req.TotalAmount);
             return Ok(new { success = result.IsValid, data = result });
-        }
-
-        // ── Helpers ──────────────────────────────────────────────────────────
-        private int? GetCurrentUserId()
-        {
-            var claim = User.FindFirst(ClaimTypes.NameIdentifier)
-                     ?? User.FindFirst("sub")
-                     ?? User.FindFirst("userId");
-            return claim != null && int.TryParse(claim.Value, out int id) ? id : null;
         }
     }
 

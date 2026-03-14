@@ -24,6 +24,11 @@ public class JwtService : IJwtService
 
     public string GenerateToken(User user)
     {
+
+        var key = _configuration["Jwt:Key"]!;
+    Console.WriteLine("GENERATE TOKEN WITH KEY: " + key);
+    Console.WriteLine("GENERATE TOKEN KEY LENGTH: " + key.Length);
+    
         var securityKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
