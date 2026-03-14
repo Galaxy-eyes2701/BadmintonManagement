@@ -7,7 +7,18 @@ const API = "http://localhost:5043/api";
 
 const CourtBookingPage = () => {
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const authCtx = useAuth();
+
+  const getToken = () => {
+    try {
+      const s = localStorage.getItem("authState");
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed?.token) return parsed.token;
+      }
+    } catch {}
+    return null;
+  };
 
   const [step, setStep] = useState(1);
 
@@ -49,7 +60,7 @@ const CourtBookingPage = () => {
     fetch(`${API}/courttypes`).then(r => r.json()).then(setCourtTypes).catch(console.error);
   }, []);
 
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeader = () => { const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; };
 
   // ── Step 1 → 2: tìm sân ──
   const handleSearch = async () => {
@@ -64,7 +75,7 @@ const CourtBookingPage = () => {
       if (branchId)    params.append("branchId", branchId);
       if (courtTypeId) params.append("courtTypeId", courtTypeId);
 
-      const res = await fetch(`${API}/bookings/available-courts?${params}`, { headers: authHeader });
+      const res = await fetch(`${API}/bookings/available-courts?${params}`, { headers: authHeader() });
       if (!res.ok) throw new Error("Không thể tải danh sách sân.");
       const json = await res.json();
       // json.data = AvailableCourtDto[]
@@ -116,7 +127,7 @@ const CourtBookingPage = () => {
     try {
       const res = await fetch(`${API}/bookings/validate-voucher`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
+        headers: { "Content-Type": "application/json", ...authHeader() },
         body: JSON.stringify({ code: voucherCode.trim(), totalAmount: subtotal }),
       });
       const json = await res.json();
@@ -154,7 +165,7 @@ const CourtBookingPage = () => {
 
       const res = await fetch(`${API}/bookings`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
+        headers: { "Content-Type": "application/json", ...authHeader() },
         body: JSON.stringify(payload),
       });
 

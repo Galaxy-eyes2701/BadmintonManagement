@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import useAuth from "../../../hooks/useAuth.jsx";
 import styles from "./BookingHistoryPage.module.css";
 
@@ -20,7 +20,18 @@ const PAY_STATUS = {
 };
 
 const BookingHistoryPage = () => {
-  const { token } = useAuth();
+  const authCtx = useAuth();
+
+  const getToken = () => {
+    try {
+      const s = localStorage.getItem("authState");
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed?.token) return parsed.token;
+      }
+    } catch {}
+    return null;
+  };
   const [tab, setTab] = useState("bookings");
 
   // GET /api/bookings/my → { success, total, data: BookingHistoryDto[] }
@@ -43,12 +54,12 @@ const BookingHistoryPage = () => {
   //   payment: { paymentId, method, status, amount, createdAt } }
   const [detailData, setDetailData] = useState(null);
 
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = () => { const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; };
 
   const fetchBookings = async () => {
     setLoading(true); setError("");
     try {
-      const res = await fetch(`${API}/bookings/my`, { headers });
+      const res = await fetch(`${API}/bookings/my`, { headers: headers() });
       if (!res.ok) throw new Error("Không thể tải lịch sử đặt sân.");
       const json = await res.json();
       setBookings(json.data ?? json);
@@ -59,7 +70,7 @@ const BookingHistoryPage = () => {
   const fetchOrders = async () => {
     setLoading(true); setError("");
     try {
-      const res = await fetch(`${API}/bookings/my/orders`, { headers });
+      const res = await fetch(`${API}/bookings/my/orders`, { headers: headers() });
       if (!res.ok) throw new Error("Không thể tải lịch sử mua hàng.");
       const json = await res.json();
       setOrders(json.data ?? json);
@@ -68,8 +79,9 @@ const BookingHistoryPage = () => {
   };
 
   useEffect(() => {
-    tab === "bookings" ? fetchBookings() : fetchOrders();
-  }, [tab]);
+    if (tab === "bookings") fetchBookings();
+    else fetchOrders();
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // DELETE /api/bookings/{id}
   // → { success, message }
@@ -79,7 +91,7 @@ const BookingHistoryPage = () => {
     setCancellingId(bookingId);
     setError("");
     try {
-      const res = await fetch(`${API}/bookings/${bookingId}`, { method: "DELETE", headers });
+      const res = await fetch(`${API}/bookings/${bookingId}`, { method: "DELETE", headers: headers() });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.message || "Hủy thất bại.");
       await fetchBookings();
@@ -90,7 +102,7 @@ const BookingHistoryPage = () => {
   // GET /api/bookings/{id}
   const handleViewDetail = async (bookingId) => {
     try {
-      const res = await fetch(`${API}/bookings/${bookingId}`, { headers });
+      const res = await fetch(`${API}/bookings/${bookingId}`, { headers: headers() });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Không thể tải chi tiết.");
       setDetailData(json.data ?? json);

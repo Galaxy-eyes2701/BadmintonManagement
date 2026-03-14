@@ -1,16 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import useAuth from "../../../hooks/useAuth.jsx";
 import styles from "./UserProfilePage.module.css";
 
 const API = "http://localhost:5043/api";
 
-// GET /api/bookings/my/profile → { success, data: UserProfileDto }
-// UserProfileDto: { userId, fullName, phone, email, loyaltyPoints, status, role,
-//   totalBookings, completedBookings, totalSpent }
-// ⚠ completedBookings = COUNT WHERE status="confirmed" (backend logic)
-// ⚠ loyaltyPoints: int? — tích lũy = (courtTotal + posTotal) / 100_000 khi checkout
-
-// Bảng cấp bậc dựa vào loyaltyPoints
 const getLevelInfo = (pts) => {
   if (pts >= 5000) return { label: "💎 Kim Cương", color: "#06b6d4", next: null,  progress: 100 };
   if (pts >= 2000) return { label: "🥇 Vàng",      color: "#f59e0b", next: 5000, progress: ((pts - 2000) / 3000) * 100 };
@@ -19,29 +12,56 @@ const getLevelInfo = (pts) => {
 };
 
 const UserProfilePage = () => {
-  const { token, user: authUser } = useAuth();
+  const authCtx = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
 
-  const fetchProfile = async () => {
-    setLoading(true); setError(null);
+  // Đọc token 1 lần duy nhất — không dùng làm dependency của useEffect
+  const getToken = () => {
+    try {
+      const s = localStorage.getItem("authState");
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed?.token) return parsed.token;
+      }
+    } catch {}
+    return null;
+  };
+
+  const fetchProfile = useCallback(async () => {
+    const token = getToken();
+
+    if (!token) {
+      setError("Không tìm thấy token. Vui lòng đăng nhập lại.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API}/bookings/my/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`Lỗi ${res.status}`);
       const json = await res.json();
-      // json: { success, data: UserProfileDto }
       setProfile(json.data ?? json);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // KHÔNG có dependency — chỉ chạy khi được gọi thủ công
 
-  useEffect(() => { fetchProfile(); }, []);
+  // Chạy đúng 1 lần sau khi component mount
+  useEffect(() => {
+    fetchProfile();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+const s = JSON.parse(localStorage.getItem("authState"));
+const p = JSON.parse(atob(s.token.split('.')[1]));
+console.log(JSON.stringify(p, null, 2));
 
   if (loading) return (
     <div className={styles.loadingWrap}><div className={styles.spinner} /><p>Đang tải hồ sơ...</p></div>
@@ -54,29 +74,21 @@ const UserProfilePage = () => {
     </div>
   );
 
-  // Map từ UserProfileDto — fallback về authUser nếu chưa có
-  const fullName  = profile?.fullName  || authUser?.fullName || "Người dùng";
-  const phone     = profile?.phone     || authUser?.phone    || "—";
+  const fullName  = profile?.fullName  || authCtx?.user?.fullName || "Người dùng";
+  const phone     = profile?.phone     || authCtx?.user?.phone    || "—";
   const email     = profile?.email     || "—";
-  const role      = profile?.role      || authUser?.role     || "Customer";
-  // loyaltyPoints: int? (default 0)
-  const points    = profile?.loyaltyPoints ?? authUser?.loyaltyPoints ?? 0;
-  // status: "active" | "inactive"
+  const role      = profile?.role      || authCtx?.role           || "Customer";
+  const points    = profile?.loyaltyPoints ?? authCtx?.user?.loyaltyPoints ?? 0;
   const status    = profile?.status    || "active";
 
-  // Các trường thống kê từ UserProfileDto
   const totalBookings     = profile?.totalBookings     ?? 0;
-  // completedBookings = count(status="confirmed") — đặt tên hơi lạ nhưng đây là logic của backend
   const completedBookings = profile?.completedBookings ?? 0;
   const totalSpent        = profile?.totalSpent        ?? 0;
-  // cancelledBookings không có trong DTO, tính thủ công nếu cần
-  const cancelledBookings = totalBookings - completedBookings;
-
+  const cancelledBookings = Math.max(0, totalBookings - completedBookings);
   const level = getLevelInfo(points);
 
   return (
     <div className={styles.page}>
-      {/* HERO */}
       <div className={styles.heroCard}>
         <div className={styles.heroBg} />
         <div className={styles.heroContent}>
@@ -91,7 +103,6 @@ const UserProfilePage = () => {
                 {level.label}
               </span>
               <span className={styles.memberSince}>🏸 BadmintonHub</span>
-              {/* User.Status: "active" | "inactive" */}
               <span className={status === "active" ? styles.statusActive : styles.statusInactive}>
                 {status === "active" ? "● Đang hoạt động" : "● Bị khóa"}
               </span>
@@ -101,7 +112,6 @@ const UserProfilePage = () => {
       </div>
 
       <div className={styles.grid}>
-        {/* THÔNG TIN CÁ NHÂN */}
         <section className={styles.card}>
           <div className={styles.cardHeader}>
             <span className={styles.cardIcon}>👤</span>
@@ -109,11 +119,10 @@ const UserProfilePage = () => {
           </div>
           <div className={styles.infoList}>
             {[
-              // User model fields (từ UserProfileDto)
-              ["Họ & Tên",       fullName],
-              ["Số điện thoại",  phone],   // unique index trong DB
-              ["Email",          email],   // nullable
-              ["Vai trò",        role],    // "Customer" | "Staff" | "Admin"
+              ["Họ & Tên",      fullName],
+              ["Số điện thoại", phone],
+              ["Email",         email],
+              ["Vai trò",       role],
             ].map(([label, value]) => (
               <div key={label} className={styles.infoRow}>
                 <span className={styles.infoLabel}>{label}</span>
@@ -123,20 +132,16 @@ const UserProfilePage = () => {
           </div>
         </section>
 
-        {/* ĐIỂM TÍCH LŨY */}
         <section className={styles.card}>
           <div className={styles.cardHeader}>
             <span className={styles.cardIcon}>⭐</span>
             <h2 className={styles.cardTitle}>Điểm tích lũy</h2>
           </div>
-
           <div className={styles.pointsDisplay}>
-            {/* loyaltyPoints: int? — mỗi 100.000đ chi tiêu = 1 điểm */}
             <div className={styles.pointsBig}>{points.toLocaleString("vi-VN")}</div>
             <div className={styles.pointsLabel}>điểm tích lũy</div>
             <div className={styles.pointsHint}>Mỗi 100.000đ chi tiêu = 1 điểm</div>
           </div>
-
           <div className={styles.levelSection}>
             <div className={styles.levelRow}>
               <span className={styles.levelCurrent} style={{ color: level.color }}>{level.label}</span>
@@ -151,7 +156,6 @@ const UserProfilePage = () => {
               : <p className={styles.progressNote}>🎉 Bạn đã đạt cấp độ cao nhất!</p>
             }
           </div>
-
           <div className={styles.benefitsBox}>
             <p className={styles.benefitsTitle}>Quyền lợi thành viên</p>
             <ul className={styles.benefitsList}>
@@ -164,7 +168,6 @@ const UserProfilePage = () => {
           </div>
         </section>
 
-        {/* THỐNG KÊ */}
         <section className={`${styles.card} ${styles.cardWide}`}>
           <div className={styles.cardHeader}>
             <span className={styles.cardIcon}>📊</span>
@@ -172,13 +175,9 @@ const UserProfilePage = () => {
           </div>
           <div className={styles.statsGrid}>
             {[
-              // totalBookings: COUNT(*) FROM Bookings WHERE UserId = current
-              { num: totalBookings,     lbl: "Lần đặt sân",    color: "#0f766e" },
-              // completedBookings: COUNT WHERE status="confirmed" (đã check in)
-              { num: completedBookings, lbl: "Đã check-in",    color: "#10b981" },
-              // tính toán từ frontend
-              { num: Math.max(0, cancelledBookings), lbl: "Đã hủy", color: "#ef4444" },
-              // totalSpent: SUM(TotalPrice) WHERE status="confirmed"
+              { num: totalBookings,     lbl: "Lần đặt sân",  color: "#0f766e" },
+              { num: completedBookings, lbl: "Đã check-in",  color: "#10b981" },
+              { num: cancelledBookings, lbl: "Đã hủy",       color: "#ef4444" },
               {
                 num: totalSpent > 0
                   ? new Intl.NumberFormat("vi-VN", { notation: "compact" }).format(totalSpent) + "đ"
