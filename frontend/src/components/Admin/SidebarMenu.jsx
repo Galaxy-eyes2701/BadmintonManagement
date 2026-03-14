@@ -78,13 +78,13 @@ const SidebarMenu = () => {
           </li>
           <li
             className={`${styles.menuItem} ${
-              isActiveMenuItem("/admin/priceconfig") ? styles.active : ""
+              isActiveMenuItem("/admin/pricing") ? styles.active : ""
             }`}
-            onClick={() => handleNavigation("/admin/priceconfig")}
+            onClick={() => handleNavigation("/admin/pricing")}
           >
             <div
               className={
-                isActiveMenuItem("/admin/priceconfig") ? styles.highlight : ""
+                isActiveMenuItem("/admin/pricing") ? styles.highlight : ""
               }
             >
               Quản lý giá cả
@@ -92,16 +92,18 @@ const SidebarMenu = () => {
           </li>
           <li
             className={`${styles.menuItem} ${
-              isActiveMenuItem("/admin/order") ? styles.active : ""
+              isActiveMenuItem("/admin/vouchermanager") ? styles.active : ""
             }`}
-            onClick={() => handleNavigation("/admin/order")}
+            onClick={() => handleNavigation("/admin/vouchermanager")}
           >
             <div
               className={
-                isActiveMenuItem("/admin/order") ? styles.highlight : ""
+                isActiveMenuItem("/admin/vouchermanager")
+                  ? styles.highlight
+                  : ""
               }
             >
-              Quản lý đơn hàng
+              Quản lý voucher
             </div>
           </li>
         </ul>

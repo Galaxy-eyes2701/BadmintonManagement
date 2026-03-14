@@ -143,6 +143,8 @@ builder.Services.AddScoped<ICourtRepository, CourtRepository>();
 builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IPriceConfigRepository, PriceConfigRepository>();
+builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
+builder.Services.AddScoped<IAdminVoucherRepository, AdminVoucherRepository>();
 
 
 var app = builder.Build();
@@ -154,6 +156,7 @@ app.UseSwaggerUI();
 
 // Sử dụng policy AllowAll theo nhánh của bạn
 app.UseCors("AllowAll");
+app.UseCors("AllowReact");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -12,9 +12,10 @@ namespace backend.Repository
         public async Task<IEnumerable<User>> GetAllUsersAsync()
             => await _context.Users.OrderByDescending(u => u.Id).ToListAsync();
 
+        // So sánh ToLower() cả 2 vế → "staff" = "Staff" = "STAFF"
         public async Task<IEnumerable<User>> GetUsersByRoleAsync(string role)
             => await _context.Users
-                .Where(u => u.Role == role)
+                .Where(u => u.Role.ToLower() == role.ToLower())
                 .OrderByDescending(u => u.Id)
                 .ToListAsync();
 

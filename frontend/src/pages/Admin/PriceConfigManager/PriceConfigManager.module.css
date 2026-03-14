@@ -891,6 +891,9 @@
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 540px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
   animation: modalIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
   border: 1px solid var(--border);
@@ -961,6 +964,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 .modalFooter {
   display: flex;
@@ -1299,4 +1305,188 @@
   .btnLogout {
     padding: 10px 12px;
   }
+}
+
+/* ============================================================
+   MODAL WIDE — cho create multi-select
+   ============================================================ */
+.modalWide {
+  max-width: 680px !important;
+  max-height: 92vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* ── Multi-label row (label + select-all buttons) ── */
+.multiLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.selectAllBtns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.selAllBtn {
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.selAllBtn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(15, 118, 110, 0.05);
+}
+
+/* ── Multi chip group ── */
+.multiChipGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.multiChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-body);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.multiChip:hover {
+  border-color: var(--primary-light);
+  background: rgba(15, 118, 110, 0.04);
+}
+.multiChipActive {
+  border-color: var(--primary) !important;
+  background: rgba(15, 118, 110, 0.1) !important;
+  color: var(--primary-dark) !important;
+}
+
+/* Khung giờ chip nhỏ hơn một chút vì nhiều item */
+.multiChipSlot {
+  font-size: 0.78rem;
+  padding: 5px 10px;
+}
+
+.chipCheck {
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: var(--primary);
+  background: rgba(15, 118, 110, 0.15);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Combo count badge ── */
+.comboBadge {
+  background: linear-gradient(
+    135deg,
+    rgba(15, 118, 110, 0.08),
+    rgba(20, 184, 166, 0.08)
+  );
+  border: 1.5px solid rgba(15, 118, 110, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+  text-align: center;
+}
+.comboBadge strong {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--primary);
+}
+
+@media (max-width: 768px) {
+  .modalWide {
+    max-width: 98vw !important;
+  }
+  .multiChipGroup {
+    gap: 6px;
+  }
+  .multiChip {
+    font-size: 0.76rem;
+    padding: 6px 10px;
+  }
+}
+
+/* ── Multi-select dropdown (khung giờ) ── */
+.multiSelect {
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-h);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  width: 100%;
+  padding: 4px;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  cursor: pointer;
+}
+.multiSelect:focus {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+.multiSelect option {
+  padding: 7px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+.multiSelect option:checked {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  font-weight: 700;
+}
+.multiSelect option:hover {
+  background: rgba(15, 118, 110, 0.08);
+}
+
+/* Hint dưới dropdown */
+.selectHint {
+  margin: 5px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.selectHint kbd {
+  display: inline-block;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.72rem;
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--text-body);
 }

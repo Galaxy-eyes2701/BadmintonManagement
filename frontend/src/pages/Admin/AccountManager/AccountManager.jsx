@@ -7,9 +7,14 @@ import { useNavigate } from "react-router-dom";
 
 const API_BASE = "http://localhost:5043/api/admin/users";
 
+// ── Role / Status constants — đổi ở đây 1 lần là xong toàn bộ ──
+const ROLE_STAFF = "Staff";
+const ROLE_CUSTOMER = "Customer";
+const STATUS_ACTIVE = "active";
+const STATUS_INACTIVE = "inactive";
+
 const api = {
-  getUsers: (role) =>
-    fetch(role && role !== "all" ? `${API_BASE}?role=${role}` : API_BASE),
+  getUsers: () => fetch(API_BASE),
   createStaff: (data) =>
     fetch(API_BASE, {
       method: "POST",
@@ -33,19 +38,19 @@ const api = {
   deleteUser: (id) => fetch(`${API_BASE}/${id}`, { method: "DELETE" }),
 };
 
-const emptyStaffForm = {
-  fullName: "",
-  phone: "",
-  email: "",
-  password: "",
-};
-
+const emptyStaffForm = { fullName: "", phone: "", email: "", password: "" };
 const emptyCustomerForm = {
   fullName: "",
   phone: "",
   email: "",
   loyaltyPoints: 0,
 };
+
+// ── Helper so sánh role / status không phân biệt hoa thường ──
+const matchRole = (user, role) =>
+  user.role?.toLowerCase() === role.toLowerCase();
+const matchStatus = (user, status) =>
+  user.status?.toLowerCase() === status.toLowerCase();
 
 // ============================================================
 // COMPONENT
@@ -99,10 +104,9 @@ const AccountManager = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.getUsers(null);
+      const res = await api.getUsers();
       if (!res.ok) throw new Error(`Lỗi tải danh sách: ${res.status}`);
-      const data = await res.json();
-      setUsers(data);
+      setUsers(await res.json());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -117,19 +121,21 @@ const AccountManager = () => {
   // ============================================================
   // DERIVED DATA
   // ============================================================
-  const currentRole = activeTab === "staff" ? "staff" : "customer";
+
+  // Dùng constant → không bao giờ sai case
+  const currentRole = activeTab === "staff" ? ROLE_STAFF : ROLE_CUSTOMER;
 
   const filteredUsers = useMemo(() => {
     const q = search.toLowerCase();
     let result = users
-      .filter((u) => u.role === currentRole)
+      .filter((u) => matchRole(u, currentRole)) // ← case-insensitive
       .filter((u) => {
         const matchSearch =
           u.fullName.toLowerCase().includes(q) ||
           u.phone.includes(q) ||
           (u.email ?? "").toLowerCase().includes(q);
-        const matchStatus = filterStatus === "all" || u.status === filterStatus;
-        return matchSearch && matchStatus;
+        const matchSt = filterStatus === "all" || matchStatus(u, filterStatus); // ← case-insensitive
+        return matchSearch && matchSt;
       });
 
     return [...result].sort((a, b) => {
@@ -154,9 +160,12 @@ const AccountManager = () => {
     return filteredUsers.slice(start, start + itemsPerPage);
   }, [filteredUsers, page, itemsPerPage]);
 
-  const staffList = users.filter((u) => u.role === "staff");
-  const customerList = users.filter((u) => u.role === "customer");
-  const lockedCount = users.filter((u) => u.status === "inactive").length;
+  // Dùng matchRole helper → không bao giờ sai case
+  const staffList = users.filter((u) => matchRole(u, ROLE_STAFF));
+  const customerList = users.filter((u) => matchRole(u, ROLE_CUSTOMER));
+  const lockedCount = users.filter((u) =>
+    matchStatus(u, STATUS_INACTIVE),
+  ).length;
 
   // ============================================================
   // SORT
@@ -206,20 +215,13 @@ const AccountManager = () => {
     setSaving(true);
     setError(null);
     try {
-      if (editingUserId) {
-        const res = await api.updateUser(editingUserId, staffForm);
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.message ?? `Cập nhật thất bại: ${res.status}`);
-        }
-      } else {
-        const res = await api.createStaff(staffForm);
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            body.message ?? `Tạo tài khoản thất bại: ${res.status}`,
-          );
-        }
+      const res = editingUserId
+        ? await api.updateUser(editingUserId, staffForm)
+        : await api.createStaff(staffForm);
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message ?? `Thao tác thất bại: ${res.status}`);
       }
       await fetchUsers();
       setStaffModal(false);
@@ -376,7 +378,6 @@ const AccountManager = () => {
         </div>
 
         <main className={styles.content}>
-          {/* LOADING */}
           {loading && (
             <div className={styles.loadingWrap}>
               <div className={styles.spinner} />
@@ -422,8 +423,8 @@ const AccountManager = () => {
                     }}
                   >
                     <option value="all">Tất cả trạng thái</option>
-                    <option value="active">✅ Hoạt động</option>
-                    <option value="inactive">🔒 Bị khóa</option>
+                    <option value={STATUS_ACTIVE}>✅ Hoạt động</option>
+                    <option value={STATUS_INACTIVE}>🔒 Bị khóa</option>
                   </select>
                 </div>
                 {activeTab === "staff" && (
@@ -513,7 +514,7 @@ const AccountManager = () => {
                         <td className={styles.tdName}>
                           <div className={styles.avatarCell}>
                             <div
-                              className={`${styles.avatar} ${user.status === "inactive" ? styles.avatarLocked : ""}`}
+                              className={`${styles.avatar} ${matchStatus(user, STATUS_INACTIVE) ? styles.avatarLocked : ""}`}
                             >
                               {user.fullName.charAt(0).toUpperCase()}
                             </div>
@@ -531,37 +532,32 @@ const AccountManager = () => {
                         )}
                         <td>
                           <button
-                            className={`${styles.statusBadge} ${user.status === "active" ? styles.statusActive : styles.statusLocked}`}
+                            className={`${styles.statusBadge} ${matchStatus(user, STATUS_ACTIVE) ? styles.statusActive : styles.statusLocked}`}
                             onClick={() => handleToggleStatus(user)}
                             disabled={saving}
                             title={
-                              user.status === "active"
+                              matchStatus(user, STATUS_ACTIVE)
                                 ? "Nhấn để khóa tài khoản"
                                 : "Nhấn để mở khóa"
                             }
                           >
-                            {user.status === "active"
+                            {matchStatus(user, STATUS_ACTIVE)
                               ? "✅ Hoạt động"
                               : "🔒 Bị khóa"}
                           </button>
                         </td>
                         <td>
                           <div className={styles.actionBtns}>
-                            {activeTab === "staff" ? (
-                              <button
-                                className={styles.btnEdit}
-                                onClick={() => openEditStaff(user)}
-                              >
-                                ✏️ Sửa
-                              </button>
-                            ) : (
-                              <button
-                                className={styles.btnEdit}
-                                onClick={() => openEditCustomer(user)}
-                              >
-                                ✏️ Sửa
-                              </button>
-                            )}
+                            <button
+                              className={styles.btnEdit}
+                              onClick={() =>
+                                activeTab === "staff"
+                                  ? openEditStaff(user)
+                                  : openEditCustomer(user)
+                              }
+                            >
+                              ✏️ Sửa
+                            </button>
                             <button
                               className={styles.btnDelete}
                               onClick={() => setDeleteConfirm(user.id)}
@@ -695,13 +691,17 @@ const AccountManager = () => {
                   )}
                 </label>
                 <div className={styles.passwordWrap}>
+                  {/* autoComplete="new-password" ngăn browser tự điền mật khẩu cũ */}
                   <input
                     className={styles.input}
                     type={showPassword ? "text" : "password"}
                     placeholder={
-                      editingUserId ? "••••••••" : "Nhập mật khẩu mới"
+                      editingUserId
+                        ? "Để trống nếu không đổi"
+                        : "Nhập mật khẩu mới"
                     }
                     value={staffForm.password}
+                    autoComplete="new-password"
                     onChange={(e) =>
                       setStaffForm({ ...staffForm, password: e.target.value })
                     }

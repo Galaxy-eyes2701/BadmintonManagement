@@ -13,13 +13,39 @@ namespace backend.Controllers
         private readonly IAdminUserRepository _repo;
         public AdminUserController(IAdminUserRepository repo) => _repo = repo;
 
-        // GET /api/admin/users?role=staff|customer
+        // ── Role constants — đổi ở đây 1 lần, áp dụng toàn bộ ──
+        private const string ROLE_ADMIN    = "Admin";
+        private const string ROLE_STAFF    = "Staff";
+        private const string ROLE_CUSTOMER = "Customer";
+
+        private const string STATUS_ACTIVE   = "active";
+        private const string STATUS_INACTIVE = "inactive";
+
+        // ── Normalize: "STAFF" / "staff" / "Staff" → "Staff" ──
+        private static string NormalizeRole(string role) => role.Trim() switch
+        {
+            var r when r.Equals("admin",    StringComparison.OrdinalIgnoreCase) => ROLE_ADMIN,
+            var r when r.Equals("staff",    StringComparison.OrdinalIgnoreCase) => ROLE_STAFF,
+            var r when r.Equals("customer", StringComparison.OrdinalIgnoreCase) => ROLE_CUSTOMER,
+            _ => role // giữ nguyên nếu không nhận ra
+        };
+
+        // GET /api/admin/users?role=staff|Staff|STAFF (tất cả đều hoạt động)
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] string? role)
         {
-            var users = string.IsNullOrEmpty(role)
-                ? await _repo.GetAllUsersAsync()
-                : await _repo.GetUsersByRoleAsync(role);
+            IEnumerable<User> users;
+
+            if (string.IsNullOrEmpty(role))
+            {
+                users = await _repo.GetAllUsersAsync();
+            }
+            else
+            {
+                // Normalize trước khi query → không bị lỗi dù frontend gõ gì
+                var normalizedRole = NormalizeRole(role);
+                users = await _repo.GetUsersByRoleAsync(normalizedRole);
+            }
 
             return Ok(users.Select(ToDto));
         }
@@ -41,12 +67,12 @@ namespace backend.Controllers
 
             var user = new User
             {
-                FullName     = dto.FullName,
-                Phone        = dto.Phone,
-                Email        = dto.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                Role         = "staff",
-                Status       = "active",
+                FullName      = dto.FullName,
+                Phone         = dto.Phone,
+                Email         = dto.Email,
+                PasswordHash  = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                Role          = ROLE_STAFF,   // ← luôn đúng, không hard-code string
+                Status        = STATUS_ACTIVE,
                 LoyaltyPoints = 0
             };
 
@@ -54,34 +80,35 @@ namespace backend.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToDto(created));
         }
 
-        // PATCH /api/admin/users/{id}/toggle-status — khóa / mở khóa
+        // PATCH /api/admin/users/{id}/toggle-status
         [HttpPatch("{id}/toggle-status")]
         public async Task<IActionResult> ToggleStatus(int id)
         {
             var user = await _repo.GetUserByIdAsync(id);
             if (user is null) return NotFound();
 
-            user.Status = user.Status == "active" ? "inactive" : "active";
+            user.Status = user.Status.Equals(STATUS_ACTIVE, StringComparison.OrdinalIgnoreCase)
+                ? STATUS_INACTIVE
+                : STATUS_ACTIVE;
+
             await _repo.UpdateUserAsync(user);
             return Ok(ToDto(user));
         }
 
-        // PUT /api/admin/users/{id} — cập nhật thông tin Staff
+        // PUT /api/admin/users/{id} — cập nhật Staff
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] CreateStaffDto dto)
         {
             var user = await _repo.GetUserByIdAsync(id);
             if (user is null) return NotFound();
 
-            // Kiểm tra phone trùng với user khác
             if (user.Phone != dto.Phone && await _repo.PhoneExistsAsync(dto.Phone))
                 return Conflict(new { message = "Số điện thoại đã tồn tại." });
 
-            user.FullName     = dto.FullName;
-            user.Phone        = dto.Phone;
-            user.Email        = dto.Email;
+            user.FullName = dto.FullName;
+            user.Phone    = dto.Phone;
+            user.Email    = dto.Email;
 
-            // Chỉ đổi password nếu có truyền lên
             if (!string.IsNullOrWhiteSpace(dto.Password))
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
@@ -95,7 +122,10 @@ namespace backend.Controllers
         {
             var user = await _repo.GetUserByIdAsync(id);
             if (user is null) return NotFound();
-            if (user.Role != "customer") return BadRequest(new { message = "Không phải tài khoản khách hàng." });
+
+            // So sánh case-insensitive → "customer" / "Customer" đều pass
+            if (!user.Role.Equals(ROLE_CUSTOMER, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { message = "Không phải tài khoản khách hàng." });
 
             if (user.Phone != dto.Phone && await _repo.PhoneExistsAsync(dto.Phone))
                 return Conflict(new { message = "Số điện thoại đã tồn tại." });

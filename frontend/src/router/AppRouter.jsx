@@ -5,7 +5,6 @@ import {
   Navigate,
 } from "react-router-dom";
 
-import AdminLayout from "../layout/AdminLayout.jsx";
 import StaffLayout from "../layout/StaffLayout.jsx";
 import MainLayout from "../layout/MainLayout.jsx";
 import UserLayout from "../layout/UserLayout.jsx";
@@ -40,12 +39,17 @@ import AccountManager from "../pages/Admin/AccountManager/AccountManager.jsx";
 import RevenueDashboard from "../pages/Staff/RevenueDashboard/RevenueDashboard.jsx";
 import VoucherManagement from "../pages/Staff/VoucherManagement/VoucherManagement.jsx";
 import PriceConfigManager from "../pages/Admin/PriceConfigManager/PriceConfigManager.jsx";
+import VoucherManager from "../pages/Admin/VoucherManager/VoucherManager.jsx";
+
+const adminRoute = (element) => (
+  <AdminProtectedRoute>{element}</AdminProtectedRoute>
+);
 
 const router = createBrowserRouter([
   // ROOT → redirect to login
   {
     path: "/",
-    element: <Navigate to="/login" replace />,
+    element: <Navigate to="/user" replace />,
   },
 
   // ── AUTH ──
@@ -91,28 +95,20 @@ const router = createBrowserRouter([
     ],
   },
 
-  // ── ADMIN ──
+  // ── ADMIN — mỗi trang tự có SidebarMenu, KHÔNG dùng AdminLayout ──
+  { path: "/admin/revenue", element: adminRoute(<RevenueDashboard />) },
+  { path: "/admin/vouchers", element: adminRoute(<VoucherManagement />) },
   {
-    path: "/admin",
-    element: (
-      <AdminProtectedRoute>
-        <AdminLayout />
-      </AdminProtectedRoute>
-    ),
-    children: [
-      { path: "revenue", element: <RevenueDashboard /> },
-      { path: "vouchers", element: <VoucherManagement /> },
-      { path: "branchcourtmanagement", element: <BranchCourtManager /> },
-      { path: "user", element: <AccountManager /> },
-      { path: "priceconfig", element: <PriceConfigManager /> },
-    ],
+    path: "/admin/branchcourtmanagement",
+    element: adminRoute(<BranchCourtManager />),
   },
+  { path: "/admin/user", element: adminRoute(<AccountManager />) },
+  { path: "/admin/pricing", element: adminRoute(<PriceConfigManager />) },
+  { path: "/admin/vouchermanager", element: adminRoute(<VoucherManager />) },
 
   { path: "*", element: <PageNotFound /> },
 ]);
 
-const AppRouter = () => {
-  return <RouterProvider router={router} />;
-};
+const AppRouter = () => <RouterProvider router={router} />;
 
 export default AppRouter;
