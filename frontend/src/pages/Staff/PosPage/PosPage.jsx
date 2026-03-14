@@ -19,10 +19,10 @@ const PosPage = () => {
             const resProducts = await axios.get('http://localhost:5043/api/products');
             setProducts(resProducts.data);
 
-            const resBookings = await axios.get('http://localhost:5043/api/pos/active-bookings');
+            const resBookings = await axios.get('http://localhost:5043/api/staff/active-bookings');
             setActiveBookings(resBookings.data);
         } catch (error) {
-            toast.error('Không thể tải dữ liệu POS. Hãy kiểm tra Backend.');
+            toast.error('Không thể tải dữ liệu. Hãy kiểm tra Backend.');
         }
     };
 
@@ -57,36 +57,47 @@ const PosPage = () => {
     };
 
     const handleCheckout = async (method) => {
-        if (cart.length === 0) return toast.warning('Giỏ hàng trống!');
-        const subTotal = cart.reduce((sum, item) => sum + item.product.unitPrice * item.quantity, 0);
+        if (cart.length === 0 && !selectedBookingId) return toast.warning('Vui lòng chọn khách hàng hoặc thêm sản phẩm!');
+
         const bookingIdToSave = selectedBookingId ? parseInt(selectedBookingId) : null;
 
-        const payload = {
-            bookingId: bookingIdToSave,
-            items: cart.map((item) => ({ productId: item.product.id, quantity: item.quantity }))
-        };
-
-        try {
-            await axios.post('http://localhost:5043/api/pos/create-order', payload);
-
-            if (method === 'GhiSo') {
-                toast.success('Đã ghi sổ nợ vào hóa đơn sân thành công!');
-                setCart([]); setSelectedBookingId(''); fetchData();
-            } else if (method === 'VNPay') {
-                const payResponse = await axios.post('http://localhost:5043/api/payments/process', { bookingId: 9999, amount: subTotal, paymentMethod: 'VNPAY' });
-                if (payResponse.data.paymentUrl) window.location.href = payResponse.data.paymentUrl;
-            } else if (method === 'Chuyển khoản') {
-                toast.success(`Xác nhận Chuyển khoản thành công!`);
-                setCart([]); setIsQrModalOpen(false); fetchData();
-            } else {
-                toast.success(`Thu Tiền mặt thành công!`);
-                setCart([]); fetchData();
+        // Lưu đơn nước
+        if (cart.length > 0) {
+            try {
+                const payload = {
+                    bookingId: bookingIdToSave,
+                    items: cart.map((item) => ({ productId: item.product.id, quantity: item.quantity }))
+                };
+                await axios.post('http://localhost:5043/api/pos/create-order', payload);
+            } catch (error) {
+                return toast.error('Lỗi khi lưu đơn nước!');
             }
-        } catch (error) { toast.error('Lỗi xử lý giao dịch'); }
+        }
+
+        // Nếu thanh toán luôn tiền sân thì gọi Checkout
+        if (selectedBookingId && method !== 'GhiSo') {
+            try {
+                await axios.post(`http://localhost:5043/api/staff/checkout/${selectedBookingId}`, {
+                    PaymentMethod: method
+                });
+                toast.success('Thanh toán thành công! Sân đã được trả.');
+            } catch (error) {
+                return toast.error(error.response?.data || 'Lỗi khi thanh toán');
+            }
+        } else if (method === 'GhiSo') {
+            toast.success('Đã ghi sổ nợ thành công!');
+        } else {
+            toast.success('Thu tiền mặt vãng lai thành công!');
+        }
+
+        setCart([]);
+        setSelectedBookingId('');
+        setIsQrModalOpen(false);
+        fetchData();
     };
 
     const totalAmount = cart.reduce((sum, item) => sum + item.product.unitPrice * item.quantity, 0);
-    const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN').format(amount || 0) + ' đ';
 
     const filteredProducts = products.filter(p => {
         const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -95,7 +106,7 @@ const PosPage = () => {
     });
 
     const handlePrint = () => {
-        if (cart.length === 0) return toast.warning('Chưa có sản phẩm để in hóa đơn!');
+        if (cart.length === 0 && !selectedBookingId) return toast.warning('Không có thông tin để in!');
         window.print();
     };
 
@@ -110,7 +121,7 @@ const PosPage = () => {
                 </div>
                 <div className={styles.headerSearch}>
                     <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
-                    <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={styles.searchInput} placeholder="Tìm kiếm nước uống, dụng cụ..." />
+                    <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={styles.searchInput} placeholder="Tìm kiếm nước uống..." />
                 </div>
             </header>
 
@@ -166,7 +177,7 @@ const PosPage = () => {
                     <div className={styles.bookingSelectBox}>
                         <label className={styles.selectLabel}><span className="material-symbols-outlined text-sm" style={{ color: '#94a3b8' }}>stadium</span> Gắn vào hóa đơn sân</label>
                         <select value={selectedBookingId} onChange={(e) => setSelectedBookingId(e.target.value)} className={styles.selectInput}>
-                            <option value="">-- Thu tiền mặt ngay (Khách vãng lai) --</option>
+                            <option value="">-- Khách vãng lai (Chỉ mua nước) --</option>
                             {activeBookings.map(b => (
                                 <option key={b.id} value={b.id}>{b.courtName} - Khách: {b.customerName} ({b.time})</option>
                             ))}
@@ -175,38 +186,40 @@ const PosPage = () => {
 
                     <div className={styles.checkoutArea}>
                         <div className={styles.totalRow}>
-                            <span className={styles.totalLabel}>Tổng cộng:</span>
-                            <span className={styles.totalValue}>{formatCurrency(totalAmount)}</span>
+                            <span className={styles.totalLabel} style={{ fontSize: '14px', color: '#64748b' }}>Tổng tiền:</span>
+                            <span className={styles.totalValue} style={{ fontSize: '16px', color: '#1e293b' }}>{formatCurrency(totalAmount)}</span>
                         </div>
 
-                        {/* NÚT IN HÓA ĐƠN */}
-                        <button
-                            onClick={handlePrint}
-                            className={styles.btnFull}
-                            style={{ backgroundColor: '#f1f5f9', color: '#475569', marginBottom: '12px', border: '1px dashed #cbd5e1' }}
-                        >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '12px', marginTop: '4px', marginBottom: '16px' }}>
+                            <span style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>PHẢI THU:</span>
+                            <span style={{ fontSize: '22px', fontWeight: '900', color: '#ef4444' }}>
+                                {formatCurrency(totalAmount)}
+                            </span>
+                        </div>
+
+                        <button onClick={handlePrint} className={styles.btnFull} style={{ backgroundColor: '#f1f5f9', color: '#475569', marginBottom: '12px', border: '1px dashed #cbd5e1' }}>
                             <span className="material-symbols-outlined">print</span> In Phiếu Tạm Tính
                         </button>
 
                         <div>
                             {selectedBookingId ? (
-                                <button onClick={() => handleCheckout('GhiSo')} className={`${styles.btnFull} ${styles.btnOrange}`}>
-                                    <span className="material-symbols-outlined">edit_document</span> Ghi Sổ Nợ Vào Sân
-                                </button>
-                            ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     <button onClick={() => handleCheckout('Tiền mặt')} className={`${styles.btnFull} ${styles.btnDark}`}>
-                                        <span className="material-symbols-outlined">payments</span> Tiền Mặt
+                                        <span className="material-symbols-outlined">payments</span> Thanh Toán & Trả Sân
                                     </button>
                                     <div className={styles.btnRow}>
-                                        <button onClick={() => { if (cart.length === 0) return toast.warning('Giỏ hàng trống!'); setIsQrModalOpen(true); }} className={styles.btnGreen}>
+                                        <button onClick={() => setIsQrModalOpen(true)} className={styles.btnGreen}>
                                             <span className="material-symbols-outlined text-lg">account_balance</span> Chuyển Khoản
                                         </button>
-                                        <button onClick={() => handleCheckout('VNPay')} className={styles.btnGradient}>
-                                            <span className="material-symbols-outlined text-lg">qr_code_2</span> VNPay
+                                        <button onClick={() => handleCheckout('GhiSo')} className={`${styles.btnFull} ${styles.btnOrange}`} style={{ flex: 1 }}>
+                                            <span className="material-symbols-outlined text-lg">edit_document</span> Ghi Sổ
                                         </button>
                                     </div>
                                 </div>
+                            ) : (
+                                <button onClick={() => handleCheckout('Tiền mặt')} className={`${styles.btnFull} ${styles.btnDark}`}>
+                                    <span className="material-symbols-outlined">payments</span> Bán Nước Vãng Lai
+                                </button>
                             )}
                         </div>
                     </div>
@@ -219,7 +232,6 @@ const PosPage = () => {
                     <div className={styles.modalContent}>
                         <div className={styles.qrIcon}><span className="material-symbols-outlined text-2xl">qr_code_scanner</span></div>
                         <h2 className={styles.modalTitle}>Mã QR Thanh Toán</h2>
-                        <p className={styles.modalDesc}>Yêu cầu khách quét mã bằng ứng dụng Ngân hàng (Momo, ZaloPay...)</p>
                         <div className={styles.qrBox}><img src="/images/qr.jpg" alt="Mã QR Ngân Hàng" /></div>
                         <div className={styles.amountBox}>
                             <p>Số tiền cần thanh toán</p>
@@ -228,36 +240,27 @@ const PosPage = () => {
                         <div className={styles.modalActions}>
                             <button onClick={() => setIsQrModalOpen(false)} className={styles.btnCancel}>Hủy bỏ</button>
                             <button onClick={() => handleCheckout('Chuyển khoản')} className={styles.btnGreen}>
-                                <span className="material-symbols-outlined text-lg">check_circle</span> Đã Nhận Tiền
+                                Đã Nhận Tiền
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* =========================================================
-                GIAO DIỆN HÓA ĐƠN CHỈ DÀNH CHO MÁY IN 
-                Lưu ý: Đã gắn id="print-section"
-            ========================================================= */}
-            <div id="print-section">
+            {/* In Hóa Đơn */}
+            <div id="print-section" className={styles.printArea}>
                 <div style={{ textAlign: 'center', marginBottom: '15px' }}>
                     <h2 style={{ margin: 0, fontSize: '20px', textTransform: 'uppercase' }}>SÂN CẦU LÔNG FPT</h2>
-                    <p style={{ margin: '5px 0', fontSize: '12px' }}>Khu Công Nghệ Cao Hòa Lạc, Thạch Thất</p>
-                    <p style={{ margin: '5px 0', fontSize: '12px' }}>SĐT: 0988.123.456</p>
+                    <p style={{ margin: '5px 0', fontSize: '12px' }}>Khu Công Nghệ Cao Hòa Lạc</p>
                     <hr style={{ borderTop: '1px dashed #000', margin: '10px 0' }} />
-                    <h3 style={{ fontSize: '16px', margin: '10px 0' }}>PHIẾU THANH TOÁN (POS)</h3>
+                    <h3 style={{ fontSize: '16px', margin: '10px 0' }}>HÓA ĐƠN THANH TOÁN</h3>
                     <p style={{ textAlign: 'left', fontSize: '12px', margin: '4px 0' }}>Ngày: {new Date().toLocaleString('vi-VN')}</p>
-                    <p style={{ textAlign: 'left', fontSize: '12px', margin: '4px 0' }}>
-                        Khách hàng: {selectedBookingId
-                            ? activeBookings.find(b => b.id.toString() === selectedBookingId.toString())?.customerName || 'Khách đặt sân'
-                            : 'Khách vãng lai'}
-                    </p>
                 </div>
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px', fontSize: '12px' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid #000' }}>
-                            <th style={{ textAlign: 'left', padding: '6px 0' }}>Tên món</th>
+                            <th style={{ textAlign: 'left', padding: '6px 0' }}>Món</th>
                             <th style={{ textAlign: 'center' }}>SL</th>
                             <th style={{ textAlign: 'right' }}>T.Tiền</th>
                         </tr>
@@ -274,17 +277,16 @@ const PosPage = () => {
                 </table>
 
                 <hr style={{ borderTop: '1px dashed #000', margin: '10px 0' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold', paddingTop: '8px' }}>
                     <span>TỔNG CỘNG:</span>
                     <span>{formatCurrency(totalAmount)}</span>
                 </div>
 
                 <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '12px', fontStyle: 'italic' }}>
                     <p style={{ margin: '4px 0' }}>Cảm ơn quý khách và hẹn gặp lại!</p>
-                    <p style={{ margin: '4px 0' }}>Phần mềm quản lý bởi Nhóm 1</p>
                 </div>
             </div>
-
         </div>
     );
 };
