@@ -20,9 +20,9 @@ import ForgotPasswordPage from "../pages/User/ForgotPasswordPage/ForgotPasswordP
 
 // ── USER PAGES ──
 import UserHomePage from "../pages/User/UserHomePage/UserHomePage.jsx";
-import CourtBookingPage from "../pages/User/CourtBookingPage/CourtBookingPage.jsx";
 import BookingHistoryPage from "../pages/User/BookingHistoryPage/BookingHistoryPage.jsx";
 import UserProfilePage from "../pages/User/UserProfilePage/UserProfilePage.jsx";
+import CourtBookingPage from "../pages/User/CourtBookingPage/Courtbookingpage.jsx";
 
 // ── STAFF PAGES ──
 import StaffSchedule from "../pages/Staff/StaffSchedule/StaffSchedule.jsx";
@@ -36,7 +36,6 @@ import FixedSchedule from "../pages/Staff/FixedSchedule/FixedSchedule.jsx";
 import AdminLogin from "../pages/Admin/AdminLogin/AdminLogin.jsx";
 import BranchCourtManager from "../pages/Admin/BranchCourtManager/BranchCourtManager.jsx";
 import AccountManager from "../pages/Admin/AccountManager/AccountManager.jsx";
-import VoucherManagement from "../pages/Staff/VoucherManagement/VoucherManagement.jsx";
 import PriceConfigManager from "../pages/Admin/PriceConfigManager/PriceConfigManager.jsx";
 import VoucherManager from "../pages/Admin/VoucherManager/VoucherManager.jsx";
 import AdminRevenueDashboard from "../pages/Admin/AdminRevenueDashboard/AdminRevenueDashboard.jsx";

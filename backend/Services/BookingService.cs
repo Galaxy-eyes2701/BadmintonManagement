@@ -48,7 +48,7 @@ namespace backend.Services
             var courtQuery = _db.Courts
                 .Include(c => c.Branch)
                 .Include(c => c.CourtType)
-                .Where(c => c.Status == "available");
+                .Where(c => c.Status == "active");
 
             if (branchId.HasValue)
                 courtQuery = courtQuery.Where(c => c.BranchId == branchId.Value);
