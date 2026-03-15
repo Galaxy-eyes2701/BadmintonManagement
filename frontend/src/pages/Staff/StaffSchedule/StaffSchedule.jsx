@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
+import * as signalR from '@microsoft/signalr';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './StaffSchedule.module.css';
 
@@ -24,50 +25,60 @@ const StaffSchedule = () => {
             setScheduleData(response.data);
             if (response.data.length > 0) setTimeSlots(response.data[0].schedule.map(s => s.time));
         } catch (error) {
+            console.error(error);
             toast.error('Lỗi khi tải lịch sân');
         } finally {
             if (showLoading) setLoading(false);
         }
     };
 
-    // Gọi API khi đổi ngày
+    // =======================================================
+    // SIGNALR: KẾT NỐI REAL-TIME ĐỂ KHÔNG CẦN F5
+    // =======================================================
     useEffect(() => {
-        fetchSchedule(true);
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("http://localhost:5043/courthub")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.start().then(() => {
+            console.log("⚡ SignalR Connected!");
+            connection.on("RefreshSchedule", () => {
+                fetchSchedule(false); // Tải lại data ngầm
+            });
+        }).catch(err => console.error("SignalR Connection Error: ", err));
+
+        return () => connection.stop();
     }, [selectedDate]);
 
-    // TỰ ĐỘNG LÀM MỚI DỮ LIỆU MỖI 60 GIÂY (Không làm giật màn hình)
+    useEffect(() => { fetchSchedule(true); }, [selectedDate]);
+
+    // Tự động tải lại ngầm phòng hờ rớt mạng
     useEffect(() => {
-        const intervalId = setInterval(() => {
-            fetchSchedule(false);
-        }, 60000);
+        const intervalId = setInterval(() => { fetchSchedule(false); }, 60000);
         return () => clearInterval(intervalId);
     }, [selectedDate]);
 
-    // THUẬT TOÁN KIỂM TRA LỐ GIỜ TỐI ƯU NHẤT
+    // =======================================================
+    // XỬ LÝ LỐ GIỜ TỐI ƯU NHẤT (Chống lỗi 24h & Khóa cùng ngày)
+    // =======================================================
     const getOvertimeStatus = (currentSlotIndex, scheduleArray) => {
         const currentSlot = scheduleArray[currentSlotIndex];
-        if (!currentSlot.isBooked) return 'normal';
-        if (currentSlot.bookingInfo.paymentStatus === 'completed') return 'normal';
+        if (!currentSlot.isBooked || currentSlot.bookingInfo.paymentStatus === 'completed') return 'normal';
 
         const todayStr = new Date().toISOString().split('T')[0];
         if (selectedDate !== todayStr) return 'normal';
 
         const endTimeStr = currentSlot.time.split(' - ')[1];
         const [hours, minutes] = endTimeStr.split(':');
-
         const now = new Date();
         const endTime = new Date();
-        // Ép kiểu chuẩn base 10 để chống lỗi 02:00 vs 14:00
         endTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
 
         if (now > endTime) {
             const nextSlot = scheduleArray[currentSlotIndex + 1];
-
             if (nextSlot && nextSlot.isBooked) {
-                // CHỐNG BÁO LỖI NẾU CA SAU LÀ CỦA CHÍNH NGƯỜI ĐÓ GIA HẠN
-                if (nextSlot.bookingInfo.bookingId === currentSlot.bookingInfo.bookingId) {
-                    return 'normal';
-                }
+                if (nextSlot.bookingInfo.bookingId === currentSlot.bookingInfo.bookingId) return 'normal';
                 return 'kick-out';
             }
             return 'extend';
@@ -75,7 +86,9 @@ const StaffSchedule = () => {
         return 'normal';
     };
 
+    // =======================================================
     // QUÉT BÁO ĐỘNG BẰNG TOAST MỖI PHÚT
+    // =======================================================
     useEffect(() => {
         if (!scheduleData || scheduleData.length === 0) return;
         const checkAndNotifyOvertime = () => {
@@ -105,14 +118,19 @@ const StaffSchedule = () => {
         return () => clearInterval(interval);
     }, [scheduleData, notifiedSlots]);
 
+    // =======================================================
+    // XỬ LÝ CLICK VÀO Ô SÂN (Cập nhật chuẩn maintenance)
+    // =======================================================
     const handleSlotClick = async (court, slot) => {
-        if (court.status === 'Bảo trì') return toast.warning('Sân đang bảo trì!');
+        // ĐÃ FIX: Chặn click nếu sân đang maintenance theo chuẩn DB
+        if (court.status === 'maintenance') {
+            return toast.warning(`🚨 ${court.courtName} đang bảo trì (hỏng đèn/rách thảm). Không thể xếp lịch!`);
+        }
 
         if (slot.isBooked) {
             if (slot.bookingInfo.paymentStatus === 'completed') {
                 return toast.info(`✅ Ca này của ${slot.bookingInfo.customerName} đã thanh toán hoàn tất!`);
             }
-
             try {
                 const res = await axios.get(`http://localhost:5043/api/staff/booking-bill/${slot.bookingInfo.bookingId}`);
                 setBillData(res.data);
@@ -126,7 +144,9 @@ const StaffSchedule = () => {
         }
     };
 
-    // HÀM GIA HẠN CÓ THÔNG BÁO XÁC NHẬN CHỐNG BẤM NHẦM
+    // =======================================================
+    // XỬ LÝ GIA HẠN CÓ CONFIRM BẢO VỆ
+    // =======================================================
     const handleExtendBooking = async (bookingId, courtId, nextTimeSlotId) => {
         const isConfirm = window.confirm("Xác nhận gia hạn thêm 1 ca cho khách này?\n(Hệ thống sẽ khóa sân ca sau và tự động tính thêm tiền).");
         if (!isConfirm) return;
@@ -134,43 +154,47 @@ const StaffSchedule = () => {
         try {
             const res = await axios.post(`http://localhost:5043/api/staff/extend-booking/${bookingId}?courtId=${courtId}&nextSlotId=${nextTimeSlotId}`);
             toast.success(res.data.message);
-            fetchSchedule(false);
+            // SignalR sẽ tự động tải lại data, không cần gọi thủ công
         } catch (error) {
             toast.error(error.response?.data?.message || error.response?.data || "Lỗi khi gia hạn");
         }
     };
 
-    const handleCompletePayment = async () => {
+    // =======================================================
+    // TÍCH HỢP METHOD THANH TOÁN (CASH / VNPAY)
+    // =======================================================
+    const handleCompletePayment = async (method) => {
         try {
             const payload = {
-                paymentMethod: 'CASH',
+                paymentMethod: method,
                 VoucherCode: selectedVoucherCode || null
             };
             const res = await axios.post(`http://localhost:5043/api/staff/checkout/${billData.bookingId}`, payload);
-            toast.success(res.data.message || `Trả sân thành công!`);
+            toast.success(res.data.message || `Trả sân bằng ${method} thành công!`);
             setIsCheckoutOpen(false);
-            fetchSchedule(false);
+            // SignalR sẽ tự động tải lại data
         } catch (err) {
             toast.error(err.response?.data || 'Lỗi khi thanh toán');
         }
     };
 
-    // TÍNH TOÁN TIỀN REALTIME TRÊN POPUP
+    const handlePrintBill = () => {
+        window.print();
+    };
+
     let finalAmountToPay = billData ? billData.remainingAmount : 0;
     let currentDiscount = 0;
-
     if (billData && selectedVoucherCode) {
         const voucher = billData.availableVouchers.find(v => v.code === selectedVoucherCode);
         if (voucher) {
             currentDiscount = voucher.discountAmount;
-            finalAmountToPay = finalAmountToPay - currentDiscount;
-            if (finalAmountToPay < 0) finalAmountToPay = 0;
+            finalAmountToPay = Math.max(0, finalAmountToPay - currentDiscount);
         }
     }
 
     return (
         <div className={styles.container}>
-            <ToastContainer position="top-right" autoClose={5000} />
+            <ToastContainer position="top-right" autoClose={4000} />
 
             <header className={styles.header}>
                 <div className={styles.headerLeft}>
@@ -194,6 +218,10 @@ const StaffSchedule = () => {
                             {scheduleData.map(court => (
                                 <div key={court.courtId} className={styles.courtHeader}>
                                     <span className={styles.courtName}>{court.courtName}</span>
+                                    {/* CẬP NHẬT: Hiển thị chữ bảo trì đỏ rực trên tên sân */}
+                                    {court.status === 'maintenance' && (
+                                        <div style={{ color: '#ef4444', fontSize: '11px', fontWeight: 'bold', marginTop: '4px' }}>(Đang bảo trì)</div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -231,7 +259,7 @@ const StaffSchedule = () => {
                                                 </div>
 
                                                 {slot.bookingInfo.paymentStatus === 'completed' && <div style={{ color: '#10b981', fontSize: '11px', fontWeight: 'bold' }}>✅ Hoàn tất</div>}
-                                                {ovStatus === 'kick-out' && <div style={{ color: 'red', fontSize: '11px', fontWeight: 'bold' }}>🚨 Đuổi! Có khách sau!</div>}
+                                                {ovStatus === 'kick-out' && <div style={{ color: 'red', fontSize: '11px', fontWeight: 'bold' }}>🚨 Đuổi! Có khách sau.</div>}
 
                                                 {ovStatus === 'extend' && (
                                                     <div style={{ marginTop: '4px' }}>
@@ -249,8 +277,15 @@ const StaffSchedule = () => {
                                                 )}
                                             </div>
                                         ) : (
-                                            <div key={slot.timeSlotId} onClick={() => handleSlotClick(court, slot)} className={`${styles.slotCard} ${styles.slotEmpty}`}>
-                                                <span className={styles.addText}>Trống</span>
+                                            <div
+                                                key={slot.timeSlotId}
+                                                onClick={() => handleSlotClick(court, slot)}
+                                                className={`${styles.slotCard} ${styles.slotEmpty}`}
+                                                style={court.status === 'maintenance' ? { backgroundColor: '#fee2e2', opacity: 0.5, cursor: 'not-allowed' } : {}}
+                                            >
+                                                <span className={styles.addText} style={court.status === 'maintenance' ? { color: '#ef4444' } : {}}>
+                                                    {court.status === 'maintenance' ? 'Bảo trì' : 'Trống'}
+                                                </span>
                                             </div>
                                         );
                                     })}
@@ -261,6 +296,7 @@ const StaffSchedule = () => {
                 )}
             </div>
 
+            {/* MÀN HÌNH TẤT TOÁN SÂN & IN HÓA ĐƠN */}
             {isCheckoutOpen && billData && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
@@ -309,7 +345,7 @@ const StaffSchedule = () => {
 
                                 {currentDiscount > 0 && (
                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: 'bold', marginTop: '10px' }}>
-                                        <span>Giảm giá Voucher:</span>
+                                        <span>Giảm giá:</span>
                                         <span>- {formatCurrency(currentDiscount)}</span>
                                     </div>
                                 )}
@@ -325,12 +361,54 @@ const StaffSchedule = () => {
                             </div>
                         </div>
 
-                        <div className={styles.actionBtns}>
-                            <button onClick={() => setIsCheckoutOpen(false)} className={styles.btnCancel}>Đóng</button>
-                            <button onClick={handleCompletePayment} className={styles.btnComplete}>
-                                <span className="material-symbols-outlined text-sm">payments</span> Thu Tiền & Trả Sân
+                        {/* NÚT THAO TÁC: IN BILL VÀ THANH TOÁN (CASH/VNPAY) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px', width: '100%' }}>
+                            <button onClick={handlePrintBill} style={{ padding: '10px', borderRadius: '8px', border: '1px dashed #94a3b8', background: '#f8fafc', fontWeight: 'bold', cursor: 'pointer', color: '#334155' }}>
+                                🖨️ In Hóa Đơn Tạm Tính
                             </button>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button onClick={() => handleCompletePayment('CASH')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', background: '#0f172a', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+                                    💵 Tiền Mặt
+                                </button>
+                                <button onClick={() => handleCompletePayment('VNPAY')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', background: '#005baa', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+                                    📱 Chuyển Khoản / VNPay
+                                </button>
+                            </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* =========================================
+                PHÔI IN HÓA ĐƠN TÀNG HÌNH (Chỉ hiện khi In)
+            ========================================= */}
+            {billData && (
+                <div id="print-section" className={styles.printArea}>
+                    <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                        <h2 style={{ margin: 0, fontSize: '20px', textTransform: 'uppercase' }}>SÂN CẦU LÔNG FPT</h2>
+                        <p style={{ margin: '5px 0', fontSize: '12px' }}>Khu Công Nghệ Cao Hòa Lạc</p>
+                        <hr style={{ borderTop: '1px dashed #000', margin: '10px 0' }} />
+                        <h3 style={{ fontSize: '16px', margin: '10px 0' }}>HÓA ĐƠN DỊCH VỤ</h3>
+                        <p style={{ textAlign: 'left', fontSize: '12px', margin: '4px 0' }}>Khách: {billData.customerName}</p>
+                        <p style={{ textAlign: 'left', fontSize: '12px', margin: '4px 0' }}>Ngày: {new Date().toLocaleString('vi-VN')}</p>
+                    </div>
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px', fontSize: '12px' }}>
+                        <tbody>
+                            <tr><td style={{ padding: '4px 0' }}>Tiền Thuê Sân</td><td style={{ textAlign: 'right' }}>{formatCurrency(billData.courtTotal)}</td></tr>
+                            <tr><td style={{ padding: '4px 0' }}>Dịch Vụ (Nước)</td><td style={{ textAlign: 'right' }}>{formatCurrency(billData.posTotal)}</td></tr>
+                            <tr><td style={{ padding: '4px 0' }}>Đã Đặt Cọc</td><td style={{ textAlign: 'right' }}>- {formatCurrency(billData.alreadyPaid)}</td></tr>
+                            {currentDiscount > 0 && <tr><td style={{ padding: '4px 0' }}>Voucher {selectedVoucherCode}</td><td style={{ textAlign: 'right' }}>- {formatCurrency(currentDiscount)}</td></tr>}
+                        </tbody>
+                    </table>
+
+                    <hr style={{ borderTop: '1px dashed #000', margin: '10px 0' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
+                        <span>TỔNG THANH TOÁN:</span>
+                        <span>{formatCurrency(finalAmountToPay)}</span>
+                    </div>
+                    <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '12px', fontStyle: 'italic' }}>
+                        <p>Cảm ơn quý khách!</p>
                     </div>
                 </div>
             )}

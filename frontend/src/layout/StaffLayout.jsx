@@ -1,6 +1,11 @@
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import useAuth from '../hooks/useAuth'; // IMPORT HOOK XỬ LÝ ĐĂNG XUẤT
+
 const StaffLayout = () => {
+    // Kéo hàm logout và thông tin user từ Context ra
+    const { logout, user } = useAuth();
+    const navigate = useNavigate();
 
     const menuItems = [
         { title: 'NGHIỆP VỤ ĐẶT SÂN', isHeader: true },
@@ -13,9 +18,16 @@ const StaffLayout = () => {
         { path: '/staff/products', icon: 'inventory_2', label: 'Quản lý Kho Nước' },
     ];
 
+    // CẬP NHẬT HÀM LOGOUT CHUẨN CHỈ
     const handleLogout = () => {
+        // 1. Gọi hàm logout của hệ thống (nó sẽ tự xóa token)
+        logout();
+
+        // 2. Xóa nốt cái cờ admin (phòng trường hợp anh đang test chung 1 máy)
         localStorage.removeItem("adminLoggedIn");
-        window.location.href = '/admin/login';
+
+        // 3. Đẩy thẳng về trang Login chuẩn của User/Staff
+        navigate('/login');
     };
 
     return (
@@ -25,7 +37,10 @@ const StaffLayout = () => {
                     <div className="w-8 h-8 bg-[#10b981] rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-[#10b981]/20">
                         <span className="material-symbols-outlined text-white text-sm">support_agent</span>
                     </div>
-                    <span className="font-bold text-lg text-white tracking-wide">NHÂN VIÊN</span>
+                    <span className="font-bold text-lg text-white tracking-wide">
+                        {/* Hiện tên nhân viên lên cho ngầu (Nếu có) */}
+                        {user?.fullName ? user.fullName.split(' ').pop() : 'NHÂN VIÊN'}
+                    </span>
                 </div>
 
                 <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
