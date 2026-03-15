@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
-import * as signalR from '@microsoft/signalr';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './StaffSchedule.module.css';
 
@@ -32,30 +31,16 @@ const StaffSchedule = () => {
         }
     };
 
-    // =======================================================
-    // SIGNALR: KẾT NỐI REAL-TIME ĐỂ KHÔNG CẦN F5
-    // =======================================================
+    // Gọi API khi đổi ngày
     useEffect(() => {
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl("http://localhost:5043/courthub")
-            .withAutomaticReconnect()
-            .build();
-
-        connection.start().then(() => {
-            console.log("⚡ SignalR Connected!");
-            connection.on("RefreshSchedule", () => {
-                fetchSchedule(false); // Tải lại data ngầm
-            });
-        }).catch(err => console.error("SignalR Connection Error: ", err));
-
-        return () => connection.stop();
+        fetchSchedule(true);
     }, [selectedDate]);
 
-    useEffect(() => { fetchSchedule(true); }, [selectedDate]);
-
-    // Tự động tải lại ngầm phòng hờ rớt mạng
+    // TỰ ĐỘNG LÀM MỚI DỮ LIỆU MỖI 60 GIÂY (Không làm giật màn hình)
     useEffect(() => {
-        const intervalId = setInterval(() => { fetchSchedule(false); }, 60000);
+        const intervalId = setInterval(() => {
+            fetchSchedule(false);
+        }, 60000);
         return () => clearInterval(intervalId);
     }, [selectedDate]);
 
@@ -78,6 +63,7 @@ const StaffSchedule = () => {
         if (now > endTime) {
             const nextSlot = scheduleArray[currentSlotIndex + 1];
             if (nextSlot && nextSlot.isBooked) {
+                // CHỐNG BÁO LỖI NẾU CA SAU LÀ CỦA CHÍNH NGƯỜI ĐÓ GIA HẠN
                 if (nextSlot.bookingInfo.bookingId === currentSlot.bookingInfo.bookingId) return 'normal';
                 return 'kick-out';
             }
@@ -122,7 +108,6 @@ const StaffSchedule = () => {
     // XỬ LÝ CLICK VÀO Ô SÂN (Cập nhật chuẩn maintenance)
     // =======================================================
     const handleSlotClick = async (court, slot) => {
-        // ĐÃ FIX: Chặn click nếu sân đang maintenance theo chuẩn DB
         if (court.status === 'maintenance') {
             return toast.warning(`🚨 ${court.courtName} đang bảo trì (hỏng đèn/rách thảm). Không thể xếp lịch!`);
         }
@@ -154,7 +139,7 @@ const StaffSchedule = () => {
         try {
             const res = await axios.post(`http://localhost:5043/api/staff/extend-booking/${bookingId}?courtId=${courtId}&nextSlotId=${nextTimeSlotId}`);
             toast.success(res.data.message);
-            // SignalR sẽ tự động tải lại data, không cần gọi thủ công
+            fetchSchedule(false); // Reload lại data sau khi gia hạn thành công
         } catch (error) {
             toast.error(error.response?.data?.message || error.response?.data || "Lỗi khi gia hạn");
         }
@@ -172,7 +157,7 @@ const StaffSchedule = () => {
             const res = await axios.post(`http://localhost:5043/api/staff/checkout/${billData.bookingId}`, payload);
             toast.success(res.data.message || `Trả sân bằng ${method} thành công!`);
             setIsCheckoutOpen(false);
-            // SignalR sẽ tự động tải lại data
+            fetchSchedule(false); // Reload lại data sau khi thanh toán thành công
         } catch (err) {
             toast.error(err.response?.data || 'Lỗi khi thanh toán');
         }
@@ -218,7 +203,7 @@ const StaffSchedule = () => {
                             {scheduleData.map(court => (
                                 <div key={court.courtId} className={styles.courtHeader}>
                                     <span className={styles.courtName}>{court.courtName}</span>
-                                    {/* CẬP NHẬT: Hiển thị chữ bảo trì đỏ rực trên tên sân */}
+                                    {/* Hiển thị chữ bảo trì đỏ rực trên tên sân */}
                                     {court.status === 'maintenance' && (
                                         <div style={{ color: '#ef4444', fontSize: '11px', fontWeight: 'bold', marginTop: '4px' }}>(Đang bảo trì)</div>
                                     )}
