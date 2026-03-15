@@ -8,7 +8,6 @@ namespace backend.Controllers
 {
     [ApiController]
     [Route("api/admin/price-configs")]
-    // [Authorize(Roles = "Admin")]   // bật khi đã có JWT
     public class PriceConfigController : ControllerBase
     {
         private readonly IPriceConfigRepository _repo;

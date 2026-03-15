@@ -1,0 +1,857 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap");
+
+/* ============================================================
+   CSS VARIABLES — khớp 100% VoucherManager
+   ============================================================ */
+:root {
+  --primary: #0f766e;
+  --primary-light: #14b8a6;
+  --primary-dark: #0d5e58;
+  --primary-glow: rgba(15, 118, 110, 0.18);
+  --success: #10b981;
+  --success-bg: #ecfdf5;
+  --success-border: #6ee7b7;
+  --warning: #f59e0b;
+  --warning-bg: #fffbeb;
+  --warning-border: #fcd34d;
+  --danger: #ef4444;
+  --danger-bg: #fef2f2;
+  --danger-border: #fca5a5;
+  --text-h: #0f172a;
+  --text-body: #334155;
+  --text-muted: #94a3b8;
+  --bg-page: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-hover: #f8fafc;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.16);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+}
+
+/* ============================================================
+   LAYOUT — copy từ VoucherManager
+   ============================================================ */
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-page);
+  font-family: "Nunito", sans-serif;
+  color: var(--text-body);
+}
+.mainArea {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================
+   HEADER — copy từ VoucherManager (cùng gradient)
+   ============================================================ */
+.header {
+  background: linear-gradient(135deg, #0d5e58 0%, #0f766e 55%, #14b8a6 100%);
+  padding: 26px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.header::before {
+  content: "";
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 1;
+  padding-left: 52px;
+}
+.headerIcon {
+  font-size: 38px;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.25));
+  animation: float 2.8s ease-in-out infinite;
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(5deg);
+  }
+}
+.headerTitle {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.4px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.headerSub {
+  margin: 3px 0 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.68);
+  font-weight: 500;
+}
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 1;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.headerStats {
+  display: flex;
+  gap: 10px;
+}
+
+.statChip,
+.statChipSuccess,
+.statChipWarn {
+  background: rgba(255, 255, 255, 0.13);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  padding: 10px 16px;
+  text-align: center;
+  min-width: 76px;
+  transition: transform 0.2s;
+}
+.statChip:hover,
+.statChipSuccess:hover,
+.statChipWarn:hover {
+  transform: translateY(-2px);
+}
+.statChipSuccess {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+.statChipWarn {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.statNum {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+}
+.statLabel {
+  display: block;
+  font-size: 0.66rem;
+  color: rgba(255, 255, 255, 0.72);
+  margin-top: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+/* Xuất CSV — tông màu như btnLogout VoucherManager */
+.btnExport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+.btnExport:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+.btnExport:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Logout — copy từ VoucherManager */
+.btnLogout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+.btnLogout:hover {
+  background: rgba(239, 68, 68, 0.75);
+  border-color: rgba(239, 68, 68, 0.8);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+}
+
+/* ============================================================
+   BANNERS — copy từ VoucherManager
+   ============================================================ */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: var(--danger-bg);
+  border-bottom: 2px solid var(--danger-border);
+  color: #991b1b;
+  flex-shrink: 0;
+}
+.bannerClose {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+.bannerClose:hover {
+  opacity: 1;
+}
+
+/* ============================================================
+   CONTENT
+   ============================================================ */
+.content {
+  padding: 28px 36px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ============================================================
+   TOOLBAR — copy từ VoucherManager
+   ============================================================ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+.filterLabel {
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: var(--text-body);
+  white-space: nowrap;
+}
+.presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.presetBtn {
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: white;
+  color: var(--text-body);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.presetBtn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(15, 118, 110, 0.05);
+}
+.presetActive {
+  background: linear-gradient(
+    135deg,
+    var(--primary),
+    var(--primary-light)
+  ) !important;
+  border-color: transparent !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.3);
+}
+.dateRange {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dateSep {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* filterSelect — copy từ VoucherManager */
+.filterSelect {
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-body);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.filterSelect:focus {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* btnPrimary — copy từ VoucherManager */
+.btnPrimary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  box-shadow: 0 2px 10px rgba(15, 118, 110, 0.3);
+  white-space: nowrap;
+}
+.btnPrimary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  box-shadow: 0 4px 16px rgba(15, 118, 110, 0.4);
+  transform: translateY(-1px);
+}
+.btnPrimary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Spinner nhỏ */
+.spinnerSm {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ============================================================
+   TABLE — copy từ VoucherManager
+   ============================================================ */
+.tableWrapper {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  padding: 20px;
+}
+.cardFull {
+  width: 100%;
+  box-sizing: border-box;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.table thead tr {
+  background: linear-gradient(135deg, #0d5e58, #0f766e);
+}
+.table thead th {
+  padding: 13px 18px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.88);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.tableRow {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+  animation: rowFadeIn 0.3s ease both;
+}
+@keyframes rowFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+.table tbody tr:hover {
+  background: rgba(15, 118, 110, 0.03);
+}
+.table td {
+  padding: 12px 18px;
+  color: var(--text-body);
+  vertical-align: middle;
+}
+.tdId {
+  font-weight: 800;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.tdDiscount {
+  font-weight: 900;
+  font-size: 0.95rem;
+  color: #b45309;
+}
+.emptyTd {
+  text-align: center;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 40px;
+}
+
+/* Cell styles tái sử dụng từ VoucherManager */
+.courtName {
+  font-weight: 800;
+  color: var(--text-h);
+}
+.mutedCell {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+.limitBadge {
+  display: inline-block;
+  background: rgba(15, 118, 110, 0.07);
+  color: var(--primary-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+}
+
+/* Occupancy bar (inline trong table) */
+.occupancyWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+.occupancyBar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-hover);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.occupancyFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--primary-light));
+  border-radius: 20px;
+  min-width: 2px;
+  transition: width 0.6s ease;
+}
+.occupancyPct {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  white-space: nowrap;
+  width: 40px;
+  text-align: right;
+}
+
+/* ============================================================
+   LOADING / EMPTY — copy từ VoucherManager
+   ============================================================ */
+.loadingWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 80px 20px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.chartEmpty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* ============================================================
+   SUMMARY CARDS
+   ============================================================ */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.summaryCard {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+  border-left: 4px solid transparent;
+  animation: cardFadeIn 0.4s ease both;
+}
+.summaryCard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.cardRevenue {
+  border-left-color: var(--primary);
+  animation-delay: 0.05s;
+}
+.cardBooking {
+  border-left-color: #3b82f6;
+  animation-delay: 0.1s;
+}
+.cardOrder {
+  border-left-color: #f59e0b;
+  animation-delay: 0.15s;
+}
+.cardAvg {
+  border-left-color: #8b5cf6;
+  animation-delay: 0.2s;
+}
+
+.cardIcon {
+  font-size: 30px;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-hover);
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+.cardBody {
+  flex: 1;
+  min-width: 0;
+}
+.cardLabel {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin: 0 0 4px;
+}
+.cardValue {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--text-h);
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cardSub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Growth badge — giống statusBadge VoucherManager */
+.growthPos {
+  display: inline-block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #065f46;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.growthNeg {
+  display: inline-block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #991b1b;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+.tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 2px solid var(--border);
+}
+.tab {
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.tab:hover {
+  color: var(--primary);
+  background: rgba(15, 118, 110, 0.04);
+}
+.tabActive {
+  color: var(--primary-dark);
+  border-bottom-color: var(--primary);
+  background: rgba(15, 118, 110, 0.05);
+}
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ============================================================
+   CHART PANELS
+   ============================================================ */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cardTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-h);
+}
+
+.chartLegend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.legendDotTeal {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: #0f766e;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.legendDotAmber {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: #f59e0b;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+/* Two-column grid */
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* ============================================================
+   BOOKING STATS
+   ============================================================ */
+.avgRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 118, 110, 0.05);
+  border: 1px solid rgba(15, 118, 110, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-top: 16px;
+}
+.avgLabel {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-body);
+}
+.avgValue {
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--primary-dark);
+}
+
+/* ============================================================
+   TOOLTIP (Recharts custom)
+   ============================================================ */
+.tooltip {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-md);
+  font-family: "Nunito", sans-serif;
+  min-width: 140px;
+}
+.tooltipLabel {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1200px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 768px) {
+  .header {
+    padding: 18px 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .headerLeft {
+    padding-left: 0;
+  }
+  .headerStats {
+    flex-wrap: wrap;
+  }
+  .content {
+    padding: 18px 16px;
+  }
+  .summaryGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .presets {
+    flex-wrap: wrap;
+  }
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .toolbarLeft {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .tabs {
+    flex-wrap: wrap;
+  }
+  .btnLogout span:last-child {
+    display: none;
+  }
+  .btnLogout {
+    padding: 10px 12px;
+  }
+}
+@media (max-width: 480px) {
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+}

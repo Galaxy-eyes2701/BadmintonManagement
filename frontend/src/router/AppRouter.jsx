@@ -36,10 +36,11 @@ import FixedSchedule from "../pages/Staff/FixedSchedule/FixedSchedule.jsx";
 import AdminLogin from "../pages/Admin/AdminLogin/AdminLogin.jsx";
 import BranchCourtManager from "../pages/Admin/BranchCourtManager/BranchCourtManager.jsx";
 import AccountManager from "../pages/Admin/AccountManager/AccountManager.jsx";
-import RevenueDashboard from "../pages/Staff/RevenueDashboard/RevenueDashboard.jsx";
 import VoucherManagement from "../pages/Staff/VoucherManagement/VoucherManagement.jsx";
 import PriceConfigManager from "../pages/Admin/PriceConfigManager/PriceConfigManager.jsx";
 import VoucherManager from "../pages/Admin/VoucherManager/VoucherManager.jsx";
+import AdminRevenueDashboard from "../pages/Admin/AdminRevenueDashboard/AdminRevenueDashboard.jsx";
+import AdminBooking from "../pages/Admin/AdminBooking/AdminBooking.jsx";
 
 const adminRoute = (element) => (
   <AdminProtectedRoute>{element}</AdminProtectedRoute>
@@ -96,8 +97,6 @@ const router = createBrowserRouter([
   },
 
   // ── ADMIN — mỗi trang tự có SidebarMenu, KHÔNG dùng AdminLayout ──
-  { path: "/admin/revenue", element: adminRoute(<RevenueDashboard />) },
-  { path: "/admin/vouchers", element: adminRoute(<VoucherManagement />) },
   {
     path: "/admin/branchcourtmanagement",
     element: adminRoute(<BranchCourtManager />),
@@ -105,6 +104,8 @@ const router = createBrowserRouter([
   { path: "/admin/user", element: adminRoute(<AccountManager />) },
   { path: "/admin/pricing", element: adminRoute(<PriceConfigManager />) },
   { path: "/admin/vouchermanager", element: adminRoute(<VoucherManager />) },
+  { path: "/admin/revenue", element: adminRoute(<AdminRevenueDashboard />) },
+  { path: "/admin/booking", element: adminRoute(<AdminBooking />) },
 
   { path: "*", element: <PageNotFound /> },
 ]);

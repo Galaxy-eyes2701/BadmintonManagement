@@ -106,6 +106,34 @@ const SidebarMenu = () => {
               Quản lý voucher
             </div>
           </li>
+          <li
+            className={`${styles.menuItem} ${
+              isActiveMenuItem("/admin/revenue") ? styles.active : ""
+            }`}
+            onClick={() => handleNavigation("/admin/revenue")}
+          >
+            <div
+              className={
+                isActiveMenuItem("/admin/revenue") ? styles.highlight : ""
+              }
+            >
+              Thống kê doanh thu
+            </div>
+          </li>
+          <li
+            className={`${styles.menuItem} ${
+              isActiveMenuItem("/admin/booking") ? styles.active : ""
+            }`}
+            onClick={() => handleNavigation("/admin/booking")}
+          >
+            <div
+              className={
+                isActiveMenuItem("/admin/booking") ? styles.highlight : ""
+              }
+            >
+              Quản lý đặt sân
+            </div>
+          </li>
         </ul>
       </div>
 

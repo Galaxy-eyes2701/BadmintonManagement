@@ -1,6 +1,6 @@
 using backend.DTOs;
 
-namespace backend.Services
+namespace backend.Interface.Service
 {
     public interface IBookingService
     {

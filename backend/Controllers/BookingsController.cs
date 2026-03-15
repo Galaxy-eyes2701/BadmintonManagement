@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using backend.Services;
 using backend.DTOs;
+using backend.Interface.Service;
 
 namespace backend.Controllers
 {

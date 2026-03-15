@@ -1,4 +1,5 @@
 using backend.Interface.Repository;
+using backend.Interface.Service;
 using backend.Models;
 using backend.Repository;
 using backend.Services;
@@ -145,6 +146,10 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IPriceConfigRepository, PriceConfigRepository>();
 builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
 builder.Services.AddScoped<IAdminVoucherRepository, AdminVoucherRepository>();
+builder.Services.AddScoped<IAdminRevenueRepository, AdminRevenueRepository>();
+builder.Services.AddScoped<IAdminRevenueService, AdminRevenueService>();
+builder.Services.AddScoped<IAdminBookingRepository, AdminBookingRepository>();
+builder.Services.AddScoped<IAdminBookingService, AdminBookingService>();
 
 
 var app = builder.Build();
