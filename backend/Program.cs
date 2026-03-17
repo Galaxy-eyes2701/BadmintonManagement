@@ -159,9 +159,8 @@ app.UseSwaggerUI();
 
 //  app.UseHttpsRedirection();
 
-// Sử dụng policy AllowAll theo nhánh của bạn
+// Sử dụng policy AllowAll
 app.UseCors("AllowAll");
-app.UseCors("AllowReact");
 
 app.UseAuthentication();
 app.UseAuthorization();

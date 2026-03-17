@@ -9,9 +9,69 @@ namespace backend.Controllers
     public class TimeSlotController : ControllerBase
     {
         private readonly ITimeSlotRepository _repo;
+        private readonly BadmintonManagementContext _context;
 
-        public TimeSlotController(ITimeSlotRepository repo)
-            => _repo = repo;
+        public TimeSlotController(ITimeSlotRepository repo, BadmintonManagementContext context)
+        {
+            _repo = repo;
+            _context = context;
+        }
+
+        // POST /api/timeslots/seed-standard
+        // Tạo các khung giờ chuẩn: sáng 5h-12h, chiều 13h-17h, tối 17h-22h
+        [HttpPost("seed-standard")]
+        public async Task<IActionResult> SeedStandardTimeSlots()
+        {
+            var standardSlots = new List<(TimeOnly Start, TimeOnly End)>
+            {
+                // Sáng: 5h - 12h (5, 6, 7, 8, 9, 10, 11)
+                (new TimeOnly(5, 0), new TimeOnly(6, 0)),
+                (new TimeOnly(6, 0), new TimeOnly(7, 0)),
+                (new TimeOnly(7, 0), new TimeOnly(8, 0)),
+                (new TimeOnly(8, 0), new TimeOnly(9, 0)),
+                (new TimeOnly(9, 0), new TimeOnly(10, 0)),
+                (new TimeOnly(10, 0), new TimeOnly(11, 0)),
+                (new TimeOnly(11, 0), new TimeOnly(12, 0)),
+                // Chiều: 13h - 17h (13, 14, 15, 16)
+                (new TimeOnly(13, 0), new TimeOnly(14, 0)),
+                (new TimeOnly(14, 0), new TimeOnly(15, 0)),
+                (new TimeOnly(15, 0), new TimeOnly(16, 0)),
+                (new TimeOnly(16, 0), new TimeOnly(17, 0)),
+                // Tối: 17h - 22h (17, 18, 19, 20, 21)
+                (new TimeOnly(17, 0), new TimeOnly(18, 0)),
+                (new TimeOnly(18, 0), new TimeOnly(19, 0)),
+                (new TimeOnly(19, 0), new TimeOnly(20, 0)),
+                (new TimeOnly(20, 0), new TimeOnly(21, 0)),
+                (new TimeOnly(21, 0), new TimeOnly(22, 0)),
+            };
+
+            var existingSlots = await _repo.GetAllAsync();
+            var createdCount = 0;
+            var skippedCount = 0;
+
+            foreach (var (start, end) in standardSlots)
+            {
+                // Kiểm tra xem khung giờ đã tồn tại chưa
+                var exists = existingSlots.Any(s => s.StartTime == start && s.EndTime == end);
+                if (!exists)
+                {
+                    await _repo.CreateAsync(new TimeSlot { StartTime = start, EndTime = end });
+                    createdCount++;
+                }
+                else
+                {
+                    skippedCount++;
+                }
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = $"Đã tạo {createdCount} khung giờ mới, bỏ qua {skippedCount} khung giờ đã tồn tại.",
+                created = createdCount,
+                skipped = skippedCount
+            });
+        }
 
         // GET /api/timeslots
         [HttpGet]

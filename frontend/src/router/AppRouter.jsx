@@ -58,19 +58,31 @@ const router = createBrowserRouter([
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/payment-result", element: <PaymentResult /> },
 
-  // ── USER (yêu cầu đăng nhập) ──
+  // ── USER ──
   {
     path: "/user",
     element: (
-      <UserProtectedRoute>
+      <UserProtectedRoute requireAuth={false}>
         <UserLayout />
       </UserProtectedRoute>
     ),
     children: [
       { index: true, element: <UserHomePage /> },
-      { path: "booking", element: <CourtBookingPage /> },
-      { path: "history", element: <BookingHistoryPage /> },
-      { path: "profile", element: <UserProfilePage /> },
+      { path: "booking", element: (
+        <UserProtectedRoute requireAuth={true}>
+          <CourtBookingPage />
+        </UserProtectedRoute>
+      )},
+      { path: "history", element: (
+        <UserProtectedRoute requireAuth={true}>
+          <BookingHistoryPage />
+        </UserProtectedRoute>
+      )},
+      { path: "profile", element: (
+        <UserProtectedRoute requireAuth={true}>
+          <UserProfilePage />
+        </UserProtectedRoute>
+      )},
     ],
   },
 

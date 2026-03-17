@@ -5,13 +5,14 @@ import styles from "./UserLayout.module.css";
 const UserLayout = () => {
   const navigate = useNavigate();
   const auth = useAuth();
+  const isAuthenticated = auth?.isAuthenticated && auth?.token;
 
   const displayName =
     auth?.user?.fullName ||
     auth?.user?.FullName ||
     auth?.user?.username ||
     auth?.user?.Phone ||
-    "Người dùng";
+    "Khách";
 
   const handleLogout = () => {
     auth?.logout?.();
@@ -62,15 +63,34 @@ const UserLayout = () => {
           </nav>
 
           <div className={styles.userArea}>
-            <div className={styles.userInfo}>
-              <div className={styles.avatar}>
-                {displayName.charAt(0).toUpperCase()}
+            {isAuthenticated ? (
+              <>
+                <div className={styles.userInfo}>
+                  <div className={styles.avatar}>
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                  <span className={styles.userName}>{displayName}</span>
+                </div>
+                <button className={styles.logoutBtn} onClick={handleLogout}>
+                  Đăng xuất
+                </button>
+              </>
+            ) : (
+              <div className={styles.authButtons}>
+                <button
+                  className={styles.loginBtn}
+                  onClick={() => navigate("/login")}
+                >
+                  Đăng nhập
+                </button>
+                <button
+                  className={styles.registerBtn}
+                  onClick={() => navigate("/register")}
+                >
+                  Đăng ký
+                </button>
               </div>
-              <span className={styles.userName}>{displayName}</span>
-            </div>
-            <button className={styles.logoutBtn} onClick={handleLogout}>
-              Đăng xuất
-            </button>
+            )}
           </div>
         </div>
       </header>

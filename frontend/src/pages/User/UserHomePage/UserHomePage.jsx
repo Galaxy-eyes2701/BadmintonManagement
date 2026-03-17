@@ -5,6 +5,7 @@ import styles from "./UserHomePage.module.css";
 const UserHomePage = () => {
   const auth = useAuth();
   const navigate = useNavigate();
+  const isAuthenticated = auth?.isAuthenticated && auth?.token;
 
   const displayName =
     auth?.user?.fullName ||
@@ -18,9 +19,19 @@ const UserHomePage = () => {
       <section className={styles.hero}>
         <div className={styles.heroBadge}>🏆 Hệ thống đặt sân thông minh</div>
         <h1 className={styles.heroTitle}>
-          Chào mừng trở lại,
-          <br />
-          <span className={styles.heroName}>{displayName}! 👋</span>
+          {isAuthenticated ? (
+            <>
+              Chào mừng trở lại,
+              <br />
+              <span className={styles.heroName}>{displayName}! 👋</span>
+            </>
+          ) : (
+            <>
+              Chào mừng đến với
+              <br />
+              <span className={styles.heroName}>Badminton Management! 👋</span>
+            </>
+          )}
         </h1>
         <p className={styles.heroDesc}>
           Đặt sân nhanh chóng, theo dõi lịch chơi và nhận ưu đãi hấp dẫn từ
@@ -33,12 +44,21 @@ const UserHomePage = () => {
           >
             <span>🏟️</span> Đặt sân ngay
           </button>
-          <button
-            className={styles.btnOutline}
-            onClick={() => navigate("/user/history")}
-          >
-            <span>📋</span> Lịch sử của tôi
-          </button>
+          {isAuthenticated ? (
+            <button
+              className={styles.btnOutline}
+              onClick={() => navigate("/user/history")}
+            >
+              <span>📋</span> Lịch sử của tôi
+            </button>
+          ) : (
+            <button
+              className={styles.btnOutline}
+              onClick={() => navigate("/login")}
+            >
+              <span>🔐</span> Đăng nhập
+            </button>
+          )}
         </div>
       </section>
 

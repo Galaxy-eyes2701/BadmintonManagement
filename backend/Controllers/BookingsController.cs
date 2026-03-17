@@ -47,17 +47,18 @@ namespace backend.Controllers
         // GET /api/bookings/available-courts
         [HttpGet("available-courts")]
         public async Task<IActionResult> GetAvailableCourts(
-            [FromQuery] DateTime date,
+            [FromQuery] string date,
             [FromQuery] int? branchId = null,
             [FromQuery] int? courtTypeId = null)
         {
-            if (date == default)
-                return BadRequest(new { message = "Vui lòng cung cấp ngày hợp lệ" });
-            if (date.Date < DateTime.Today)
+            if (!DateTime.TryParse(date, out var parsedDate))
+                return BadRequest(new { message = "Vui lòng cung cấp ngày hợp lệ (định dạng YYYY-MM-DD)" });
+            
+            if (parsedDate.Date < DateTime.Today)
                 return BadRequest(new { message = "Không thể xem lịch sân trong quá khứ" });
 
-            var result = await _bookingService.GetAvailableCourtsAsync(date, branchId, courtTypeId);
-            return Ok(new { success = true, date = date.ToString("dd/MM/yyyy"), data = result });
+            var result = await _bookingService.GetAvailableCourtsAsync(parsedDate, branchId, courtTypeId);
+            return Ok(new { success = true, date = parsedDate.ToString("dd/MM/yyyy"), data = result });
         }
 
         // POST /api/bookings

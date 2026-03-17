@@ -77,8 +77,8 @@ namespace backend.Services
                     return new AvailableSlotDto
                     {
                         TimeSlotId = ts.Id,
-                        StartTime = ts.StartTime.ToString(@"hh\:mm"),
-                        EndTime = ts.EndTime.ToString(@"hh\:mm"),
+                        StartTime = ts.StartTime.ToString(@"HH\:mm"),
+                        EndTime = ts.EndTime.ToString(@"HH\:mm"),
                         Price = price?.Price ?? 0,
                         IsAvailable = !isTaken && (price?.Price ?? 0) > 0
                     };
@@ -409,11 +409,13 @@ namespace backend.Services
                 .Select(b => b.Id)
                 .ToListAsync();
 
+            // Chỉ lấy orders liên kết với bookings của user
+            // (Không lấy orders có BookingId = null vì không xác định được chủ sở hữu)
             var orders = await _db.Orders
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Product)
                     .ThenInclude(p => p.Category)
-                .Where(o => o.BookingId == null || userBookingIds.Contains(o.BookingId.Value))
+                .Where(o => o.BookingId != null && userBookingIds.Contains(o.BookingId.Value))
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
 

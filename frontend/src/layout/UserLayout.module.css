@@ -143,6 +143,48 @@
   color: #dc2626;
 }
 
+/* ── AUTH BUTTONS (Guest) ── */
+.authButtons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.loginBtn {
+  padding: 7px 16px;
+  border: 1.5px solid #0f766e;
+  border-radius: 8px;
+  background: transparent;
+  color: #0f766e;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.loginBtn:hover {
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.registerBtn {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #14b8a6, #0f766e);
+  color: white;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.registerBtn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
 /* ── MAIN ── */
 .main {
   max-width: 1280px;
