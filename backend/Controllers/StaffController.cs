@@ -3,6 +3,8 @@ using backend.Models;
 using backend.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace backend.Controllers
 {
@@ -25,7 +27,66 @@ namespace backend.Controllers
         }
 
         // =======================================================
-        // 1. API LẤY CHI TIẾT HÓA ĐƠN TRƯỚC KHI TẤT TOÁN 
+        // HÀM BẢO MẬT: TỰ ĐỘNG LẤY CHI NHÁNH CỦA LỄ TÂN TỪ TOKEN
+        // =======================================================
+        private async Task<int?> GetStaffBranchIdAsync()
+        {
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ")) return null;
+
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                var jwt = handler.ReadJwtToken(token);
+                // Lấy ID của User từ Token
+                var idClaim = jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "nameid" || c.Type == "sub");
+
+                if (idClaim != null && int.TryParse(idClaim.Value, out int userId))
+                {
+                    var user = await _context.Users.FindAsync(userId);
+                    return user?.BranchId; // Trả về ID Chi nhánh của nhân viên này
+                }
+            }
+            catch { }
+            return null;
+        }
+        // =======================================================
+        // TÍNH TOÁN TRƯỚC SỐ BUỔI VÀ TỔNG TIỀN (PREVIEW)
+        // =======================================================
+        [HttpGet("preview-fixed-price")]
+        public async Task<IActionResult> PreviewFixedPrice([FromQuery] int courtId, [FromQuery] int timeSlotId, [FromQuery] int dayOfWeek, [FromQuery] string startDate, [FromQuery] string endDate)
+        {
+            if (!DateOnly.TryParse(startDate, out DateOnly start) || !DateOnly.TryParse(endDate, out DateOnly end))
+                return BadRequest("Ngày không hợp lệ.");
+
+            if (start > end) return Ok(new { playDays = 0, unitPrice = 0, totalPrice = 0 });
+
+            // 1. Tính số buổi đá hợp lệ
+            int playDays = 0;
+            var tempDate = start;
+            while (tempDate <= end)
+            {
+                int csharpDow = (int)tempDate.DayOfWeek;
+                int vnDow = csharpDow == 0 ? 8 : csharpDow + 1;
+                if (vnDow == dayOfWeek) playDays++;
+                tempDate = tempDate.AddDays(1);
+            }
+
+            if (playDays == 0) return Ok(new { playDays = 0, unitPrice = 0, totalPrice = 0 });
+
+            // 2. Tra cứu giá chuẩn 1 ca
+            var court = await _context.Courts.FindAsync(courtId);
+            if (court == null) return NotFound("Không tìm thấy sân");
+
+            var priceConfig = await _context.PriceConfigs.FirstOrDefaultAsync(p => p.CourtTypeId == court.CourtTypeId && p.TimeSlotId == timeSlotId && p.DayOfWeek == dayOfWeek);
+            decimal unitPrice = priceConfig != null ? priceConfig.Price : 50000; // Giá mặc định 50k nếu Admin chưa setup
+
+            // 3. Trả kết quả về cho React
+            return Ok(new { playDays = playDays, unitPrice = unitPrice, totalPrice = playDays * unitPrice });
+        }
+        // =======================================================
+        // 1. LẤY CHI TIẾT HÓA ĐƠN TRƯỚC KHI TẤT TOÁN 
         // =======================================================
         [HttpGet("booking-bill/{bookingId}")]
         public async Task<IActionResult> GetBookingBill(int bookingId)
@@ -40,7 +101,6 @@ namespace backend.Controllers
             decimal posTotal = booking.Orders.Sum(o => o.TotalAmount);
             decimal alreadyPaid = booking.Payments.Where(p => p.Status == "success").Sum(p => p.Amount);
 
-            // FIX LỖI 2: Nếu đơn đã hoàn tất thì tiền nợ ép bằng 0 luôn, khỏi tính toán lằng nhằng
             decimal remainingAmount = 0;
             if (booking.Status != "completed")
             {
@@ -67,44 +127,13 @@ namespace backend.Controllers
         }
 
         // =======================================================
-        // TÍNH NĂNG MỚI: API GIA HẠN CA TIẾP THEO
-        // =======================================================
-        [HttpPost("extend-booking/{bookingId}")]
-        public async Task<IActionResult> ExtendBooking(int bookingId, [FromQuery] int courtId, [FromQuery] int nextSlotId)
-        {
-            var booking = await _context.Bookings.FindAsync(bookingId);
-            if (booking == null) return NotFound("Không tìm thấy đơn.");
-            if (booking.Status == "completed") return BadRequest("Đơn đã thanh toán, không thể gia hạn.");
-
-            // Kiểm tra xem ca sau có bị ai hớt tay trên chưa
-            var today = DateOnly.FromDateTime(DateTime.Now);
-            var isBooked = await _context.BookingDetails.AnyAsync(bd => bd.CourtId == courtId && bd.TimeSlotId == nextSlotId && bd.PlayDate == today && bd.Booking.Status != "cancelled");
-            if (isBooked) return BadRequest("Ca tiếp theo đã có người khác đặt mất rồi!");
-
-            // Lấy giá của ca cũ để chép sang ca mới
-            var prevDetail = await _context.BookingDetails.FirstOrDefaultAsync(bd => bd.BookingId == bookingId && bd.CourtId == courtId);
-            decimal price = prevDetail != null ? prevDetail.PriceSnapshot : 50000;
-
-            // Ghi thêm 1 bản ghi vào sân ca sau (cùng mã Booking cũ)
-            var newDetail = new BookingDetail { BookingId = bookingId, CourtId = courtId, TimeSlotId = nextSlotId, PlayDate = today, PriceSnapshot = price };
-            _context.BookingDetails.Add(newDetail);
-
-            // Cộng dồn tiền vào tổng bill
-            booking.TotalPrice = (booking.TotalPrice ?? 0) + price;
-
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "Gia hạn thành công! Hệ thống đã khóa ca tiếp theo cho khách." });
-        }
-        // =======================================================
-        // 2. THANH TOÁN (CHECKOUT) & TRỪ VOUCHER, CỘNG ĐIỂM
+        // 2. THANH TOÁN (CHECKOUT) & TRỪ VOUCHER
         // =======================================================
         [HttpPost("checkout/{bookingId}")]
         public async Task<IActionResult> CheckoutBooking(int bookingId, [FromBody] CheckoutDto dto)
         {
             var booking = await _context.Bookings
-                .Include(b => b.User)
-                .Include(b => b.Orders)
-                .Include(b => b.Payments)
+                .Include(b => b.User).Include(b => b.Orders).Include(b => b.Payments)
                 .FirstOrDefaultAsync(b => b.Id == bookingId);
 
             if (booking == null) return NotFound("Không tìm thấy Booking");
@@ -116,7 +145,6 @@ namespace backend.Controllers
 
             decimal discountAmount = 0;
 
-            // KIỂM TRA MÃ VOUCHER NẾU LỄ TÂN CÓ CHỌN
             if (!string.IsNullOrEmpty(dto.VoucherCode))
             {
                 var voucher = await _context.Vouchers.FirstOrDefaultAsync(v => v.Code == dto.VoucherCode);
@@ -126,7 +154,7 @@ namespace backend.Controllers
                 if (voucher.UsageLimit <= 0) return BadRequest("Mã Voucher đã hết lượt sử dụng!");
 
                 discountAmount = voucher.DiscountAmount;
-                voucher.UsageLimit -= 1; // Trừ 1 lượt sử dụng
+                voucher.UsageLimit -= 1;
             }
 
             decimal remainingAmount = (courtTotal + posTotal) - discountAmount - alreadyPaid;
@@ -146,7 +174,6 @@ namespace backend.Controllers
 
             booking.Status = "completed";
 
-            // TÍCH ĐIỂM DỰA TRÊN TIỀN THỰC TRẢ
             int pointsEarned = 0;
             if (booking.User != null && booking.User.Role == "Customer")
             {
@@ -159,28 +186,56 @@ namespace backend.Controllers
             }
 
             await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = $"Thanh toán thành công! Khách được cộng {pointsEarned} điểm.",
-                pointsAdded = pointsEarned
-            });
+            return Ok(new { message = $"Thanh toán thành công! Khách được cộng {pointsEarned} điểm.", pointsAdded = pointsEarned });
         }
 
         // =======================================================
-        // 3. LẤY DANH SÁCH SÂN ĐANG ĐÁ HÔM NAY (CHO MÁY POS)
+        // 3. GIA HẠN CA SAU
+        // =======================================================
+        [HttpPost("extend-booking/{bookingId}")]
+        public async Task<IActionResult> ExtendBooking(int bookingId, [FromQuery] int courtId, [FromQuery] int nextSlotId)
+        {
+            var booking = await _context.Bookings.FindAsync(bookingId);
+            if (booking == null) return NotFound("Không tìm thấy đơn.");
+            if (booking.Status == "completed") return BadRequest("Đơn đã thanh toán, không thể gia hạn.");
+
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            var isBooked = await _context.BookingDetails.AnyAsync(bd => bd.CourtId == courtId && bd.TimeSlotId == nextSlotId && bd.PlayDate == today && bd.Booking.Status != "cancelled");
+            if (isBooked) return BadRequest("Ca tiếp theo đã có người khác đặt mất rồi!");
+
+            var court = await _context.Courts.FindAsync(courtId);
+            int csharpDow = (int)today.DayOfWeek;
+            int vnDow = csharpDow == 0 ? 8 : csharpDow + 1;
+
+            var priceConfig = await _context.PriceConfigs.FirstOrDefaultAsync(p => p.CourtTypeId == court.CourtTypeId && p.TimeSlotId == nextSlotId && p.DayOfWeek == vnDow);
+            decimal actualPrice = priceConfig != null ? priceConfig.Price : 50000;
+
+            var newDetail = new BookingDetail { BookingId = bookingId, CourtId = courtId, TimeSlotId = nextSlotId, PlayDate = today, PriceSnapshot = actualPrice };
+            _context.BookingDetails.Add(newDetail);
+
+            booking.TotalPrice = (booking.TotalPrice ?? 0) + actualPrice;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"Gia hạn thành công! Phí ca mới là {actualPrice:N0}đ" });
+        }
+
+        // =======================================================
+        // 4. QUẢN LÝ LỊCH SÂN THEO NGÀY (LỌC THEO CHI NHÁNH TỪ TOKEN)
         // =======================================================
         [HttpGet("active-bookings")]
         public async Task<IActionResult> GetActiveBookings()
         {
+            var branchId = await GetStaffBranchIdAsync();
             var today = DateOnly.FromDateTime(DateTime.Now);
 
             var bookings = await _context.Bookings
                 .Include(b => b.User)
                 .Include(b => b.BookingDetails).ThenInclude(bd => bd.Court)
                 .Include(b => b.BookingDetails).ThenInclude(bd => bd.TimeSlot)
-                .Where(b => b.Status == "confirmed")
+                .Where(b => b.Status == "confirmed" || b.Status == "pending")
                 .Where(b => b.BookingDetails.Any(bd => bd.PlayDate == today))
+                // BẢO MẬT: Chỉ lấy khách đang đá ở chi nhánh của Lễ tân này
+                .Where(b => branchId == null || b.BookingDetails.Any(bd => bd.Court.BranchId == branchId))
                 .Select(b => new
                 {
                     id = b.Id,
@@ -195,16 +250,22 @@ namespace backend.Controllers
             return Ok(bookings);
         }
 
-        // =======================================================
-        // 4. QUẢN LÝ LỊCH SÂN THEO NGÀY (MÀN HÌNH CHÍNH)
-        // =======================================================
         [HttpGet("daily-schedule")]
         public async Task<IActionResult> GetDailySchedule([FromQuery] string date)
         {
             if (!DateOnly.TryParse(date, out DateOnly targetDate))
                 return BadRequest("Định dạng ngày không hợp lệ.");
 
-            var courts = await _context.Courts.OrderBy(c => c.Name).ToListAsync();
+            var branchId = await GetStaffBranchIdAsync();
+
+            // CHỈ TRẢ VỀ CÁC SÂN CỦA CHI NHÁNH ĐÓ
+            var courtQuery = _context.Courts.AsQueryable();
+            if (branchId.HasValue)
+            {
+                courtQuery = courtQuery.Where(c => c.BranchId == branchId.Value);
+            }
+            var courts = await courtQuery.OrderBy(c => c.Name).ToListAsync();
+
             var timeSlots = await _context.TimeSlots.OrderBy(t => t.StartTime).ToListAsync();
 
             var bookingsForDay = await _context.BookingDetails
@@ -250,20 +311,30 @@ namespace backend.Controllers
         }
 
         // =======================================================
-        // 5. QUẢN LÝ HỢP ĐỒNG CỐ ĐỊNH (KHÁCH RUỘT) & EMAIL
+        // 5. QUẢN LÝ HỢP ĐỒNG CỐ ĐỊNH (LỌC THEO CHI NHÁNH TỪ TOKEN)
         // =======================================================
         [HttpGet("setup-data")]
         public async Task<IActionResult> GetSetupData()
         {
+            var branchId = await GetStaffBranchIdAsync();
+
             var customers = await _context.Users.Where(u => u.Role == "Customer").Select(u => new { u.Id, u.FullName, u.Phone }).ToListAsync();
-            var courts = await _context.Courts.Select(c => new { c.Id, c.Name }).ToListAsync();
+
+            // CHỈ ĐỔ RA DANH SÁCH SÂN Ở CHI NHÁNH CỦA LỄ TÂN
+            var courtQuery = _context.Courts.AsQueryable();
+            if (branchId.HasValue) courtQuery = courtQuery.Where(c => c.BranchId == branchId.Value);
+            var courts = await courtQuery.Select(c => new { c.Id, c.Name }).ToListAsync();
+
             var timeSlots = await _context.TimeSlots.Select(t => new { t.Id, time = $"{t.StartTime:HH\\:mm} - {t.EndTime:HH\\:mm}" }).ToListAsync();
+
             return Ok(new { customers, courts, timeSlots });
         }
 
         [HttpGet("fixed-schedules")]
         public async Task<IActionResult> GetFixedSchedules()
         {
+            var branchId = await GetStaffBranchIdAsync();
+
             var query = from fs in _context.FixedSchedules
                         join u in _context.Users on fs.UserId equals u.Id into userGroup
                         from u in userGroup.DefaultIfEmpty()
@@ -271,6 +342,7 @@ namespace backend.Controllers
                         from c in courtGroup.DefaultIfEmpty()
                         join t in _context.TimeSlots on fs.TimeSlotId equals t.Id into timeGroup
                         from t in timeGroup.DefaultIfEmpty()
+                        where branchId == null || c.BranchId == branchId // CHỈ XEM HỢP ĐỒNG CỦA CƠ SỞ MÌNH
                         select new { fs, u, c, t };
 
             var schedules = await query.ToListAsync();
@@ -320,25 +392,25 @@ namespace backend.Controllers
                 return BadRequest($"LỖI TRÙNG LỊCH vào các ngày: {conflictDates}.");
             }
 
-            var fixedSchedule = new FixedSchedule { UserId = dto.UserId, CourtId = dto.CourtId, TimeSlotId = dto.TimeSlotId, DayOfWeek = dto.DayOfWeek, StartDate = startDate, EndDate = endDate, TotalPrice = dto.TotalPrice, Status = "active" };
+            // MỚI: Bắt buộc lấy giá chuẩn từ Backend, không tin tưởng TotalPrice do Frontend gửi lên
+            var court = await _context.Courts.FindAsync(dto.CourtId);
+            var priceConfig = await _context.PriceConfigs.FirstOrDefaultAsync(p => p.CourtTypeId == court.CourtTypeId && p.TimeSlotId == dto.TimeSlotId && p.DayOfWeek == dto.DayOfWeek);
+            decimal unitPrice = priceConfig != null ? priceConfig.Price : 50000;
+            decimal calculatedTotalPrice = playDates.Count * unitPrice;
+
+            var fixedSchedule = new FixedSchedule { UserId = dto.UserId, CourtId = dto.CourtId, TimeSlotId = dto.TimeSlotId, DayOfWeek = dto.DayOfWeek, StartDate = startDate, EndDate = endDate, TotalPrice = calculatedTotalPrice, Status = "active" };
             _context.FixedSchedules.Add(fixedSchedule);
             await _context.SaveChangesAsync();
 
-            var currentDate = startDate;
-            int totalBookingsCreated = 0;
-            while (currentDate <= endDate)
+            // MỚI: Duyệt qua danh sách playDates và lưu kèm Đơn Giá (unitPrice)
+            foreach (var date in playDates)
             {
-                int csharpDow = (int)currentDate.DayOfWeek;
-                int vnDow = csharpDow == 0 ? 8 : csharpDow + 1;
-                if (vnDow == dto.DayOfWeek)
-                {
-                    var booking = new Booking { UserId = dto.UserId, TotalPrice = 0, Status = "confirmed", CreatedAt = DateTime.Now };
-                    _context.Bookings.Add(booking);
-                    await _context.SaveChangesAsync();
-                    _context.BookingDetails.Add(new BookingDetail { BookingId = booking.Id, CourtId = dto.CourtId, TimeSlotId = dto.TimeSlotId, PlayDate = currentDate, PriceSnapshot = 0 });
-                    totalBookingsCreated++;
-                }
-                currentDate = currentDate.AddDays(1);
+                var booking = new Booking { UserId = dto.UserId, TotalPrice = unitPrice, Status = "confirmed", CreatedAt = DateTime.Now };
+                _context.Bookings.Add(booking);
+                await _context.SaveChangesAsync();
+
+                // Đã fix lỗi PriceSnapshot = 0
+                _context.BookingDetails.Add(new BookingDetail { BookingId = booking.Id, CourtId = dto.CourtId, TimeSlotId = dto.TimeSlotId, PlayDate = date, PriceSnapshot = unitPrice });
             }
             await _context.SaveChangesAsync();
 
@@ -352,9 +424,8 @@ namespace backend.Controllers
             }
             catch { }
 
-            return Ok(new { message = "Tạo Hợp đồng thành công!", autoBookings = totalBookingsCreated });
+            return Ok(new { message = "Tạo Hợp đồng thành công!", autoBookings = playDates.Count });
         }
-
         [HttpPut("fixed-schedules/{id}/cancel")]
         public async Task<IActionResult> CancelFixedSchedule(int id)
         {
@@ -379,7 +450,20 @@ namespace backend.Controllers
         [HttpGet("bookings")]
         public async Task<IActionResult> GetAllBookings([FromQuery] string search = "", [FromQuery] string status = "")
         {
-            var query = _context.Bookings.Include(b => b.User).Include(b => b.BookingDetails).ThenInclude(bd => bd.Court).Include(b => b.BookingDetails).ThenInclude(bd => bd.TimeSlot).AsQueryable();
+            var branchId = await GetStaffBranchIdAsync();
+
+            var query = _context.Bookings
+                .Include(b => b.User)
+                .Include(b => b.BookingDetails).ThenInclude(bd => bd.Court)
+                .Include(b => b.BookingDetails).ThenInclude(bd => bd.TimeSlot)
+                .AsQueryable();
+
+            // CHỈ XEM BOOKING CỦA CHI NHÁNH MÌNH QUẢN LÝ
+            if (branchId.HasValue)
+            {
+                query = query.Where(b => b.BookingDetails.Any(bd => bd.Court.BranchId == branchId.Value));
+            }
+
             if (!string.IsNullOrEmpty(search)) query = query.Where(b => b.User.FullName.Contains(search) || b.User.Phone.Contains(search));
             if (!string.IsNullOrEmpty(status)) query = query.Where(b => b.Status == status);
 
@@ -411,7 +495,7 @@ namespace backend.Controllers
         }
 
         // =======================================================
-        // 7. API TẠO DỮ LIỆU TEST (HỖ TRỢ PASSWORD HASH)
+        // 7. API TẠO DỮ LIỆU TEST (HỖ TRỢ BRANCH_ID)
         // =======================================================
         [HttpGet("seed-test-data")]
         public async Task<IActionResult> SeedTestData()
@@ -420,20 +504,22 @@ namespace backend.Controllers
             {
                 var hardcodedPassword = _passwordService.HashPassword("123456");
 
+                // LỄ TÂN ĐƯỢC GẮN VÀO CHI NHÁNH 1 (BranchId = 1)
                 var staff = await _context.Users.FirstOrDefaultAsync(u => u.Phone == "0988111222");
-                if (staff == null) _context.Users.Add(new User { FullName = "Nguyễn Văn Lễ Tân", Phone = "0988111222", Email = "staff_test@fpt.edu.vn", PasswordHash = hardcodedPassword, Role = "Staff", LoyaltyPoints = 0 });
-                else staff.PasswordHash = hardcodedPassword;
+                if (staff == null) _context.Users.Add(new User { FullName = "Nguyễn Văn Lễ Tân", Phone = "0988111222", Email = "staff_test@fpt.edu.vn", PasswordHash = hardcodedPassword, Role = "Staff", LoyaltyPoints = 0, BranchId = 1 });
+                else { staff.PasswordHash = hardcodedPassword; staff.BranchId = 1; }
 
+                // KHÁCH HÀNG THÌ KHÔNG BỊ TRÓI VÀO CHI NHÁNH NÀO (BranchId = null)
                 var customer = await _context.Users.FirstOrDefaultAsync(u => u.Phone == "0909333444");
-                if (customer == null) _context.Users.Add(new User { FullName = "Trần Khách VIP", Phone = "0909333444", Email = "khachvip@gmail.com", PasswordHash = hardcodedPassword, Role = "Customer", LoyaltyPoints = 50 });
-                else { customer.PasswordHash = hardcodedPassword; customer.LoyaltyPoints = 50; }
+                if (customer == null) _context.Users.Add(new User { FullName = "Trần Khách VIP", Phone = "0909333444", Email = "khachvip@gmail.com", PasswordHash = hardcodedPassword, Role = "Customer", LoyaltyPoints = 50, BranchId = null });
+                else { customer.PasswordHash = hardcodedPassword; customer.LoyaltyPoints = 50; customer.BranchId = null; }
 
                 if (!await _context.Vouchers.AnyAsync(v => v.Code == "FPT50K"))
                     _context.Vouchers.Add(new Voucher { Code = "FPT50K", DiscountAmount = 50000, UsageLimit = 10, ExpiryDate = DateOnly.FromDateTime(DateTime.Now.AddYears(1)) });
 
                 await _context.SaveChangesAsync();
 
-                return Ok(new { message = "Tạo dữ liệu Test thành công!", accounts = new { staff = "0988111222 - Pass: 123456", customer = "0909333444 - Pass: 123456", voucher = "FPT50K" } });
+                return Ok(new { message = "Tạo dữ liệu Test thành công! Lễ tân đã được gán vào Cơ sở 1.", accounts = new { staff = "0988111222 - Pass: 123456", customer = "0909333444 - Pass: 123456", voucher = "FPT50K" } });
             }
             catch (Exception ex) { return BadRequest("Lỗi: " + ex.Message); }
         }

@@ -3,26 +3,25 @@ import axios from 'axios';
 import styles from './FixedSchedule.module.css';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-
-// IMPORT COMPONENT PHÂN TRANG (Giống hệt bên BookingManagement)
 import Pagination from '../../../components/Admin/Pagination.jsx';
 
 const FixedSchedule = () => {
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(false);
-
-    // State chứa dữ liệu cho Dropdown
     const [setupData, setSetupData] = useState({ customers: [], courts: [], timeSlots: [] });
-
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Xóa totalPrice đi vì backend sẽ tự tính
     const [formData, setFormData] = useState({
-        userId: '', courtId: '', timeSlotId: '', dayOfWeek: '2', startDate: '', endDate: '', totalPrice: ''
+        userId: '', courtId: '', timeSlotId: '', dayOfWeek: '2', startDate: '', endDate: ''
     });
 
-    // --- STATE CHO LỌC & PHÂN TRANG ---
-    const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
+    // STATE MỚI: CHỨA THÔNG TIN BILL TẠM TÍNH
+    const [previewBill, setPreviewBill] = useState({ playDays: 0, unitPrice: 0, totalPrice: 0 });
+
+    const [statusFilter, setStatusFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(6); // Để 6 thẻ 1 trang cho cân đối (mỗi hàng 3 thẻ)
+    const [itemsPerPage, setItemsPerPage] = useState(6);
 
     const fetchData = async () => {
         setLoading(true);
@@ -50,13 +49,28 @@ const FixedSchedule = () => {
     };
 
     useEffect(() => { fetchData(); }, []);
+    useEffect(() => { setCurrentPage(1); }, [statusFilter]);
 
-    // RESET về trang 1 mỗi khi đổi Tab lọc
+    // =======================================================
+    // EFFECT TỰ ĐỘNG TÍNH TIỀN KHI THAY ĐỔI FORM
+    // =======================================================
     useEffect(() => {
-        setCurrentPage(1);
-    }, [statusFilter]);
+        const calculatePrice = async () => {
+            const { courtId, timeSlotId, dayOfWeek, startDate, endDate } = formData;
+            if (courtId && timeSlotId && dayOfWeek && startDate && endDate && startDate <= endDate) {
+                try {
+                    const res = await axios.get(`http://localhost:5043/api/staff/preview-fixed-price?courtId=${courtId}&timeSlotId=${timeSlotId}&dayOfWeek=${dayOfWeek}&startDate=${startDate}&endDate=${endDate}`);
+                    setPreviewBill(res.data);
+                } catch (err) {
+                    console.error(err);
+                }
+            } else {
+                setPreviewBill({ playDays: 0, unitPrice: 0, totalPrice: 0 });
+            }
+        };
+        calculatePrice();
+    }, [formData.courtId, formData.timeSlotId, formData.dayOfWeek, formData.startDate, formData.endDate]);
 
-    // --- XỬ LÝ LỌC & CẮT DỮ LIỆU PHÂN TRANG ---
     const filteredSchedules = schedules.filter(item => {
         if (statusFilter === 'all') return true;
         if (statusFilter === 'active') return item.status === 'active' || item.status === 'warning';
@@ -65,12 +79,13 @@ const FixedSchedule = () => {
     });
 
     const totalPages = Math.ceil(filteredSchedules.length / itemsPerPage);
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentSchedules = filteredSchedules.slice(indexOfFirstItem, indexOfLastItem);
+    const currentSchedules = filteredSchedules.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (previewBill.playDays === 0) {
+            return toast.warning("Khoảng thời gian này không có buổi đá nào hợp lệ!");
+        }
         try {
             const res = await axios.post('http://localhost:5043/api/staff/fixed-schedules', formData);
             toast.success(`${res.data.message} Đã khóa sân tự động ${res.data.autoBookings} ngày!`);
@@ -85,17 +100,12 @@ const FixedSchedule = () => {
         if (window.confirm(`Bạn có chắc muốn HỦY hợp đồng của ${teamName} không? Các lịch sân chưa đá sẽ được giải phóng ngay lập tức!`)) {
             try {
                 const res = await axios.put(`http://localhost:5043/api/staff/fixed-schedules/${id}/cancel`);
-                toast.success(`${res.data.message} Đã nhả ${res.data.freedCourts} ngày trống cho khách khác đặt!`);
+                toast.success(`${res.data.message} Đã nhả ${res.data.freedCourts} ngày trống cho khách!`);
                 fetchData();
             } catch (error) {
                 toast.error(error.response?.data?.message || error.response?.data || 'Có lỗi xảy ra khi hủy hợp đồng');
             }
         }
-    };
-
-    const handlePriceChange = (e) => {
-        const rawValue = e.target.value.replace(/\D/g, '');
-        setFormData({ ...formData, totalPrice: rawValue });
     };
 
     const getCardStyle = (status) => {
@@ -125,34 +135,16 @@ const FixedSchedule = () => {
             </header>
 
             <div className={styles.mainContent}>
-                {/* --- TAB LỌC TRẠNG THÁI --- */}
                 <div className={styles.filterContainer}>
-                    <button
-                        className={`${styles.filterBtn} ${statusFilter === 'all' ? styles.filterBtnActive : ''}`}
-                        onClick={() => setStatusFilter('all')}
-                    >
-                        Tất cả Hợp đồng
-                    </button>
-                    <button
-                        className={`${styles.filterBtn} ${statusFilter === 'active' ? styles.filterBtnActive : ''}`}
-                        onClick={() => setStatusFilter('active')}
-                    >
-                        Đang hoạt động
-                    </button>
-                    <button
-                        className={`${styles.filterBtn} ${statusFilter === 'inactive' ? styles.filterBtnActive : ''}`}
-                        onClick={() => setStatusFilter('inactive')}
-                    >
-                        Đã kết thúc / Đã hủy
-                    </button>
+                    <button className={`${styles.filterBtn} ${statusFilter === 'all' ? styles.filterBtnActive : ''}`} onClick={() => setStatusFilter('all')}>Tất cả Hợp đồng</button>
+                    <button className={`${styles.filterBtn} ${statusFilter === 'active' ? styles.filterBtnActive : ''}`} onClick={() => setStatusFilter('active')}>Đang hoạt động</button>
+                    <button className={`${styles.filterBtn} ${statusFilter === 'inactive' ? styles.filterBtnActive : ''}`} onClick={() => setStatusFilter('inactive')}>Đã kết thúc / Đã hủy</button>
                 </div>
 
                 {loading ? (
                     <div style={{ textAlign: 'center', color: '#64748b', fontWeight: 'bold', padding: '40px' }}>Đang tải dữ liệu...</div>
                 ) : filteredSchedules.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#64748b', padding: '40px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                        Không có hợp đồng nào phù hợp.
-                    </div>
+                    <div style={{ textAlign: 'center', color: '#64748b', padding: '40px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>Không có hợp đồng nào phù hợp.</div>
                 ) : (
                     <>
                         <div className={styles.grid}>
@@ -161,41 +153,18 @@ const FixedSchedule = () => {
                                     <div className={styles.cardHeader}>
                                         <div>
                                             <h3 className={styles.teamName}>{item.teamName}</h3>
-                                            <p className={styles.phone}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>call</span>
-                                                {item.phone}
-                                            </p>
+                                            <p className={styles.phone}><span className="material-symbols-outlined" style={{ fontSize: '16px' }}>call</span>{item.phone}</p>
                                         </div>
                                         {getBadge(item.status)}
                                     </div>
-
-                                    <div className={styles.infoRow}>
-                                        <span className={`material-symbols-outlined ${styles.icon}`}>stadium</span>
-                                        <strong>{item.courtName}</strong>
-                                    </div>
-                                    <div className={styles.infoRow}>
-                                        <span className={`material-symbols-outlined ${styles.icon}`}>schedule</span>
-                                        <span>{item.timeInfo}</span>
-                                    </div>
-                                    <div className={styles.infoRow}>
-                                        <span className={`material-symbols-outlined ${styles.icon}`}>event_available</span>
-                                        <span>Thời hạn: {item.duration}</span>
-                                    </div>
-                                    <div className={styles.infoRow}>
-                                        <span className={`material-symbols-outlined ${styles.icon}`}>payments</span>
-                                        <span style={{ color: '#059669', fontWeight: 'bold' }}>Đã thu: {formatCurrency(item.totalPrice)} VNĐ</span>
-                                    </div>
-
+                                    <div className={styles.infoRow}><span className={`material-symbols-outlined ${styles.icon}`}>stadium</span><strong>{item.courtName}</strong></div>
+                                    <div className={styles.infoRow}><span className={`material-symbols-outlined ${styles.icon}`}>schedule</span><span>{item.timeInfo}</span></div>
+                                    <div className={styles.infoRow}><span className={`material-symbols-outlined ${styles.icon}`}>event_available</span><span>Thời hạn: {item.duration}</span></div>
+                                    <div className={styles.infoRow}><span className={`material-symbols-outlined ${styles.icon}`}>payments</span><span style={{ color: '#059669', fontWeight: 'bold' }}>Đã thu: {formatCurrency(item.totalPrice)} VNĐ</span></div>
                                     <div className={styles.divider}></div>
-
                                     <div className={styles.actionArea}>
                                         {item.status !== 'cancelled' && item.status !== 'expired' && (
-                                            <button
-                                                className={styles.actionBtn}
-                                                title="Hủy hợp đồng"
-                                                style={{ color: '#ef4444', border: '1px solid #fecaca', background: '#fef2f2' }}
-                                                onClick={() => handleCancelSchedule(item.id, item.teamName)}
-                                            >
+                                            <button className={styles.actionBtn} title="Hủy hợp đồng" style={{ color: '#ef4444', border: '1px solid #fecaca', background: '#fef2f2' }} onClick={() => handleCancelSchedule(item.id, item.teamName)}>
                                                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete_forever</span>
                                                 <span style={{ fontSize: '13px', marginLeft: '4px', fontWeight: '600' }}>Hủy HĐ</span>
                                             </button>
@@ -204,34 +173,17 @@ const FixedSchedule = () => {
                                 </div>
                             ))}
                         </div>
-
-                        {/* --- COMPONENT PHÂN TRANG --- */}
-                        {filteredSchedules.length > 0 && (
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                itemsPerPage={itemsPerPage}
-                                totalItems={filteredSchedules.length}
-                                onPageChange={setCurrentPage}
-                                onItemsPerPageChange={(newSize) => {
-                                    setItemsPerPage(newSize);
-                                    setCurrentPage(1); // Reset trang khi đổi số lượng hiển thị
-                                }}
-                            />
-                        )}
+                        {filteredSchedules.length > 0 && <Pagination currentPage={currentPage} totalPages={totalPages} itemsPerPage={itemsPerPage} totalItems={filteredSchedules.length} onPageChange={setCurrentPage} onItemsPerPageChange={(newSize) => { setItemsPerPage(newSize); setCurrentPage(1); }} />}
                     </>
                 )}
             </div>
 
-            {/* MODAL TẠO HỢP ĐỒNG GIỮ NGUYÊN... */}
             {isModalOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
                         <div className={styles.modalHeader}>
                             <h2 className={styles.modalTitle}>Tạo Hợp Đồng Khách Ruột</h2>
-                            <button className={styles.closeBtn} onClick={() => setIsModalOpen(false)}>
-                                <span className="material-symbols-outlined">close</span>
-                            </button>
+                            <button className={styles.closeBtn} onClick={() => setIsModalOpen(false)}><span className="material-symbols-outlined">close</span></button>
                         </div>
 
                         <form onSubmit={handleSubmit}>
@@ -239,9 +191,7 @@ const FixedSchedule = () => {
                                 <label>Khách hàng (Đội trưởng)</label>
                                 <select className={styles.formSelect} required value={formData.userId} onChange={e => setFormData({ ...formData, userId: e.target.value })}>
                                     <option value="">-- Chọn khách hàng --</option>
-                                    {setupData.customers.map(c => (
-                                        <option key={c.id} value={c.id}>{c.fullName} ({c.phone})</option>
-                                    ))}
+                                    {setupData.customers.map(c => <option key={c.id} value={c.id}>{c.fullName} ({c.phone})</option>)}
                                 </select>
                             </div>
 
@@ -250,19 +200,26 @@ const FixedSchedule = () => {
                                     <label>Chọn Sân</label>
                                     <select className={styles.formSelect} required value={formData.courtId} onChange={e => setFormData({ ...formData, courtId: e.target.value })}>
                                         <option value="">-- Chọn Sân --</option>
-                                        {setupData.courts.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
+                                        {setupData.courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
                                 </div>
                                 <div className={styles.formGroup}>
                                     <label>Chọn Ca</label>
                                     <select className={styles.formSelect} required value={formData.timeSlotId} onChange={e => setFormData({ ...formData, timeSlotId: e.target.value })}>
                                         <option value="">-- Chọn Ca --</option>
-                                        {setupData.timeSlots.map(t => (
-                                            <option key={t.id} value={t.id}>{t.time}</option>
-                                        ))}
+                                        {setupData.timeSlots.map(t => <option key={t.id} value={t.id}>{t.time}</option>)}
                                     </select>
+                                </div>
+                            </div>
+
+                            <div className={styles.row2}>
+                                <div className={styles.formGroup}>
+                                    <label>Ngày bắt đầu</label>
+                                    <input type="date" required className={styles.formInput} value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} />
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label>Ngày kết thúc</label>
+                                    <input type="date" required className={styles.formInput} value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} />
                                 </div>
                             </div>
 
@@ -279,34 +236,33 @@ const FixedSchedule = () => {
                                         <option value="8">Chủ nhật</option>
                                     </select>
                                 </div>
-                                <div className={styles.formGroup}>
-                                    <label>Tổng tiền thu 1 cục (VNĐ)</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className={styles.formInput}
-                                        value={formData.totalPrice ? formatCurrency(formData.totalPrice) : ''}
-                                        onChange={handlePriceChange}
-                                        placeholder="VD: 1.200.000"
-                                        style={{ fontWeight: 'bold', color: '#059669' }}
-                                    />
-                                </div>
-                            </div>
 
-                            <div className={styles.row2}>
+                                {/* KHU VỰC TỰ ĐỘNG TÍNH TOÁN HIỂN THỊ */}
                                 <div className={styles.formGroup}>
-                                    <label>Ngày bắt đầu</label>
-                                    <input type="date" required className={styles.formInput} value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} />
-                                </div>
-                                <div className={styles.formGroup}>
-                                    <label>Ngày kết thúc</label>
-                                    <input type="date" required className={styles.formInput} value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} />
+                                    <label>Chi tiết hóa đơn tạm tính</label>
+                                    <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                            <span style={{ color: '#64748b' }}>Số buổi đá hợp lệ:</span>
+                                            <strong>{previewBill.playDays} buổi</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                            <span style={{ color: '#64748b' }}>Đơn giá (Chuẩn giờ vàng):</span>
+                                            <strong>{formatCurrency(previewBill.unitPrice)} đ/ca</strong>
+                                        </div>
+                                        <div style={{ borderTop: '1px dashed #cbd5e1', margin: '8px 0' }}></div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontWeight: 'bold', color: '#0f172a' }}>TỔNG TIỀN:</span>
+                                            <span style={{ color: '#059669', fontSize: '16px', fontWeight: '900' }}>
+                                                {formatCurrency(previewBill.totalPrice)} đ
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             <div className={styles.actionBtns}>
                                 <button type="button" className={styles.btnCancel} onClick={() => setIsModalOpen(false)}>Hủy</button>
-                                <button type="submit" className={styles.btnSubmit}>Lưu & Tự động xếp lịch</button>
+                                <button type="submit" className={styles.btnSubmit} disabled={previewBill.playDays === 0}>Lưu & Tự động xếp lịch</button>
                             </div>
                         </form>
                     </div>

@@ -19,7 +19,10 @@ public partial class User
 
     public int? LoyaltyPoints { get; set; }
     public string Status { get; set; } = "active";
+    public int? BranchId { get; set; }
 
+
+    public virtual Branch? Branch { get; set; }
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual ICollection<FixedSchedule> FixedSchedules { get; set; } = new List<FixedSchedule>();
