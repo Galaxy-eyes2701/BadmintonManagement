@@ -31,7 +31,7 @@ public class AuthController : ControllerBase
     {
         if (await _context.Users.AnyAsync(u => u.Phone == registerDto.Phone))
         {
-            return BadRequest(new { message = "Phone number already registered" });
+            return BadRequest(new { message = "Số điện thoại này đã được đăng ký!" });
         }
 
         var user = new User
@@ -41,7 +41,8 @@ public class AuthController : ControllerBase
             Email = registerDto.Email,
             PasswordHash = _passwordService.HashPassword(registerDto.Password),
             Role = "Customer",
-            LoyaltyPoints = 0
+            LoyaltyPoints = 0,
+            Status = "active" // Đảm bảo tài khoản mới tạo luôn ở trạng thái active
         };
 
         _context.Users.Add(user);
@@ -58,9 +59,17 @@ public class AuthController : ControllerBase
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Phone == loginDto.Phone);
 
+        // 1. Kiểm tra sai SĐT hoặc Password
         if (user == null || !_passwordService.VerifyPassword(loginDto.Password, user.PasswordHash))
         {
-            return Unauthorized(new { message = "Invalid phone or password" });
+            return Unauthorized(new { message = "Số điện thoại hoặc mật khẩu không chính xác!" });
+        }
+
+        // 2. BẢO MẬT: Kiểm tra xem tài khoản có bị Admin Ban (Khóa) không?
+        if (user.Status != "active")
+        {
+            // Trả về mã lỗi 403 Forbidden thay vì 401
+            return StatusCode(403, new { message = "Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa. Vui lòng liên hệ Quản trị viên!" });
         }
 
         var token = _jwtService.GenerateToken(user);
@@ -74,15 +83,17 @@ public class AuthController : ControllerBase
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Phone == forgotPasswordDto.Phone);
 
-        if (user == null)
+        // BẢO MẬT: Không nên cho tài khoản bị khóa lấy lại mật khẩu
+        if (user == null || user.Status != "active")
         {
-            return Ok(new { message = "If the phone number exists, a reset token will be sent" });
+            return Ok(new { message = "Nếu số điện thoại tồn tại và đang hoạt động, mã xác nhận sẽ được gửi." });
         }
 
         var resetToken = _jwtService.GeneratePasswordResetToken(user);
 
-        return Ok(new { 
-            message = "Password reset token generated",
+        return Ok(new
+        {
+            message = "Mã khôi phục mật khẩu đã được tạo.",
             token = resetToken,
             phone = user.Phone
         });
@@ -99,7 +110,7 @@ public class AuthController : ControllerBase
             var purpose = token.Claims.FirstOrDefault(c => c.Type == "purpose")?.Value;
             if (purpose != "password_reset")
             {
-                return BadRequest(new { message = "Invalid token" });
+                return BadRequest(new { message = "Token không hợp lệ!" });
             }
 
             var userId = int.Parse(token.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value!);
@@ -107,17 +118,23 @@ public class AuthController : ControllerBase
 
             if (user == null || user.Phone != resetPasswordDto.Phone)
             {
-                return BadRequest(new { message = "Invalid token or phone" });
+                return BadRequest(new { message = "Token hoặc Số điện thoại không hợp lệ!" });
+            }
+
+            // Chặn luôn tài khoản bị khóa đổi pass
+            if (user.Status != "active")
+            {
+                return StatusCode(403, new { message = "Tài khoản đã bị khóa, không thể đổi mật khẩu!" });
             }
 
             user.PasswordHash = _passwordService.HashPassword(resetPasswordDto.NewPassword);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Password reset successfully" });
+            return Ok(new { message = "Đặt lại mật khẩu thành công!" });
         }
         catch (Exception)
         {
-            return BadRequest(new { message = "Invalid or expired token" });
+            return BadRequest(new { message = "Token không hợp lệ hoặc đã hết hạn!" });
         }
     }
 
@@ -133,11 +150,18 @@ public class AuthController : ControllerBase
             return NotFound();
         }
 
+        // BẢO MẬT: Nếu đang dùng App mà bị Admin Ban giữa chừng, đá văng luôn!
+        if (user.Status != "active")
+        {
+            return StatusCode(403, new { message = "Tài khoản của bạn đã bị khóa!" });
+        }
+
         return Ok(MapToDto(user));
     }
 
     private static UserDto MapToDto(User user)
     {
+        // Gắn thêm BranchId để Frontend biết Staff này đang làm ở Chi nhánh nào
         return new UserDto
         {
             Id = user.Id,
@@ -145,7 +169,13 @@ public class AuthController : ControllerBase
             Phone = user.Phone,
             Email = user.Email,
             Role = user.Role,
-            LoyaltyPoints = user.LoyaltyPoints
+            LoyaltyPoints = user.LoyaltyPoints,
+
+            // TÙY CHỌN: Nếu class UserDto của anh trong DTOs/AuthDto.cs chưa có 2 trường này, 
+            // anh mở file đó ra và thêm `public string? Status { get; set; }` 
+            // và `public int? BranchId { get; set; }` vào nhé!
+            // Status = user.Status,
+            // BranchId = user.BranchId
         };
     }
 }

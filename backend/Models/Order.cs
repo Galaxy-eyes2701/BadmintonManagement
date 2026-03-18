@@ -13,9 +13,5 @@ public partial class Order
     public DateTime CreatedAt { get; set; }
     public virtual Booking? Booking { get; set; }
 
-    public int? BranchId { get; set; }
-
-
-    public virtual Branch? Branch { get; set; }
     public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
 }
