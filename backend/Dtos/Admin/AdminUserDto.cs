@@ -12,6 +12,7 @@ namespace backend.Dtos.Admin
         public string Phone { get; set; } = null!;
         public string? Email { get; set; }
         public string Password { get; set; } = null!;   
+        public int? BranchId { get; set; }
     }
 
     // Response chung cho mọi endpoint
@@ -24,6 +25,7 @@ namespace backend.Dtos.Admin
         public string Role { get; set; } = null!;
         public string Status { get; set; } = null!;
         public int? LoyaltyPoints { get; set; }
+        public int? BranchId { get; set; }
     }
 
     public class UpdateCustomerDto

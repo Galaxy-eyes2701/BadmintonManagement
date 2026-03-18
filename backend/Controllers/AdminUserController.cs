@@ -11,8 +11,12 @@ namespace backend.Controllers
     public class AdminUserController : ControllerBase
     {
         private readonly IAdminUserRepository _repo;
-        public AdminUserController(IAdminUserRepository repo) => _repo = repo;
-
+        private readonly IBranchRepository _branchRepo;
+        public AdminUserController(IAdminUserRepository repo,IBranchRepository branchRepo)  
+        {
+            _repo = repo;
+            _branchRepo = branchRepo;
+        }
         // ── Role constants — đổi ở đây 1 lần, áp dụng toàn bộ ──
         private const string ROLE_ADMIN    = "Admin";
         private const string ROLE_STAFF    = "Staff";
@@ -73,7 +77,8 @@ namespace backend.Controllers
                 PasswordHash  = BCrypt.Net.BCrypt.HashPassword(dto.Password),
                 Role          = ROLE_STAFF,   // ← luôn đúng, không hard-code string
                 Status        = STATUS_ACTIVE,
-                LoyaltyPoints = 0
+                LoyaltyPoints = 0,
+                BranchId      = dto.BranchId
             };
 
             var created = await _repo.CreateUserAsync(user);
@@ -108,6 +113,7 @@ namespace backend.Controllers
             user.FullName = dto.FullName;
             user.Phone    = dto.Phone;
             user.Email    = dto.Email;
+            user.BranchId = dto.BranchId;
 
             if (!string.IsNullOrWhiteSpace(dto.Password))
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
@@ -159,7 +165,15 @@ namespace backend.Controllers
             Email         = u.Email,
             Role          = u.Role,
             Status        = u.Status,
-            LoyaltyPoints = u.LoyaltyPoints
+            LoyaltyPoints = u.LoyaltyPoints,
+            BranchId      = u.BranchId
         };
+
+        [HttpGet("/api/admin/branches")]
+        public async Task<IActionResult> GetBranches()
+        {
+            var branches = await _branchRepo.GetAllAsync();
+            return Ok(branches.Select(b => new { b.Id, b.Name }));
+        }
     }
 }

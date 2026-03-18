@@ -38,7 +38,13 @@ const api = {
   deleteUser: (id) => fetch(`${API_BASE}/${id}`, { method: "DELETE" }),
 };
 
-const emptyStaffForm = { fullName: "", phone: "", email: "", password: "" };
+const emptyStaffForm = {
+  fullName: "",
+  phone: "",
+  email: "",
+  password: "",
+  branchId: "",
+};
 const emptyCustomerForm = {
   fullName: "",
   phone: "",
@@ -70,6 +76,7 @@ const AccountManager = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [branches, setBranches] = useState([]);
 
   // ── Staff Form ──
   const [staffForm, setStaffForm] = useState(emptyStaffForm);
@@ -117,6 +124,13 @@ const AccountManager = () => {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    fetch("http://localhost:5043/api/admin/branches")
+      .then((r) => r.json())
+      .then(setBranches)
+      .catch(console.error);
+  }, []);
 
   // ============================================================
   // DERIVED DATA
@@ -197,6 +211,7 @@ const AccountManager = () => {
       phone: u.phone,
       email: u.email ?? "",
       password: "",
+      branchId: u.branchId ?? "",
     });
     setEditingUserId(u.id);
     setShowPassword(false);
@@ -208,6 +223,7 @@ const AccountManager = () => {
     if (
       !staffForm.fullName.trim() ||
       !staffForm.phone.trim() ||
+      !staffForm.branchId ||
       (!editingUserId && !staffForm.password.trim())
     )
       return;
@@ -476,6 +492,7 @@ const AccountManager = () => {
                         />
                       </th>
                       <th>Email</th>
+                      {activeTab === "staff" && <th>Chi nhánh</th>}
                       {activeTab === "customer" && (
                         <th
                           className={styles.thSortable}
@@ -523,6 +540,12 @@ const AccountManager = () => {
                         </td>
                         <td>{user.phone}</td>
                         <td className={styles.tdEmail}>{user.email ?? "—"}</td>
+                        {activeTab === "staff" && (
+                          <td>
+                            {branches.find((b) => b.id === user.branchId)
+                              ?.name ?? "—"}
+                          </td>
+                        )}
                         {activeTab === "customer" && (
                           <td>
                             <span className={styles.pointsBadge}>
@@ -678,6 +701,25 @@ const AccountManager = () => {
                     }
                   />
                 </div>
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>
+                  Chi nhánh <span className={styles.required}>*</span>
+                </label>
+                <select
+                  className={styles.input}
+                  value={staffForm.branchId}
+                  onChange={(e) =>
+                    setStaffForm({ ...staffForm, branchId: e.target.value })
+                  }
+                >
+                  <option value="">-- Chọn chi nhánh --</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className={styles.formGroup}>
