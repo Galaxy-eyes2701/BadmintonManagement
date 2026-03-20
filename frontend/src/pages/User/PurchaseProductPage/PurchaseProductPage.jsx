@@ -105,8 +105,8 @@ const PurchaseProductPage = () => {
   };
 
   const getGrandTotal = () => {
-    const bookingTotal = selectedBooking?.totalPrice || 0;
-    return bookingTotal + getCartTotal();
+    // Only return product total, not court total
+    return getCartTotal();
   };
 
   // Submit order
@@ -158,18 +158,18 @@ const PurchaseProductPage = () => {
       currency: "VND",
     }).format(n || 0);
 
-  // Handle online payment for products + remaining court
+  // Handle online payment for products only
   const handleOnlinePayment = async () => {
     if (!success?.bookingId) return;
     setLoadingPayment(true);
     setError("");
     try {
-      const res = await fetch(`${API}/payments/remaining/create`, {
+      const res = await fetch(`${API}/payments/product/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader() },
         body: JSON.stringify({
           bookingId: success.bookingId,
-          productPaymentOption: "online"
+          amount: success.orderTotal
         }),
       });
       const json = await res.json();
@@ -199,17 +199,16 @@ const PurchaseProductPage = () => {
               <strong>#{success.bookingId}</strong>
             </div>
             <div className={styles.successRow}>
-              <span>🛒 Tiền sản phẩm:</span>
-              <strong>{fmt(success.orderTotal)}</strong>
-            </div>
-            <div className={styles.successRow}>
-              <span>🏟️ Tiền sân:</span>
-              <strong>{fmt(success.bookingTotal)}</strong>
+              <span>🛒 Sản phẩm đã mua:</span>
+              <strong>{success.items?.length || 0} loại</strong>
             </div>
             <div className={`${styles.successRow} ${styles.grandTotal}`}>
-              <span>💰 Tổng cộng:</span>
-              <strong>{fmt(success.grandTotal)}</strong>
+              <span>💰 Tiền sản phẩm:</span>
+              <strong>{fmt(success.orderTotal)}</strong>
             </div>
+            <p className={styles.noteText}>
+              * Tiền sân sẽ thanh toán riêng ở phần Lịch sử đặt sân
+            </p>
           </div>
 
           {/* Payment Option Section */}
@@ -253,7 +252,7 @@ const PurchaseProductPage = () => {
                 onClick={handleOnlinePayment}
                 disabled={loadingPayment}
               >
-                {loadingPayment ? "⏳ Đang xử lý..." : `💳 Thanh toán online ${fmt(success.grandTotal)}`}
+                {loadingPayment ? "⏳ Đang xử lý..." : `💳 Thanh toán online ${fmt(success.orderTotal)}`}
               </button>
             ) : (
               <button
@@ -481,18 +480,13 @@ const PurchaseProductPage = () => {
                     })}
                   </div>
                   <div className={styles.cartTotals}>
-                    <div className={styles.cartRow}>
-                      <span>Tiền sản phẩm:</span>
-                      <span>{fmt(getCartTotal())}</span>
-                    </div>
-                    <div className={styles.cartRow}>
-                      <span>Tiền sân (booking):</span>
-                      <span>{fmt(selectedBooking?.totalPrice)}</span>
-                    </div>
                     <div className={`${styles.cartRow} ${styles.grandTotal}`}>
-                      <span>Tổng cộng:</span>
-                      <strong>{fmt(getGrandTotal())}</strong>
+                      <span>💰 Tiền sản phẩm:</span>
+                      <strong>{fmt(getCartTotal())}</strong>
                     </div>
+                    <p className={styles.cartNote}>
+                      * Tiền sân ({fmt(selectedBooking?.totalPrice)}) sẽ thanh toán riêng
+                    </p>
                   </div>
                   <div className={styles.cartActions}>
                     <button

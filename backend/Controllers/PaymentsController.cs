@@ -381,5 +381,58 @@ namespace backend.Controllers
             }
             return BadRequest(new { Success = false, Message = "Thanh toán bị hủy hoặc lỗi tại VNPay." });
         }
+
+        /// <summary>
+        /// Create VNPay payment URL for products only (not court)
+        /// </summary>
+        [HttpPost("product/create")]
+        public async Task<IActionResult> CreateProductPayment([FromBody] CreateProductPaymentDto dto)
+        {
+            try
+            {
+                var booking = await _context.Bookings.FindAsync(dto.BookingId);
+                if (booking == null)
+                    return BadRequest(new { Success = false, Message = "Không tìm thấy booking." });
+
+                if (dto.Amount <= 0)
+                    return BadRequest(new { Success = false, Message = "Số tiền thanh toán không hợp lệ." });
+
+                // Create VNPay URL
+                string vnp_Returnurl = _configuration["VnPay:ReturnUrl"] ?? "";
+                string vnp_Url = _configuration["VnPay:BaseUrl"] ?? "";
+                string vnp_TmnCode = _configuration["VnPay:TmnCode"] ?? "";
+                string vnp_HashSecret = _configuration["VnPay:HashSecret"] ?? "";
+
+                VnPayLibrary vnpay = new VnPayLibrary();
+                vnpay.AddRequestData("vnp_Version", "2.1.0");
+                vnpay.AddRequestData("vnp_Command", "pay");
+                vnpay.AddRequestData("vnp_TmnCode", vnp_TmnCode);
+                vnpay.AddRequestData("vnp_Amount", (dto.Amount * 100).ToString("0"));
+                vnpay.AddRequestData("vnp_CreateDate", DateTime.Now.ToString("yyyyMMddHHmmss"));
+                vnpay.AddRequestData("vnp_CurrCode", "VND");
+                vnpay.AddRequestData("vnp_IpAddr", "127.0.0.1");
+                vnpay.AddRequestData("vnp_Locale", "vn");
+                vnpay.AddRequestData("vnp_OrderInfo", $"Thanh toan san pham don dat san {dto.BookingId}");
+                vnpay.AddRequestData("vnp_OrderType", "other");
+                vnpay.AddRequestData("vnp_ReturnUrl", vnp_Returnurl);
+                // Use PROD_ prefix to identify product-only payments
+                vnpay.AddRequestData("vnp_TxnRef", $"PROD_{dto.BookingId}_{DateTime.Now.Ticks}");
+
+                string paymentUrl = vnpay.CreateRequestUrl(vnp_Url, vnp_HashSecret);
+
+                return Ok(new
+                {
+                    Success = true,
+                    BookingId = dto.BookingId,
+                    Amount = dto.Amount,
+                    PaymentUrl = paymentUrl,
+                    Message = "Chuyển hướng đến VNPay để thanh toán sản phẩm"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Success = false, Message = ex.Message });
+            }
+        }
     }
 }

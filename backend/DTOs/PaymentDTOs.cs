@@ -103,4 +103,17 @@ namespace backend.DTOs
         public string? Message { get; set; }
         public bool Success { get; set; }
     }
+
+    /// <summary>
+    /// Request to create VNPay payment for products only (not court)
+    /// </summary>
+    public class CreateProductPaymentDto
+    {
+        [Required]
+        public int BookingId { get; set; }
+
+        [Required]
+        [Range(1, double.MaxValue, ErrorMessage = "Số tiền thanh toán phải lớn hơn 0")]
+        public decimal Amount { get; set; }
+    }
 }

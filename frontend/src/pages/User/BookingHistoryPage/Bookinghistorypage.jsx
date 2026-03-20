@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import useAuth from "../../../hooks/useAuth.jsx";
 import styles from "./BookingHistoryPage.module.css";
 
@@ -21,6 +22,7 @@ const PAY_STATUS = {
 
 const BookingHistoryPage = () => {
   const authCtx = useAuth();
+  const navigate = useNavigate();
 
   const getToken = () => {
     try {
@@ -47,6 +49,7 @@ const BookingHistoryPage = () => {
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState("");
   const [cancellingId, setCancellingId] = useState(null);
+  const [payingId, setPayingId] = useState(null);
 
   // GET /api/bookings/{id} → { success, data: BookingDetailResponseDto }
   // BookingDetailResponseDto: { bookingId, createdAt, totalPrice, status, canCancel,
@@ -107,6 +110,31 @@ const BookingHistoryPage = () => {
       if (!res.ok) throw new Error(json.message || "Không thể tải chi tiết.");
       setDetailData(json.data ?? json);
     } catch (err) { setError(err.message); }
+  };
+
+  // Handle deposit payment for pending booking
+  const handleDepositPayment = async (bookingId, totalPrice) => {
+    if (!bookingId) return;
+    setPayingId(bookingId);
+    setError("");
+    try {
+      const res = await fetch(`${API}/payments/deposit/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers() },
+        body: JSON.stringify({ bookingId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Không thể tạo thanh toán.");
+      
+      // Redirect to VNPay
+      if (json.paymentUrl) {
+        window.location.href = json.paymentUrl;
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPayingId(null);
+    }
   };
 
   const fmt = n =>
@@ -182,6 +210,14 @@ const BookingHistoryPage = () => {
                       {/* totalPrice: decimal? từ Booking */}
                       <div className={styles.bookingPrice}>{fmt(b.totalPrice)}</div>
                       <div className={styles.bookingActions}>
+                        {/* Pay button for pending bookings without successful payment */}
+                        {b.status === "pending" && b.paymentStatus !== "success" && (
+                          <button className={styles.btnPay}
+                            onClick={() => handleDepositPayment(b.bookingId, b.totalPrice)}
+                            disabled={payingId === b.bookingId}>
+                            {payingId === b.bookingId ? "⏳" : "💳 Đặt cọc"}
+                          </button>
+                        )}
                         <button className={styles.btnDetail}
                           onClick={() => handleViewDetail(b.bookingId)}>
                           Chi tiết
