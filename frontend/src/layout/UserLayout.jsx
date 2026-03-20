@@ -60,6 +60,15 @@ const UserLayout = () => {
               <span className={styles.navIcon}>👤</span>
               Hồ sơ
             </NavLink>
+            <NavLink
+              to="/user/purchase"
+              className={({ isActive }) =>
+                `${styles.navLink} ${isActive ? styles.navActive : ""}`
+              }
+            >
+              <span className={styles.navIcon}>🛒</span>
+              Mua hàng
+            </NavLink>
           </nav>
 
           <div className={styles.userArea}>

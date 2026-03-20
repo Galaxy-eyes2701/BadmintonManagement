@@ -23,6 +23,7 @@ import UserHomePage from "../pages/User/UserHomePage/UserHomePage.jsx";
 import BookingHistoryPage from "../pages/User/BookingHistoryPage/BookingHistoryPage.jsx";
 import UserProfilePage from "../pages/User/UserProfilePage/UserProfilePage.jsx";
 import CourtBookingPage from "../pages/User/CourtBookingPage/Courtbookingpage.jsx";
+import PurchaseProductPage from "../pages/User/PurchaseProductPage/PurchaseProductPage.jsx";
 
 // ── STAFF PAGES ──
 import StaffSchedule from "../pages/Staff/StaffSchedule/StaffSchedule.jsx";
@@ -81,6 +82,11 @@ const router = createBrowserRouter([
       { path: "profile", element: (
         <UserProtectedRoute requireAuth={true}>
           <UserProfilePage />
+        </UserProtectedRoute>
+      )},
+      { path: "purchase", element: (
+        <UserProtectedRoute requireAuth={true}>
+          <PurchaseProductPage />
         </UserProtectedRoute>
       )},
     ],

@@ -168,6 +168,57 @@ namespace backend.Controllers
             var result = await _bookingService.ValidateVoucherAsync(req.Code, req.TotalAmount);
             return Ok(new { success = result.IsValid, data = result });
         }
+
+        // =======================================================
+        // PURCHASE PRODUCTS WITH BOOKING
+        // =======================================================
+
+        // GET /api/bookings/my/active-for-purchase
+        // Lấy danh sách bookings active (không bị cancelled) để chọn mua hàng
+        [HttpGet("my/active-for-purchase")]
+        public async Task<IActionResult> GetActiveBookingsForPurchase()
+        {
+            var userId = GetUserIdFromToken();
+            if (userId == null) return Unauthorized(new { message = "Vui lòng đăng nhập" });
+
+            var result = await _bookingService.GetActiveBookingsForPurchaseAsync(userId.Value);
+            return Ok(new { success = true, total = result.Count, data = result });
+        }
+
+        // GET /api/bookings/products
+        // Lấy danh sách products có thể mua
+        [HttpGet("products")]
+        public async Task<IActionResult> GetAvailableProducts()
+        {
+            var result = await _bookingService.GetAvailableProductsAsync();
+            return Ok(new { success = true, total = result.Count, data = result });
+        }
+
+        // POST /api/bookings/purchase-products
+        // Mua products kèm với booking
+        [HttpPost("purchase-products")]
+        public async Task<IActionResult> CreateOrderWithBooking([FromBody] CreateOrderWithBookingDto dto)
+        {
+            var userId = GetUserIdFromToken();
+            if (userId == null) return Unauthorized(new { message = "Vui lòng đăng nhập" });
+
+            if (dto.Products == null || !dto.Products.Any())
+                return BadRequest(new { message = "Vui lòng chọn ít nhất một sản phẩm." });
+
+            try
+            {
+                var result = await _bookingService.CreateOrderWithBookingAsync(userId.Value, dto);
+                return Ok(new { success = true, message = "Mua hàng thành công!", data = result });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
     }
 
     public class ValidateVoucherRequest

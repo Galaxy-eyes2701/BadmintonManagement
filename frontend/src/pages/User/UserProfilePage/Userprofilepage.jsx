@@ -81,8 +81,8 @@ const UserProfilePage = () => {
 
   const totalBookings     = profile?.totalBookings     ?? 0;
   const completedBookings = profile?.completedBookings ?? 0;
+  const cancelledBookings = profile?.cancelledBookings ?? 0;
   const totalSpent        = profile?.totalSpent        ?? 0;
-  const cancelledBookings = Math.max(0, totalBookings - completedBookings);
   const level = getLevelInfo(points);
 
   return (

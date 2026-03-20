@@ -1,0 +1,573 @@
+.page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Header */
+.header {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+/* Error Banner */
+.errorBanner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.errorClose {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+/* Stepper */
+.stepper {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.stepItem {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  opacity: 0.6;
+}
+
+.stepActive {
+  background: rgba(15, 118, 110, 0.1);
+  opacity: 1;
+}
+
+.stepDone {
+  background: #d1fae5;
+  opacity: 1;
+}
+
+.stepNumber {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.stepActive .stepNumber {
+  background: #0f766e;
+}
+
+.stepDone .stepNumber {
+  background: #10b981;
+}
+
+.stepLabel {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+/* Section */
+.section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 20px;
+}
+
+/* Empty State */
+.emptyState {
+  text-align: center;
+  padding: 48px 24px;
+  color: #64748b;
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* Booking Grid */
+.bookingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.bookingCard {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bookingCard:hover {
+  border-color: #0f766e;
+}
+
+.bookingCard.selected {
+  border-color: #0f766e;
+  background: rgba(15, 118, 110, 0.05);
+}
+
+.bookingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.bookingId {
+  font-weight: 800;
+  color: #0f766e;
+}
+
+.bookingStatus {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 20px;
+  background: #d1fae5;
+  color: #059669;
+  font-weight: 600;
+}
+
+.courtName {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.branchName {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.playDate {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.bookingFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.slotCount {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.bookingPrice {
+  font-weight: 800;
+  color: #0f766e;
+  font-size: 1.1rem;
+}
+
+/* Selected Booking Bar */
+.selectedBookingBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 118, 110, 0.1);
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.selectedBookingMeta {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.btnText {
+  background: none;
+  border: none;
+  color: #0f766e;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+/* Product Grid */
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.productCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.productCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.productImage {
+  height: 120px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.productImage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+}
+
+.productPlaceholder {
+  font-size: 3rem;
+}
+
+.productInfo {
+  padding: 12px;
+}
+
+.productCategory {
+  font-size: 0.7rem;
+  color: #0f766e;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.productName {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 4px 0;
+}
+
+.productPrice {
+  font-weight: 800;
+  color: #0f766e;
+  font-size: 1rem;
+}
+
+.productStock {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.productActions {
+  padding: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.btnAdd {
+  width: 100%;
+  padding: 8px;
+  background: #0f766e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnAdd:hover {
+  background: #115e59;
+}
+
+/* Quantity Control */
+.qtyControl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.qtyBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qtyBtn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.qtyBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qtyValue {
+  font-weight: 800;
+  font-size: 1rem;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Cart Summary */
+.cartSummary {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 24px;
+}
+
+.cartTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 16px;
+}
+
+.cartItems {
+  margin-bottom: 16px;
+}
+
+.cartItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cartItemName {
+  flex: 1;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cartItemQty {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.cartItemPrice {
+  font-weight: 700;
+  color: #0f766e;
+  min-width: 100px;
+  text-align: right;
+}
+
+.cartTotals {
+  border-top: 2px solid #e2e8f0;
+  padding-top: 16px;
+  margin-bottom: 20px;
+}
+
+.cartRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  color: #64748b;
+}
+
+.cartRow.grandTotal {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.cartRow.grandTotal strong {
+  color: #0f766e;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cartActions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Buttons */
+.btnPrimary {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #14b8a6, #0f766e);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnOutline {
+  padding: 12px 24px;
+  background: white;
+  color: #64748b;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+}
+
+.btnOutline:hover {
+  border-color: #0f766e;
+  color: #0f766e;
+}
+
+/* Success Screen */
+.successWrap {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.successCard {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.successIcon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+}
+
+.successTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 24px;
+}
+
+.successDetails {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.successRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  color: #64748b;
+}
+
+.successRow.grandTotal {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 2px solid #e2e8f0;
+  font-size: 1.1rem;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.successActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .page {
+    padding: 16px;
+  }
+
+  .stepper {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stepItem {
+    padding: 10px 12px;
+  }
+
+  .bookingGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .productGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .cartActions {
+    flex-direction: column;
+  }
+
+  .successCard {
+    padding: 24px;
+  }
+}
