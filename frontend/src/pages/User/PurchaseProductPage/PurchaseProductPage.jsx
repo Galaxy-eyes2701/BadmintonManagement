@@ -33,6 +33,10 @@ const PurchaseProductPage = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [cart, setCart] = useState({}); // { productId: quantity }
 
+  // Payment option state
+  const [paymentOption, setPaymentOption] = useState("onsite"); // online, onsite
+  const [loadingPayment, setLoadingPayment] = useState(false);
+
   const authHeader = () => {
     const t = getToken();
     return t ? { Authorization: `Bearer ${t}` } : {};
@@ -154,6 +158,34 @@ const PurchaseProductPage = () => {
       currency: "VND",
     }).format(n || 0);
 
+  // Handle online payment for products + remaining court
+  const handleOnlinePayment = async () => {
+    if (!success?.bookingId) return;
+    setLoadingPayment(true);
+    setError("");
+    try {
+      const res = await fetch(`${API}/payments/remaining/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader() },
+        body: JSON.stringify({
+          bookingId: success.bookingId,
+          productPaymentOption: "online"
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Không thể tạo thanh toán.");
+      
+      // Redirect to VNPay
+      if (json.paymentUrl) {
+        window.location.href = json.paymentUrl;
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingPayment(false);
+    }
+  };
+
   // Success screen
   if (success && step === 3) {
     return (
@@ -179,13 +211,58 @@ const PurchaseProductPage = () => {
               <strong>{fmt(success.grandTotal)}</strong>
             </div>
           </div>
+
+          {/* Payment Option Section */}
+          <div className={styles.paymentOptionSection}>
+            <h3 className={styles.paymentOptionTitle}>💳 Phương thức thanh toán</h3>
+            <div className={styles.paymentOptions}>
+              <div
+                className={`${styles.paymentOption} ${paymentOption === "online" ? styles.selected : ""}`}
+                onClick={() => setPaymentOption("online")}
+              >
+                <div className={styles.optionIcon}>💳</div>
+                <div className={styles.optionInfo}>
+                  <strong>Thanh toán online</strong>
+                  <span>Thanh toán ngay qua VNPay</span>
+                </div>
+                <div className={styles.optionCheck}>
+                  {paymentOption === "online" && "✓"}
+                </div>
+              </div>
+              <div
+                className={`${styles.paymentOption} ${paymentOption === "onsite" ? styles.selected : ""}`}
+                onClick={() => setPaymentOption("onsite")}
+              >
+                <div className={styles.optionIcon}>🏟️</div>
+                <div className={styles.optionInfo}>
+                  <strong>Thanh toán tại sân</strong>
+                  <span>Trả tiền khi đến chơi</span>
+                </div>
+                <div className={styles.optionCheck}>
+                  {paymentOption === "onsite" && "✓"}
+                </div>
+              </div>
+            </div>
+            {error && <div className={styles.errorBanner}>⚠️ {error}</div>}
+          </div>
+
           <div className={styles.successActions}>
-            <button
-              className={styles.btnPrimary}
-              onClick={() => navigate("/user/history")}
-            >
-              Xem lịch sử
-            </button>
+            {paymentOption === "online" ? (
+              <button
+                className={styles.btnPrimary}
+                onClick={handleOnlinePayment}
+                disabled={loadingPayment}
+              >
+                {loadingPayment ? "⏳ Đang xử lý..." : `💳 Thanh toán online ${fmt(success.grandTotal)}`}
+              </button>
+            ) : (
+              <button
+                className={styles.btnPrimary}
+                onClick={() => navigate("/user/history")}
+              >
+                Xem lịch sử
+              </button>
+            )}
             <button
               className={styles.btnOutline}
               onClick={() => {
@@ -193,6 +270,7 @@ const PurchaseProductPage = () => {
                 setSelectedBooking(null);
                 setCart({});
                 setSuccess(null);
+                setPaymentOption("onsite");
                 fetchData();
               }}
             >

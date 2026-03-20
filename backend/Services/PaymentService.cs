@@ -149,5 +149,193 @@ namespace backend.Services
             if (span.TotalHours < 24) return $"{(int)span.TotalHours} giờ trước";
             return $"{(int)span.TotalDays} ngày trước";
         }
+
+        // ============================================
+        // DEPOSIT PAYMENT METHODS
+        // ============================================
+
+        /// <summary>
+        /// Get booking payment summary (deposit, remaining, products)
+        /// </summary>
+        public async Task<BookingPaymentSummaryDto> GetBookingPaymentSummaryAsync(int bookingId)
+        {
+            var booking = await _context.Bookings
+                .Include(b => b.Payments)
+                .Include(b => b.Orders)
+                .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+            if (booking == null)
+                throw new Exception("Không tìm thấy booking.");
+
+            // Court total from booking
+            decimal courtTotal = booking.TotalPrice ?? 0;
+
+            // Product total from orders linked to this booking
+            decimal productTotal = booking.Orders?.Sum(o => o.TotalAmount) ?? 0;
+
+            // Total paid (all successful payments)
+            decimal totalPaid = booking.Payments?
+                .Where(p => p.Status == "success")
+                .Sum(p => p.Amount) ?? 0;
+
+            // Deposit paid (payments with transaction containing "DEPOSIT")
+            decimal depositPaid = booking.Payments?
+                .Where(p => p.Status == "success" && p.TransactionId != null && p.TransactionId.Contains("DEP"))
+                .Sum(p => p.Amount) ?? 0;
+
+            // Calculate remaining amounts
+            decimal remainingCourtAmount = courtTotal - depositPaid;
+            decimal remainingTotal = (courtTotal + productTotal) - totalPaid;
+
+            // Determine payment status
+            string paymentStatus = "pending_deposit";
+            if (depositPaid >= courtTotal / 2)
+            {
+                paymentStatus = totalPaid >= courtTotal + productTotal ? "fully_paid" : "deposit_paid";
+            }
+
+            return new BookingPaymentSummaryDto
+            {
+                BookingId = bookingId,
+                BookingStatus = booking.Status,
+                CourtTotal = courtTotal,
+                ProductTotal = productTotal,
+                GrandTotal = courtTotal + productTotal,
+                DepositPaid = depositPaid,
+                RemainingCourtAmount = Math.Max(0, remainingCourtAmount),
+                TotalPaid = totalPaid,
+                RemainingTotal = Math.Max(0, remainingTotal),
+                PaymentStatus = paymentStatus,
+                Payments = booking.Payments?
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Select(p => new PaymentRecordDto
+                    {
+                        PaymentId = p.Id,
+                        Amount = p.Amount,
+                        PaymentMethod = p.PaymentMethod,
+                        Status = p.Status,
+                        TransactionId = p.TransactionId,
+                        CreatedAt = p.CreatedAt,
+                        PaymentType = p.TransactionId?.Contains("DEP") == true ? "deposit" :
+                                      p.TransactionId?.Contains("REM") == true ? "remaining" :
+                                      p.TransactionId?.Contains("PROD") == true ? "product" : "court"
+                    }).ToList() ?? new List<PaymentRecordDto>()
+            };
+        }
+
+        /// <summary>
+        /// Create a deposit payment record (50% of court total)
+        /// </summary>
+        public async Task<Payment> CreateDepositPaymentAsync(int bookingId, decimal amount, string transactionId)
+        {
+            var booking = await _context.Bookings.FindAsync(bookingId);
+            if (booking == null)
+                throw new Exception("Không tìm thấy booking.");
+
+            var payment = new Payment
+            {
+                BookingId = bookingId,
+                Amount = amount,
+                PaymentMethod = "VNPAY",
+                TransactionId = transactionId,
+                Status = "success",
+                CreatedAt = DateTime.Now
+            };
+
+            _context.Payments.Add(payment);
+
+            // Update booking status to confirmed after deposit
+            booking.Status = "confirmed";
+            _context.Bookings.Update(booking);
+
+            await _context.SaveChangesAsync();
+            return payment;
+        }
+
+        /// <summary>
+        /// Process remaining court payment after deposit
+        /// </summary>
+        public async Task<Payment> ProcessRemainingCourtPaymentAsync(int bookingId, decimal amount, string paymentMethod, string? transactionId = null)
+        {
+            var booking = await _context.Bookings
+                .Include(b => b.Payments)
+                .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+            if (booking == null)
+                throw new Exception("Không tìm thấy booking.");
+
+            var payment = new Payment
+            {
+                BookingId = bookingId,
+                Amount = amount,
+                PaymentMethod = paymentMethod,
+                TransactionId = transactionId ?? $"REM_{DateTime.Now.Ticks}",
+                Status = "success",
+                CreatedAt = DateTime.Now
+            };
+
+            _context.Payments.Add(payment);
+            await _context.SaveChangesAsync();
+
+            // Check if fully paid
+            var totalPaid = booking.Payments?.Where(p => p.Status == "success").Sum(p => p.Amount) ?? 0;
+            totalPaid += amount;
+
+            var courtTotal = booking.TotalPrice ?? 0;
+            var productTotal = await _context.Orders
+                .Where(o => o.BookingId == bookingId)
+                .SumAsync(o => o.TotalAmount);
+
+            if (totalPaid >= courtTotal + productTotal)
+            {
+                booking.Status = "completed";
+                _context.Bookings.Update(booking);
+                await _context.SaveChangesAsync();
+            }
+
+            return payment;
+        }
+
+        /// <summary>
+        /// Process product payment (online or onsite)
+        /// </summary>
+        public async Task<Payment> ProcessProductPaymentAsync(int bookingId, decimal amount, string paymentMethod, string? transactionId = null)
+        {
+            var booking = await _context.Bookings.FindAsync(bookingId);
+            if (booking == null)
+                throw new Exception("Không tìm thấy booking.");
+
+            var payment = new Payment
+            {
+                BookingId = bookingId,
+                Amount = amount,
+                PaymentMethod = paymentMethod,
+                TransactionId = transactionId ?? $"PROD_{DateTime.Now.Ticks}",
+                Status = "success",
+                CreatedAt = DateTime.Now
+            };
+
+            _context.Payments.Add(payment);
+            await _context.SaveChangesAsync();
+
+            // Check if fully paid
+            var totalPaid = await _context.Payments
+                .Where(p => p.BookingId == bookingId && p.Status == "success")
+                .SumAsync(p => p.Amount);
+
+            var courtTotal = booking.TotalPrice ?? 0;
+            var productTotal = await _context.Orders
+                .Where(o => o.BookingId == bookingId)
+                .SumAsync(o => o.TotalAmount);
+
+            if (totalPaid >= courtTotal + productTotal)
+            {
+                booking.Status = "completed";
+                _context.Bookings.Update(booking);
+                await _context.SaveChangesAsync();
+            }
+
+            return payment;
+        }
     }
 }

@@ -24,6 +24,7 @@ import BookingHistoryPage from "../pages/User/BookingHistoryPage/BookingHistoryP
 import UserProfilePage from "../pages/User/UserProfilePage/UserProfilePage.jsx";
 import CourtBookingPage from "../pages/User/CourtBookingPage/Courtbookingpage.jsx";
 import PurchaseProductPage from "../pages/User/PurchaseProductPage/PurchaseProductPage.jsx";
+import DepositPaymentResult from "../pages/User/DepositPaymentResult/DepositPaymentResult.jsx";
 
 // ── STAFF PAGES ──
 import StaffSchedule from "../pages/Staff/StaffSchedule/StaffSchedule.jsx";
@@ -58,6 +59,7 @@ const router = createBrowserRouter([
   { path: "/register", element: <RegisterPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/payment-result", element: <PaymentResult /> },
+  { path: "/deposit-result", element: <DepositPaymentResult /> },
 
   // ── USER ──
   {

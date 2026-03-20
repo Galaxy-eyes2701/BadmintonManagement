@@ -77,8 +77,8 @@ namespace backend.Services
                     return new AvailableSlotDto
                     {
                         TimeSlotId = ts.Id,
-                        StartTime = ts.StartTime.ToString(@"hh\:mm"),
-                        EndTime = ts.EndTime.ToString(@"hh\:mm"),
+                        StartTime = ts.StartTime.ToString(@"HH\:mm"),
+                        EndTime = ts.EndTime.ToString(@"HH\:mm"),
                         Price = price?.Price ?? 0,
                         IsAvailable = !isTaken && (price?.Price ?? 0) > 0
                     };
@@ -368,9 +368,10 @@ namespace backend.Services
                 Status = user.Status,
                 Role = user.Role,
                 TotalBookings = bookings.Count,
-                CompletedBookings = bookings.Count(b => b.Status == "confirmed"),
+                CompletedBookings = bookings.Count(b => b.Status == "confirmed" || b.Status == "completed"),
+                CancelledBookings = bookings.Count(b => b.Status == "cancelled"),
                 TotalSpent = bookings
-                    .Where(b => b.Status == "confirmed")
+                    .Where(b => b.Status == "confirmed" || b.Status == "completed")
                     .Sum(b => b.TotalPrice ?? 0)
             };
         }
@@ -409,11 +410,13 @@ namespace backend.Services
                 .Select(b => b.Id)
                 .ToListAsync();
 
+            // Chỉ lấy orders liên kết với bookings của user
+            // (Không lấy orders có BookingId = null vì không xác định được chủ sở hữu)
             var orders = await _db.Orders
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Product)
                     .ThenInclude(p => p.Category)
-                .Where(o => o.BookingId == null || userBookingIds.Contains(o.BookingId.Value))
+                .Where(o => o.BookingId != null && userBookingIds.Contains(o.BookingId.Value))
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
 
@@ -431,6 +434,147 @@ namespace backend.Services
                     UnitPrice = od.UnitPriceSnapshot,
                     SubTotal = od.Quantity * od.UnitPriceSnapshot
                 }).ToList()
+            }).ToList();
+        }
+
+        // ── 9. Mua product kèm booking ───────────────────────────────────────────
+        public async Task<OrderWithBookingResponseDto> CreateOrderWithBookingAsync(int userId, CreateOrderWithBookingDto dto)
+        {
+            // 1. Kiểm tra booking tồn tại và thuộc về user
+            var booking = await _db.Bookings
+                .Include(b => b.Orders)
+                .FirstOrDefaultAsync(b => b.Id == dto.BookingId && b.UserId == userId);
+
+            if (booking == null)
+                throw new Exception("Không tìm thấy booking hoặc booking không thuộc về bạn.");
+
+            // 2. Kiểm tra booking không bị cancelled
+            if (booking.Status == "cancelled")
+                throw new Exception("Không thể mua hàng vì booking đã bị hủy.");
+
+            // 3. Kiểm tra có product không
+            if (dto.Products == null || !dto.Products.Any())
+                throw new Exception("Vui lòng chọn ít nhất một sản phẩm.");
+
+            // 4. Kiểm tra products và tính tổng tiền
+            var orderItems = new List<OrderDetail>();
+            decimal orderTotal = 0;
+
+            foreach (var item in dto.Products)
+            {
+                if (item.Quantity <= 0)
+                    throw new Exception($"Số lượng sản phẩm phải lớn hơn 0.");
+
+                var product = await _db.Products.FindAsync(item.ProductId);
+                if (product == null)
+                    throw new Exception($"Không tìm thấy sản phẩm ID {item.ProductId}.");
+
+                if (product.StockQuantity < item.Quantity)
+                    throw new Exception($"Sản phẩm '{product.Name}' chỉ còn {product.StockQuantity} trong kho.");
+
+                // Giảm stock
+                product.StockQuantity -= item.Quantity;
+
+                orderItems.Add(new OrderDetail
+                {
+                    ProductId = item.ProductId,
+                    Quantity = item.Quantity,
+                    UnitPriceSnapshot = product.UnitPrice
+                });
+
+                orderTotal += product.UnitPrice * item.Quantity;
+            }
+
+            // 5. Tạo order
+            var order = new Order
+            {
+                BookingId = dto.BookingId,
+                TotalAmount = orderTotal,
+                CreatedAt = DateTime.Now,
+                OrderDetails = orderItems
+            };
+
+            _db.Orders.Add(order);
+
+            // 6. Cập nhật tổng tiền booking (booking.TotalPrice + order.TotalAmount)
+            var bookingTotal = booking.TotalPrice ?? 0;
+            var grandTotal = bookingTotal + orderTotal;
+
+            // Không cập nhật booking.TotalPrice vì đó là giá sân
+            // Thay vào đó, tính tổng khi trả về response
+
+            await _db.SaveChangesAsync();
+
+            // 7. Trả về response
+            return new OrderWithBookingResponseDto
+            {
+                OrderId = order.Id,
+                BookingId = dto.BookingId,
+                OrderTotal = orderTotal,
+                BookingTotal = bookingTotal,
+                GrandTotal = grandTotal,
+                CreatedAt = order.CreatedAt,
+                Items = orderItems.Select(oi => new OrderItemResponseDto
+                {
+                    ProductId = oi.ProductId,
+                    ProductName = _db.Products.Find(oi.ProductId)?.Name ?? "",
+                    Quantity = oi.Quantity,
+                    UnitPrice = oi.UnitPriceSnapshot,
+                    SubTotal = oi.Quantity * oi.UnitPriceSnapshot
+                }).ToList()
+            };
+        }
+
+        // ── 10. Lấy danh sách products có thể mua ────────────────────────────────
+        public async Task<List<AvailableProductDto>> GetAvailableProductsAsync()
+        {
+            return await _db.Products
+                .Include(p => p.Category)
+                .Where(p => p.StockQuantity > 0)
+                .Select(p => new AvailableProductDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Category = p.Category.Name,
+                    UnitPrice = p.UnitPrice,
+                    StockQuantity = p.StockQuantity,
+                    ImageUrl = p.ImageUrl
+                })
+                .ToListAsync();
+        }
+
+        // ── 11. Lấy danh sách bookings active của user để chọn mua hàng ──────────
+        public async Task<List<BookingHistoryDto>> GetActiveBookingsForPurchaseAsync(int userId)
+        {
+            var bookings = await _db.Bookings
+                .Include(b => b.BookingDetails)
+                    .ThenInclude(bd => bd.Court)
+                .Include(b => b.BookingDetails)
+                    .ThenInclude(bd => bd.TimeSlot)
+                .Include(b => b.Payments)
+                .Where(b => b.UserId == userId)
+                .Where(b => b.Status != "cancelled")
+                .OrderByDescending(b => b.CreatedAt)
+                .ToListAsync();
+
+            return bookings.Select(b =>
+            {
+                var firstDetail = b.BookingDetails.FirstOrDefault();
+                var payment = b.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+
+                return new BookingHistoryDto
+                {
+                    BookingId = b.Id,
+                    CreatedAt = b.CreatedAt ?? DateTime.MinValue,
+                    TotalPrice = b.TotalPrice ?? 0,
+                    Status = b.Status,
+                    PaymentStatus = payment?.Status ?? "none",
+                    PaymentMethod = payment?.PaymentMethod ?? "—",
+                    SlotCount = b.BookingDetails.Count,
+                    FirstCourtName = firstDetail?.Court?.Name ?? "—",
+                    FirstBranchName = firstDetail?.Court?.Branch?.Name ?? "—",
+                    FirstPlayDate = firstDetail?.PlayDate.ToString("dd/MM/yyyy") ?? "—"
+                };
             }).ToList();
         }
     }

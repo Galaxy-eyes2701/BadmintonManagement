@@ -54,6 +54,10 @@ const CourtBookingPage = () => {
   const [error, setError] = useState("");
   const [successData, setSuccessData] = useState(null); // BookingResponseDto
 
+  // ── Deposit Payment State ──
+  const [depositData, setDepositData] = useState(null); // Deposit payment info
+  const [loadingDeposit, setLoadingDeposit] = useState(false);
+
   // ── Load dropdowns ──
   // Branch: { id, name, address, hotline }
   // CourtType: { id, name, description }
@@ -228,6 +232,35 @@ const CourtBookingPage = () => {
     setVoucherError("");
     setError("");
     setCourts([]);
+    setDepositData(null);
+  };
+
+  // ── DEPOSIT PAYMENT ──
+  // Create VNPay deposit payment URL (50% of court total)
+  const handleDepositPayment = async () => {
+    if (!successData?.bookingId) return;
+    setLoadingDeposit(true);
+    setError("");
+    try {
+      const res = await fetch(`${API}/payments/deposit/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader() },
+        body: JSON.stringify({ bookingId: successData.bookingId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Không thể tạo thanh toán.");
+      
+      // Redirect to VNPay
+      if (json.paymentUrl) {
+        window.location.href = json.paymentUrl;
+      } else {
+        setDepositData(json);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingDeposit(false);
+    }
   };
 
   // ── SUCCESS SCREEN ──
@@ -236,6 +269,9 @@ const CourtBookingPage = () => {
   //   payment: { method, status, amount } }
   if (successData) {
     const firstDetail = successData.details?.[0];
+    const depositAmount = Math.ceil((successData.totalPrice || 0) / 2);
+    const remainingAmount = (successData.totalPrice || 0) - depositAmount;
+    
     return (
       <div className={styles.successWrap}>
         <div className={styles.successCard}>
@@ -260,7 +296,7 @@ const CourtBookingPage = () => {
                   ? `- ${fmt(successData.discount)}`
                   : "Không",
               ],
-              ["💰 Tổng", fmt(successData.totalPrice)],
+              ["💰 Tổng tiền sân", fmt(successData.totalPrice)],
             ].map(
               ([label, value]) =>
                 value && (
@@ -271,12 +307,30 @@ const CourtBookingPage = () => {
                 ),
             )}
           </div>
-          <div className={styles.successActions}>
+
+          {/* Deposit Payment Section */}
+          <div className={styles.depositSection}>
+            <h3 className={styles.depositTitle}>💳 Thanh toán đặt cọc</h3>
+            <div className={styles.depositInfo}>
+              <div className={styles.depositRow}>
+                <span>Số tiền đặt cọc (50%):</span>
+                <strong className={styles.depositAmount}>{fmt(depositAmount)}</strong>
+              </div>
+              <div className={styles.depositRow}>
+                <span>Số tiền còn lại (trả tại sân):</span>
+                <span>{fmt(remainingAmount)}</span>
+              </div>
+              <p className={styles.depositNote}>
+                * Bạn cần đặt cọc 50% để xác nhận booking. Số tiền còn lại sẽ thanh toán tại sân.
+              </p>
+            </div>
+            {error && <div className={styles.errorBanner}>⚠️ {error}</div>}
             <button
-              className={styles.btnPrimary}
-              onClick={() => navigate("/user/history")}
+              className={styles.btnDeposit}
+              onClick={handleDepositPayment}
+              disabled={loadingDeposit}
             >
-              Xem lịch sử đặt sân
+              {loadingDeposit ? "⏳ Đang xử lý..." : `💳 Thanh toán đặt cọc ${fmt(depositAmount)}`}
             </button>
             <button className={styles.btnOutline} onClick={resetAll}>
               Đặt thêm sân

@@ -109,6 +109,7 @@ namespace backend.DTOs
         public string Role { get; set; } = "";
         public int TotalBookings { get; set; }
         public int CompletedBookings { get; set; }
+        public int CancelledBookings { get; set; }
         public decimal TotalSpent { get; set; }
     }
 
@@ -145,5 +146,49 @@ namespace backend.DTOs
     {
         public string? FullName { get; set; }
         public string? Email { get; set; }
+    }
+
+    // ── Purchase Products with Booking ───────────────────────────────────────
+    public class PurchaseProductDto
+    {
+        public int ProductId { get; set; }
+        public int Quantity { get; set; }
+    }
+
+    public class CreateOrderWithBookingDto
+    {
+        public int BookingId { get; set; }
+        public List<PurchaseProductDto> Products { get; set; } = new();
+    }
+
+    public class OrderWithBookingResponseDto
+    {
+        public int OrderId { get; set; }
+        public int BookingId { get; set; }
+        public decimal OrderTotal { get; set; }
+        public decimal BookingTotal { get; set; }
+        public decimal GrandTotal { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public List<OrderItemResponseDto> Items { get; set; } = new();
+    }
+
+    public class OrderItemResponseDto
+    {
+        public int ProductId { get; set; }
+        public string ProductName { get; set; } = "";
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+        public decimal SubTotal { get; set; }
+    }
+
+    // ── Available Products for Purchase ──────────────────────────────────────
+    public class AvailableProductDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Category { get; set; } = "";
+        public decimal UnitPrice { get; set; }
+        public int StockQuantity { get; set; }
+        public string? ImageUrl { get; set; }
     }
 }

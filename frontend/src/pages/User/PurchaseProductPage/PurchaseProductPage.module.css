@@ -536,8 +536,94 @@
 
 .successActions {
   display: flex;
+  flex-direction: column;
   gap: 12px;
   justify-content: center;
+}
+
+/* Payment Option Section */
+.paymentOptionSection {
+  margin: 24px 0;
+  text-align: left;
+}
+
+.paymentOptionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.paymentOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.paymentOption {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.paymentOption:hover {
+  border-color: #0f766e;
+  background: rgba(15, 118, 110, 0.02);
+}
+
+.paymentOption.selected {
+  border-color: #0f766e;
+  background: rgba(15, 118, 110, 0.05);
+}
+
+.optionIcon {
+  font-size: 1.5rem;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border-radius: 12px;
+}
+
+.paymentOption.selected .optionIcon {
+  background: rgba(15, 118, 110, 0.15);
+}
+
+.optionInfo {
+  flex: 1;
+}
+
+.optionInfo strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.optionInfo span {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.optionCheck {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #0f766e;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 /* Responsive */
