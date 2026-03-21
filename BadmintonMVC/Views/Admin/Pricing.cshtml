@@ -1,370 +1,740 @@
 @{
     ViewData["Title"] = "Cấu hình Bảng Giá";
-    ViewData["Page"]  = "pricing";
+    ViewData["Page"] = "pricing";
     Layout = "_AdminLayout";
 }
 
-<div class="p-4">
-    <ul class="nav nav-tabs mb-4">
-        <li class="nav-item">
-            <button class="nav-link active" id="tab-grid" onclick="switchView('grid')">📊 Bảng giá tổng quan</button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="tab-list" onclick="switchView('list')">📋 Danh sách chi tiết</button>
-        </li>
-    </ul>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="~/css/pricing.css" />
 
-    <!-- VIEW GRID -->
-    <div id="viewGrid">
-        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-            <span class="fw-semibold">Loại sân:</span>
-            <div id="courtTypeTabs" class="d-flex gap-2 flex-wrap"></div>
-            <div class="ms-auto d-flex gap-2 align-items-center">
-                <span id="dirtyBadge" class="badge bg-warning text-dark d-none">⚡ Có thay đổi chưa lưu</span>
-                <button class="btn btn-outline-secondary btn-sm" onclick="resetGrid()">↺ Hoàn tác</button>
-                <button class="btn btn-primary btn-sm" id="btnSaveGrid" onclick="saveGrid()" disabled>💾 Lưu bảng giá</button>
+<div class="pc-wrap">
+
+    <!-- ══ HEADER ══ -->
+    <header class="pc-header">
+        <div class="pc-header-left">
+            <span class="pc-header-icon">💰</span>
+            <div>
+                <h1 class="pc-header-title">Cấu hình Bảng Giá</h1>
+                <p class="pc-header-sub">Admin · Giá thuê sân theo khung giờ &amp; ngày</p>
             </div>
         </div>
-        <div class="card shadow-sm overflow-auto">
-            <table class="table table-bordered mb-0" id="gridTable" style="min-width:700px">
-                <thead id="gridHead"></thead>
-                <tbody id="gridBody"></tbody>
-            </table>
+        <div class="pc-header-right">
+            <div class="pc-stat-chips">
+                <div class="pc-chip">
+                    <span class="pc-chip-num" id="hTotal">0</span>
+                    <span class="pc-chip-label">Cấu hình</span>
+                </div>
+                <div class="pc-chip-warn">
+                    <span class="pc-chip-num" id="hWeekend">0</span>
+                    <span class="pc-chip-label">Cuối tuần</span>
+                </div>
+                <div class="pc-chip-accent">
+                    <span class="pc-chip-num" id="hMaxPrice">—</span>
+                    <span class="pc-chip-label">Giá cao nhất</span>
+                </div>
+            </div>
+            <button class="pc-btn-logout" onclick="handleLogout()">
+                <span>🚪</span><span>Đăng xuất</span>
+            </button>
         </div>
-        <p class="text-muted small mt-2">💡 Nhập giá trực tiếp vào ô rồi nhấn Lưu bảng giá</p>
+    </header>
+
+    <!-- ══ BANNERS ══ -->
+    <div class="pc-banner pc-banner-error" id="errorBanner" style="display:none">
+        <span id="errorMsg"></span>
+        <button class="pc-banner-close" onclick="hideError()">✕</button>
+    </div>
+    <div class="pc-banner pc-banner-success" id="successBanner" style="display:none">
+        <span id="successMsg"></span>
+        <button class="pc-banner-close" onclick="document.getElementById('successBanner').style.display='none'">✕</button>
     </div>
 
-    <!-- VIEW LIST -->
-    <div id="viewList" style="display:none">
-        <div class="d-flex gap-3 mb-3 flex-wrap">
-            <select id="filterCT" class="form-select" style="width:200px" onchange="renderList()">
-                <option value="">🏸 Tất cả loại sân</option>
-            </select>
-            <select id="filterDay" class="form-select" style="width:180px" onchange="renderList()">
-                <option value="">📅 Tất cả các ngày</option>
-                <option value="0">Chủ nhật</option>
-                <option value="1">Thứ 2</option>
-                <option value="2">Thứ 3</option>
-                <option value="3">Thứ 4</option>
-                <option value="4">Thứ 5</option>
-                <option value="5">Thứ 6</option>
-                <option value="6">Thứ 7</option>
-            </select>
-            <button class="btn btn-primary ms-auto" onclick="openCreateConfig()">+ Thêm cấu hình</button>
+    <!-- ══ TAB BAR ══ -->
+    <div class="pc-tabbar">
+        <button class="pc-tab active" id="tab-grid" onclick="switchView('grid')">📊 Bảng giá tổng quan</button>
+        <button class="pc-tab" id="tab-list" onclick="switchView('list')">
+            📋 Danh sách chi tiết <span class="pc-tab-badge" id="tabListBadge">0</span>
+        </button>
+    </div>
+
+    <main class="pc-content">
+
+        <!-- LOADING -->
+        <div class="pc-loading" id="loadingWrap">
+            <div class="pc-spinner"></div>
+            <p>Đang tải dữ liệu...</p>
         </div>
-        <div class="card shadow-sm">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead style="background:linear-gradient(135deg,#0d5e58,#0f766e);color:white">
-                        <tr>
-                            <th>Loại sân</th><th>Khung giờ</th>
-                            <th>Ngày trong tuần</th><th>Giá thuê</th><th>Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody id="listBody">
-                        <tr><td colspan="5" class="text-center p-4 text-muted">Đang tải...</td></tr>
-                    </tbody>
+
+        <!-- ══ GRID VIEW ══ -->
+        <section id="sectionGrid" style="display:none">
+            <div class="pc-toolbar">
+                <div class="pc-toolbar-left">
+                    <span class="pc-toolbar-label">Loại sân:</span>
+                    <div class="pc-ct-tabs" id="ctTabs"></div>
+                </div>
+                <div class="pc-toolbar-right">
+                    <span class="pc-dirty-badge" id="dirtyBadge" style="display:none">⚡ Có thay đổi chưa lưu</span>
+                    <button class="pc-btn-outline" id="btnReset" onclick="resetGrid()" disabled>↺ Hoàn tác</button>
+                    <button class="pc-btn-primary" id="btnSaveGrid" onclick="saveGrid()" disabled>💾 Lưu bảng giá</button>
+                </div>
+            </div>
+
+            <div class="pc-legend">
+                <span class="pc-legend-item"><span class="pc-legend-dot pc-legend-dot-wd"></span>Ngày thường (T2–T6)</span>
+                <span class="pc-legend-item"><span class="pc-legend-dot pc-legend-dot-we"></span>Cuối tuần (T7, CN)</span>
+                <span class="pc-legend-item"><span class="pc-legend-dot pc-legend-dot-em"></span>Chưa cấu hình</span>
+            </div>
+
+            <div class="pc-grid-wrap">
+                <table class="pc-grid">
+                    <thead id="gridHead"></thead>
+                    <tbody id="gridBody"></tbody>
                 </table>
             </div>
+            <p class="pc-grid-hint">💡 Nhập giá trực tiếp vào ô, sau đó nhấn <strong>Lưu bảng giá</strong>.</p>
+        </section>
+
+        <!-- ══ LIST VIEW ══ -->
+        <section id="sectionList" style="display:none">
+            <div class="pc-toolbar">
+                <div class="pc-toolbar-left">
+                    <select class="pc-filter-select" id="filterCT" onchange="renderList()">
+                        <option value="all">🏸 Tất cả loại sân</option>
+                    </select>
+                    <select class="pc-filter-select" id="filterDay" onchange="renderList()">
+                        <option value="all">📅 Tất cả các ngày</option>
+                        <option value="0">Chủ nhật</option>
+                        <option value="1">Thứ 2</option>
+                        <option value="2">Thứ 3</option>
+                        <option value="3">Thứ 4</option>
+                        <option value="4">Thứ 5</option>
+                        <option value="5">Thứ 6</option>
+                        <option value="6">Thứ 7</option>
+                    </select>
+                </div>
+                <button class="pc-btn-primary" onclick="openCreateModal()">+ Thêm cấu hình giá</button>
+            </div>
+
+            <div class="pc-table-wrap">
+                <table class="pc-table">
+                    <thead>
+                        <tr>
+                            <th>Loại sân</th>
+                            <th>Khung giờ</th>
+                            <th>Ngày trong tuần</th>
+                            <th>Giá thuê</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listBody"></tbody>
+                </table>
+                <div class="pc-empty" id="listEmpty" style="display:none">
+                    <span class="pc-empty-icon">💰</span>
+                    <p>Chưa có cấu hình giá nào phù hợp.</p>
+                </div>
+            </div>
+
+            <div class="pc-pagination">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <span id="listPageInfo"></span>
+                    <select class="pc-per-page-select" onchange="onListPerPage(this)">
+                        <option value="10" selected>10 / trang</option>
+                        <option value="20">20 / trang</option>
+                        <option value="50">50 / trang</option>
+                    </select>
+                </div>
+                <div class="pc-page-btns" id="listPageBtns"></div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- ══ SAVING OVERLAY ══ -->
+<div class="pc-saving-overlay" id="savingOverlay">
+    <div class="pc-saving-box"><div class="pc-spinner"></div><span>Đang xử lý...</span></div>
+</div>
+
+<!-- ══ MODAL: TẠO NHIỀU (MULTI-SELECT) ══ -->
+<div class="pc-modal-overlay" id="createModalOverlay" onclick="closeCreateModal(event)">
+    <div class="pc-modal pc-modal-wide" onclick="event.stopPropagation()">
+        <div class="pc-modal-header">
+            <div class="pc-modal-title-group">
+                <span class="pc-modal-title-icon">💰</span>
+                <h3 class="pc-modal-title">Thêm cấu hình giá</h3>
+            </div>
+            <button class="pc-modal-close" onclick="closeCreateModalDirect()">✕</button>
+        </div>
+        <div class="pc-modal-body">
+            <div class="pc-inline-error" id="createError" style="display:none"></div>
+
+            <!-- Loại sân -->
+            <div class="pc-form-group">
+                <div class="pc-multi-label-row">
+                    <label class="pc-label">Loại sân <span class="pc-required">*</span></label>
+                    <div class="pc-sel-all-btns">
+                        <button type="button" class="pc-sel-all-btn" onclick="selectAllCT()">Chọn tất cả</button>
+                        <button type="button" class="pc-sel-all-btn" onclick="clearAllCT()">Bỏ chọn</button>
+                    </div>
+                </div>
+                <div class="pc-multi-chip-group" id="ctChips"></div>
+            </div>
+
+            <!-- Khung giờ -->
+            <div class="pc-form-group">
+                <div class="pc-multi-label-row">
+                    <label class="pc-label">Khung giờ <span class="pc-required">*</span></label>
+                    <div class="pc-sel-all-btns">
+                        <button type="button" class="pc-sel-all-btn" onclick="selectAllTS()">Chọn tất cả</button>
+                        <button type="button" class="pc-sel-all-btn" onclick="clearAllTS()">Bỏ chọn</button>
+                    </div>
+                </div>
+                <select multiple class="pc-multi-select" id="tsMultiSelect" size="7"
+                        onchange="onTSSelectChange(this)"></select>
+                <p class="pc-select-hint">💡 Giữ <kbd>Ctrl</kbd> (Windows) hoặc <kbd>⌘ Cmd</kbd> (Mac) để chọn nhiều</p>
+            </div>
+
+            <!-- Ngày trong tuần -->
+            <div class="pc-form-group">
+                <div class="pc-multi-label-row">
+                    <label class="pc-label">Ngày trong tuần <span class="pc-required">*</span></label>
+                    <div class="pc-sel-all-btns">
+                        <button type="button" class="pc-sel-all-btn" onclick="selectDays([0,1,2,3,4,5,6])">Cả tuần</button>
+                        <button type="button" class="pc-sel-all-btn" onclick="selectDays([1,2,3,4,5])">T2–T6</button>
+                        <button type="button" class="pc-sel-all-btn" onclick="selectDays([0,6])">Cuối tuần</button>
+                        <button type="button" class="pc-sel-all-btn" onclick="selectDays([])">Bỏ chọn</button>
+                    </div>
+                </div>
+                <div class="pc-day-grid" id="createDayGrid"></div>
+            </div>
+
+            <!-- Giá -->
+            <div class="pc-form-group">
+                <label class="pc-label">Giá thuê (VNĐ) <span class="pc-required">*</span></label>
+                <div class="pc-price-field-wrap">
+                    <input type="number" class="pc-input pc-price-field" id="createPrice"
+                           placeholder="VD: 150000" min="0" oninput="updatePricePreview('createPrice','createPricePreview')" />
+                    <span class="pc-price-field-unit">đ</span>
+                    <span class="pc-price-preview" id="createPricePreview" style="display:none"></span>
+                </div>
+                <div class="pc-quick-fill">
+                    <span class="pc-quick-fill-label">Điền nhanh:</span>
+                    <button type="button" class="pc-quick-fill-btn" onclick="setPrice('createPrice','createPricePreview',80000)">80k</button>
+                    <button type="button" class="pc-quick-fill-btn" onclick="setPrice('createPrice','createPricePreview',100000)">100k</button>
+                    <button type="button" class="pc-quick-fill-btn" onclick="setPrice('createPrice','createPricePreview',120000)">120k</button>
+                    <button type="button" class="pc-quick-fill-btn" onclick="setPrice('createPrice','createPricePreview',150000)">150k</button>
+                    <button type="button" class="pc-quick-fill-btn" onclick="setPrice('createPrice','createPricePreview',200000)">200k</button>
+                </div>
+            </div>
+
+            <!-- Combo count -->
+            <div class="pc-combo-badge" id="comboBadge" style="display:none"></div>
+        </div>
+        <div class="pc-modal-footer">
+            <button class="pc-btn-cancel" onclick="closeCreateModalDirect()">Hủy</button>
+            <button class="pc-btn-primary" id="createSaveBtn" onclick="saveMulti()">✅ Tạo cấu hình</button>
         </div>
     </div>
 </div>
 
-<!-- MODAL THÊM/SỬA CONFIG -->
-<div class="modal fade" id="configModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header" style="background:linear-gradient(135deg,#f0fdf9,#e6faf8)">
-                <h5 class="modal-title" id="configModalTitle">💰 Thêm cấu hình giá</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- ══ MODAL: SỬA ĐƠN LẺ ══ -->
+<div class="pc-modal-overlay" id="editModalOverlay" onclick="closeEditModal(event)">
+    <div class="pc-modal" onclick="event.stopPropagation()">
+        <div class="pc-modal-header">
+            <div class="pc-modal-title-group">
+                <span class="pc-modal-title-icon">✏️</span>
+                <h3 class="pc-modal-title">Chỉnh sửa cấu hình giá</h3>
             </div>
-            <div class="modal-body">
-                <input type="hidden" id="editConfigId"/>
-                <div class="row g-3 mb-3">
-                    <div class="col">
-                        <label class="form-label fw-semibold">Loại sân *</label>
-                        <select id="cfCourtType" class="form-select"></select>
-                    </div>
-                    <div class="col">
-                        <label class="form-label fw-semibold">Khung giờ *</label>
-                        <select id="cfTimeSlot" class="form-select"></select>
-                    </div>
+            <button class="pc-modal-close" onclick="closeEditModalDirect()">✕</button>
+        </div>
+        <div class="pc-modal-body">
+            <div class="pc-inline-error" id="editError" style="display:none"></div>
+            <input type="hidden" id="editConfigId" />
+            <div class="pc-form-row">
+                <div class="pc-form-group">
+                    <label class="pc-label">Loại sân <span class="pc-required">*</span></label>
+                    <select class="pc-input" id="editCT"><option value="">-- Chọn loại sân --</option></select>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Ngày trong tuần *</label>
-                    <div class="d-flex gap-2 flex-wrap" id="dayBtns"></div>
+                <div class="pc-form-group">
+                    <label class="pc-label">Khung giờ <span class="pc-required">*</span></label>
+                    <select class="pc-input" id="editTS"><option value="">-- Chọn khung giờ --</option></select>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Giá thuê (đ) *</label>
-                    <input type="number" id="cfPrice" class="form-control" min="0" placeholder="150000"/>
-                    <div class="d-flex gap-1 mt-1">
-                        <button type="button" class="btn btn-outline-secondary btn-sm"
-                                onclick="document.getElementById('cfPrice').value=80000">80k</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm"
-                                onclick="document.getElementById('cfPrice').value=100000">100k</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm"
-                                onclick="document.getElementById('cfPrice').value=150000">150k</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm"
-                                onclick="document.getElementById('cfPrice').value=200000">200k</button>
-                    </div>
-                </div>
-                <div id="configError" class="alert alert-danger d-none"></div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button class="btn btn-primary" onclick="saveConfig()">💾 Lưu</button>
+            <div class="pc-form-group">
+                <label class="pc-label">Ngày trong tuần <span class="pc-required">*</span></label>
+                <div class="pc-day-grid" id="editDayGrid"></div>
             </div>
+            <div class="pc-form-group">
+                <label class="pc-label">Giá thuê (VNĐ) <span class="pc-required">*</span></label>
+                <div class="pc-price-field-wrap">
+                    <input type="number" class="pc-input pc-price-field" id="editPrice"
+                           placeholder="VD: 150000" min="0" oninput="updatePricePreview('editPrice','editPricePreview')" />
+                    <span class="pc-price-field-unit">đ</span>
+                    <span class="pc-price-preview" id="editPricePreview" style="display:none"></span>
+                </div>
+                <div class="pc-quick-fill">
+                    <span class="pc-quick-fill-label">Điền nhanh:</span>
+                    <button type="button" class="pc-quick-fill-btn" onclick="setPrice('editPrice','editPricePreview',80000)">80k</button>
+                    <button type="button" class="pc-quick-fill-btn" onclick="setPrice('editPrice','editPricePreview',100000)">100k</button>
+                    <button type="button" class="pc-quick-fill-btn" onclick="setPrice('editPrice','editPricePreview',120000)">120k</button>
+                    <button type="button" class="pc-quick-fill-btn" onclick="setPrice('editPrice','editPricePreview',150000)">150k</button>
+                    <button type="button" class="pc-quick-fill-btn" onclick="setPrice('editPrice','editPricePreview',200000)">200k</button>
+                </div>
+            </div>
+        </div>
+        <div class="pc-modal-footer">
+            <button class="pc-btn-cancel" onclick="closeEditModalDirect()">Hủy</button>
+            <button class="pc-btn-primary" onclick="saveEdit()">💾 Lưu thay đổi</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MODAL: DELETE ══ -->
+<div class="pc-modal-overlay" id="deleteModalOverlay" onclick="closeDeleteModal(event)">
+    <div class="pc-modal-sm" onclick="event.stopPropagation()">
+        <div class="pc-delete-icon">🗑️</div>
+        <h3 class="pc-delete-title">Xác nhận xóa</h3>
+        <p class="pc-delete-desc">Bạn có chắc muốn xóa cấu hình giá này không? Hành động này không thể hoàn tác.</p>
+        <div class="pc-modal-footer">
+            <button class="pc-btn-cancel" id="delCancelBtn" onclick="closeDeleteModalDirect()">Hủy</button>
+            <button class="pc-btn-delete-confirm" id="delConfirmBtn" onclick="confirmDelete()">Xóa</button>
         </div>
     </div>
 </div>
 
 @section Scripts {
-<script>
-const API   = 'http://localhost:5043/api';
-const token = '@Context.Session.GetString("AuthToken")';
-const DAYS  = ['CN','T2','T3','T4','T5','T6','T7'];
-const DAYS_FULL = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
-const WEEKEND = [0,6];
+    <script>
+        const API   = 'http://localhost:5043/api';
+        const TOKEN = '@Context.Session.GetString("AuthToken")';
+        const H     = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };
+        const H_GET = { 'Authorization': 'Bearer ' + TOKEN };
 
-let allConfigs  = [];
-let courtTypes  = [];
-let timeSlots   = [];
-let activeCtId  = null;
-let gridEdits   = {};
+        const DAYS = [
+            { v:0, s:'CN', l:'Chủ nhật' }, { v:1, s:'T2', l:'Thứ 2' }, { v:2, s:'T3', l:'Thứ 3' },
+            { v:3, s:'T4', l:'Thứ 4' },   { v:4, s:'T5', l:'Thứ 5' }, { v:5, s:'T6', l:'Thứ 6' },
+            { v:6, s:'T7', l:'Thứ 7' }
+        ];
+        const WEEKEND = [0,6];
 
-async function init() {
-    const [cfRes, ctRes, tsRes] = await Promise.all([
-        fetch(`${API}/admin/price-configs`, { headers:{ 'Authorization':'Bearer '+token } }),
-        fetch(`${API}/courttypes`,          { headers:{ 'Authorization':'Bearer '+token } }),
-        fetch(`${API}/timeslots`,           { headers:{ 'Authorization':'Bearer '+token } })
-    ]);
-    allConfigs = await cfRes.json();
-    courtTypes = await ctRes.json();
-    timeSlots  = await tsRes.json();
-    activeCtId = courtTypes[0]?.id;
+        let configs=[], courtTypes=[], timeSlots=[];
+        let activeView='grid', gridCT='', gridEdits={};
+        let listPage=1, listPerPage=10;
+        let pendingDeleteId=null;
+        // multi-create state
+        let createCTIds=[], createTSIds=[], createDayIds=[];
+        // edit single state
+        let editDayVal='';
 
-    // Court type tabs
-    document.getElementById('courtTypeTabs').innerHTML = courtTypes.map(ct => `
-        <button class="btn btn-sm ${ct.id===activeCtId?'btn-primary':'btn-outline-secondary'}"
-                id="ctTab-${ct.id}" onclick="selectCT(${ct.id})">${ct.name}</button>
-    `).join('');
+        // ── INIT ───────────────────────────────────────────────
+        async function init() {
+            showLoading(true);
+            try {
+                const [cfRes,ctRes,tsRes] = await Promise.all([
+                    fetch(`${API}/admin/price-configs`, {headers:H_GET}),
+                    fetch(`${API}/courttypes`,           {headers:H_GET}),
+                    fetch(`${API}/timeslots`,            {headers:H_GET})
+                ]);
+                configs     = cfRes.ok ? await cfRes.json() : [];
+                courtTypes  = ctRes.ok ? await ctRes.json() : [];
+                timeSlots   = tsRes.ok ? (await tsRes.json()).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||'')) : [];
 
-    // Dropdowns cho modal
-    document.getElementById('cfCourtType').innerHTML =
-        courtTypes.map(ct => `<option value="${ct.id}">${ct.name}</option>`).join('');
-    document.getElementById('cfTimeSlot').innerHTML =
-        timeSlots.map(ts => `<option value="${ts.id}">${ts.label}</option>`).join('');
-    document.getElementById('filterCT').innerHTML =
-        '<option value="">🏸 Tất cả loại sân</option>' +
-        courtTypes.map(ct => `<option value="${ct.id}">${ct.name}</option>`).join('');
+                if (courtTypes.length) gridCT = String(courtTypes[0].id);
 
-    // Day buttons trong modal
-    document.getElementById('dayBtns').innerHTML = DAYS.map((d,i) => `
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="dayBtn-${i}"
-                onclick="toggleDay(${i})">${d}</button>
-    `).join('');
+                buildStaticDropdowns();
+                updateStats();
+                renderCtTabs();
+                renderGrid();
+            } catch(e) { showError(e.message); }
+            finally    { showLoading(false); }
+        }
 
-    renderGrid();
-    renderList();
-}
+        function buildStaticDropdowns() {
+            const ctOpts = courtTypes.map(ct=>`<option value="${ct.id}">${ct.name}</option>`).join('');
+            const tsOpts = timeSlots.map(ts=>`<option value="${ts.id}">${slotLabel(ts)}</option>`).join('');
 
-function selectCT(id) {
-    activeCtId = id;
-    courtTypes.forEach(ct => {
-        const btn = document.getElementById(`ctTab-${ct.id}`);
-        btn.className = `btn btn-sm ${ct.id===id?'btn-primary':'btn-outline-secondary'}`;
-    });
-    gridEdits = {};
-    updateDirty();
-    renderGrid();
-}
+            document.getElementById('filterCT').innerHTML = '<option value="all">🏸 Tất cả loại sân</option>' + ctOpts;
+            document.getElementById('editCT').innerHTML   = '<option value="">-- Chọn loại sân --</option>' + ctOpts;
+            document.getElementById('editTS').innerHTML   = '<option value="">-- Chọn khung giờ --</option>' + tsOpts;
 
-function switchView(v) {
-    document.getElementById('viewGrid').style.display = v==='grid' ? '' : 'none';
-    document.getElementById('viewList').style.display = v==='list' ? '' : 'none';
-    document.getElementById('tab-grid').classList.toggle('active', v==='grid');
-    document.getElementById('tab-list').classList.toggle('active', v==='list');
-}
+            // multi-select for timeslots
+            document.getElementById('tsMultiSelect').innerHTML = tsOpts;
 
-// ── GRID VIEW ──────────────────────────────────────────────────────────
-function renderGrid() {
-    const gridData = {};
-    allConfigs
-        .filter(c => c.courtTypeId === activeCtId)
-        .forEach(c => { gridData[`${c.timeSlotId}_${c.dayOfWeek}`] = c.price; });
+            // CT chips for create modal
+            document.getElementById('ctChips').innerHTML = courtTypes.map(ct =>
+                `<button type="button" class="pc-multi-chip" id="ctChip-${ct.id}" onclick="toggleCT(${ct.id})">🏸 ${ct.name}</button>`
+            ).join('');
 
-    // Header
-    document.getElementById('gridHead').innerHTML =
-        '<tr><th style="background:#f8fafc;min-width:120px">Khung giờ</th>' +
-        DAYS.map((d,i) => `
-            <th style="background:${WEEKEND.includes(i)?'#fffbeb':'#f0fdf9'};text-align:center;min-width:110px">
-                <div class="fw-bold">${d}</div>
-                <small class="text-muted" style="font-size:10px">${DAYS_FULL[i]}</small>
-            </th>`).join('') + '</tr>';
+            // day grids
+            const dayGridHtml = DAYS.map(d => {
+                const we = WEEKEND.includes(d.v);
+                return `<button type="button" class="pc-day-btn" id="createDay-${d.v}" onclick="toggleCreateDay(${d.v})">
+                    <span class="pc-day-btn-short">${d.s}</span>
+                    <span class="pc-day-btn-full">${d.l}</span>
+                </button>`;
+            }).join('');
+            document.getElementById('createDayGrid').innerHTML = dayGridHtml;
 
-    // Body
-    document.getElementById('gridBody').innerHTML = timeSlots.map(ts => `
-        <tr>
-            <td style="background:#f8fafc;font-weight:600;font-size:13px">
-                ${ts.label}
-            </td>
-            ${DAYS.map((_,i) => {
-                const key = `${ts.id}_${i}`;
-                const val = key in gridEdits ? gridEdits[key] : (gridData[key] ?? '');
-                const isEdited = key in gridEdits;
-                const isEmpty  = !(key in gridData) && !isEdited;
-                return `<td style="padding:4px;background:${isEdited?'#fffbeb':isEmpty?'#fafafa':'white'}">
-                    <div style="position:relative">
-                        <input type="number" min="0"
-                               style="width:100%;border:1px solid ${isEdited?'#f59e0b':'#e2e8f0'};
-                                      border-radius:6px;padding:5px 20px 5px 8px;
-                                      font-size:13px;font-weight:600;color:#0f172a;
-                                      background:transparent;outline:none"
-                               value="${val}" placeholder="—"
-                               onchange="editGrid('${ts.id}',${i},this.value)"/>
-                        ${val ? `<span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;color:#0f766e;pointer-events:none">đ</span>` : ''}
-                    </div>
-                </td>`;
-            }).join('')}
-        </tr>
-    `).join('');
-}
+            document.getElementById('editDayGrid').innerHTML = DAYS.map(d =>
+                `<button type="button" class="pc-day-btn" id="editDay-${d.v}" onclick="selectEditDay(${d.v})">
+                    <span class="pc-day-btn-short">${d.s}</span>
+                    <span class="pc-day-btn-full">${d.l}</span>
+                </button>`
+            ).join('');
+        }
 
-function editGrid(slotId, day, val) {
-    gridEdits[`${slotId}_${day}`] = val;
-    updateDirty();
-}
+        function slotLabel(ts) {
+            if (ts.label) return ts.label;
+            return `${(ts.startTime||'').slice(0,5)} – ${(ts.endTime||'').slice(0,5)}`;
+        }
 
-function updateDirty() {
-    const dirty = Object.keys(gridEdits).length > 0;
-    document.getElementById('dirtyBadge').classList.toggle('d-none', !dirty);
-    document.getElementById('btnSaveGrid').disabled = !dirty;
-}
+        function updateStats() {
+            document.getElementById('hTotal').textContent   = configs.length;
+            document.getElementById('hWeekend').textContent = configs.filter(c=>WEEKEND.includes(c.dayOfWeek)).length;
+            const prices = configs.map(c=>c.price);
+            const max = prices.length ? Math.max(...prices) : 0;
+            document.getElementById('hMaxPrice').textContent = max > 0
+                ? new Intl.NumberFormat('vi-VN',{notation:'compact',maximumFractionDigits:0}).format(max)+'đ' : '—';
+            document.getElementById('tabListBadge').textContent = configs.length;
+        }
 
-function resetGrid() {
-    gridEdits = {};
-    updateDirty();
-    renderGrid();
-}
+        // ── VIEW SWITCH ────────────────────────────────────────
+        function switchView(v) {
+            activeView = v;
+            document.getElementById('tab-grid').classList.toggle('active', v==='grid');
+            document.getElementById('tab-list').classList.toggle('active', v==='list');
+            document.getElementById('sectionGrid').style.display = v==='grid' ? 'block' : 'none';
+            document.getElementById('sectionList').style.display = v==='list' ? 'block' : 'none';
+            if (v==='list') renderList();
+        }
 
-async function saveGrid() {
-    const items = [];
-    for (const [key, val] of Object.entries(gridEdits)) {
-        if (!val) continue;
-        const [slotId, day] = key.split('_').map(Number);
-        items.push({ courtTypeId: activeCtId, timeSlotId: slotId, dayOfWeek: day, price: parseFloat(val) });
-    }
-    if (!items.length) return;
-    await fetch(`${API}/admin/price-configs/bulk`, {
-        method: 'POST',
-        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
-        body: JSON.stringify({ items })
-    });
-    gridEdits = {};
-    updateDirty();
-    const cfRes = await fetch(`${API}/admin/price-configs`, { headers:{ 'Authorization':'Bearer '+token } });
-    allConfigs  = await cfRes.json();
-    renderGrid();
-    alert('✅ Đã lưu bảng giá!');
-}
+        // ── GRID ───────────────────────────────────────────────
+        function renderCtTabs() {
+            document.getElementById('ctTabs').innerHTML = courtTypes.map(ct =>
+                `<button class="pc-ct-tab ${String(ct.id)===gridCT?'active':''}" id="ctTab-${ct.id}" onclick="selectCT('${ct.id}')">${ct.name}</button>`
+            ).join('');
+        }
 
-// ── LIST VIEW ──────────────────────────────────────────────────────────
-function renderList() {
-    const filterCT  = document.getElementById('filterCT')?.value;
-    const filterDay = document.getElementById('filterDay')?.value;
+        function selectCT(id) {
+            gridCT = String(id);
+            gridEdits = {};
+            updateGridDirty();
+            renderCtTabs();
+            renderGrid();
+        }
 
-    const list = allConfigs.filter(c =>
-        (!filterCT  || c.courtTypeId === parseInt(filterCT)) &&
-        (!filterDay && filterDay !== '0' ? true : c.dayOfWeek === parseInt(filterDay))
-    );
+        function renderGrid() {
+            const map = {};
+            configs.filter(c=>String(c.courtTypeId)===gridCT).forEach(c=>{ map[`${c.timeSlotId}_${c.dayOfWeek}`]={id:c.id,price:c.price}; });
 
-    document.getElementById('listBody').innerHTML = list.length
-        ? list.map(c => `
-            <tr>
-                <td><span class="badge bg-light text-dark border">🏸 ${c.courtTypeName}</span></td>
-                <td><span class="badge" style="background:rgba(15,118,110,.08);color:#0d5e58;border:1px solid rgba(15,118,110,.2)">⏰ ${c.timeSlotLabel}</span></td>
-                <td><span class="badge ${WEEKEND.includes(c.dayOfWeek)?'bg-warning text-dark':'bg-light text-dark border'}">${c.dayLabel}</span></td>
-                <td class="fw-bold" style="color:#b45309">${fmt(c.price)}</td>
-                <td>
-                    <button class="btn btn-outline-primary btn-sm me-1" onclick="openEditConfig(${c.id})">✏️</button>
-                    <button class="btn btn-outline-danger btn-sm"  onclick="deleteConfig(${c.id})">🗑️</button>
-                </td>
-            </tr>
-        `).join('')
-        : '<tr><td colspan="5" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>';
-}
+            // header
+            document.getElementById('gridHead').innerHTML =
+                `<tr><th class="pc-grid-th-slot">Khung giờ</th>` +
+                DAYS.map(d=>`<th class="pc-grid-th ${WEEKEND.includes(d.v)?'pc-grid-th-we':'pc-grid-th-wd'}">
+                    <span class="pc-day-short">${d.s}</span>
+                    <span class="pc-day-full">${d.l}</span>
+                </th>`).join('') + '</tr>';
 
-let selectedDay = 0;
-function toggleDay(i) {
-    selectedDay = i;
-    DAYS.forEach((_,j) => {
-        const btn = document.getElementById(`dayBtn-${j}`);
-        btn.className = `btn btn-sm ${j===i ? 'btn-primary' : 'btn-outline-secondary'}`;
-    });
-}
+            // body
+            document.getElementById('gridBody').innerHTML = timeSlots.map((ts,idx) =>
+                `<tr class="pc-grid-row" style="animation-delay:${idx*0.03}s">
+                    <td class="pc-grid-td-slot"><span class="pc-slot-badge">${slotLabel(ts)}</span></td>
+                    ${DAYS.map(d=>{
+                        const key=`${ts.id}_${d.v}`;
+                        const val=key in gridEdits ? gridEdits[key] : (map[key]?.price!=null?String(map[key].price):'');
+                        const isEdited=key in gridEdits, existDB=map[key]!=null, isWE=WEEKEND.includes(d.v);
+                        const cellCls = isEdited?'pc-cell-edited':(!existDB&&!isEdited?'pc-cell-empty':(isWE?'pc-cell-we':'pc-cell-wd'));
+                        return `<td class="pc-grid-td-price ${isWE?'pc-cell-we':'pc-cell-wd'} ${cellCls}">
+                            <div class="pc-price-input-wrap">
+                                <input type="number" class="pc-price-input" min="0"
+                                       value="${val}" placeholder="—"
+                                       onchange="editGrid('${ts.id}',${d.v},this.value)" />
+                                ${val?`<span class="pc-price-unit">đ</span>`:''}
+                            </div>
+                        </td>`;
+                    }).join('')}
+                </tr>`
+            ).join('');
+        }
 
-function openCreateConfig() {
-    document.getElementById('editConfigId').value = '';
-    document.getElementById('cfPrice').value      = '';
-    document.getElementById('configModalTitle').textContent = '💰 Thêm cấu hình giá';
-    document.getElementById('configError').classList.add('d-none');
-    toggleDay(0);
-    new bootstrap.Modal(document.getElementById('configModal')).show();
-}
+        function editGrid(slotId, day, val) {
+            gridEdits[`${slotId}_${day}`] = val;
+            updateGridDirty();
+        }
+        function updateGridDirty() {
+            const dirty = Object.keys(gridEdits).length > 0;
+            document.getElementById('dirtyBadge').style.display = dirty ? 'inline-flex' : 'none';
+            document.getElementById('btnSaveGrid').disabled = !dirty;
+            document.getElementById('btnReset').disabled    = !dirty;
+        }
+        function resetGrid() { gridEdits={}; updateGridDirty(); renderGrid(); }
 
-function openEditConfig(id) {
-    const c = allConfigs.find(x => x.id === id);
-    document.getElementById('editConfigId').value  = c.id;
-    document.getElementById('cfCourtType').value   = c.courtTypeId;
-    document.getElementById('cfTimeSlot').value    = c.timeSlotId;
-    document.getElementById('cfPrice').value       = c.price;
-    document.getElementById('configModalTitle').textContent = '✏️ Sửa cấu hình giá';
-    document.getElementById('configError').classList.add('d-none');
-    toggleDay(c.dayOfWeek);
-    new bootstrap.Modal(document.getElementById('configModal')).show();
-}
+        async function saveGrid() {
+            const items=[];
+            for(const [key,val] of Object.entries(gridEdits)){
+                if(!val) continue;
+                const price=parseFloat(val);
+                if(isNaN(price)||price<0) continue;
+                const [slotId,day]=key.split('_').map(Number);
+                items.push({courtTypeId:parseInt(gridCT), timeSlotId:slotId, dayOfWeek:day, price});
+            }
+            if(!items.length){showError('Không có thay đổi hợp lệ để lưu.');return;}
+            setSaving(true);
+            try {
+                const res=await fetch(`${API}/admin/price-configs/bulk`,{method:'POST',headers:H,body:JSON.stringify({items})});
+                if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Lưu thất bại (${res.status})`);}
+                await reloadConfigs();
+                gridEdits={}; updateGridDirty(); renderGrid();
+                showSuccess(`✅ Đã lưu ${items.length} cấu hình giá thành công!`);
+            } catch(e){showError(e.message);}
+            finally   {setSaving(false);}
+        }
 
-async function saveConfig() {
-    const id   = document.getElementById('editConfigId').value;
-    const body = {
-        courtTypeId: parseInt(document.getElementById('cfCourtType').value),
-        timeSlotId:  parseInt(document.getElementById('cfTimeSlot').value),
-        dayOfWeek:   selectedDay,
-        price:       parseFloat(document.getElementById('cfPrice').value)
-    };
-    const url    = id ? `${API}/admin/price-configs/${id}` : `${API}/admin/price-configs`;
-    const method = id ? 'PUT' : 'POST';
-    const res    = await fetch(url, {
-        method,
-        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
-        body: JSON.stringify(body)
-    });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        document.getElementById('configError').textContent = err.message || 'Lỗi!';
-        document.getElementById('configError').classList.remove('d-none');
-        return;
-    }
-    bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
-    const cfRes = await fetch(`${API}/admin/price-configs`, { headers:{ 'Authorization':'Bearer '+token } });
-    allConfigs  = await cfRes.json();
-    renderGrid();
-    renderList();
-}
+        // ── LIST ───────────────────────────────────────────────
+        function getFilteredList() {
+            const fct = document.getElementById('filterCT').value;
+            const fd  = document.getElementById('filterDay').value;
+            return configs.filter(c =>
+                (fct==='all' || c.courtTypeId===parseInt(fct)) &&
+                (fd==='all'  || c.dayOfWeek===parseInt(fd))
+            );
+        }
 
-async function deleteConfig(id) {
-    if (!confirm('Xóa cấu hình giá này?')) return;
-    await fetch(`${API}/admin/price-configs/${id}`, {
-        method: 'DELETE', headers: { 'Authorization':'Bearer '+token }
-    });
-    const cfRes = await fetch(`${API}/admin/price-configs`, { headers:{ 'Authorization':'Bearer '+token } });
-    allConfigs  = await cfRes.json();
-    renderGrid();
-    renderList();
-}
+        function renderList() {
+            const filtered=getFilteredList(), total=filtered.length;
+            const tp=Math.max(1,Math.ceil(total/listPerPage));
+            if(listPage>tp) listPage=tp;
+            const rows=filtered.slice((listPage-1)*listPerPage, listPage*listPerPage);
 
-function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n||0) + 'đ'; }
+            if(!rows.length) {
+                document.getElementById('listBody').innerHTML='';
+                document.getElementById('listEmpty').style.display='block';
+            } else {
+                document.getElementById('listEmpty').style.display='none';
+                document.getElementById('listBody').innerHTML=rows.map((c,i)=>{
+                    const d=DAYS.find(x=>x.v===c.dayOfWeek);
+                    const we=WEEKEND.includes(c.dayOfWeek);
+                    return `<tr style="animation-delay:${i*0.03}s">
+                        <td><span class="pc-type-badge">🏸 ${c.courtTypeName}</span></td>
+                        <td><span class="pc-slot-badge-sm">⏰ ${c.timeSlotLabel||slotLabel(c)}</span></td>
+                        <td><span class="pc-day-badge ${we?'pc-day-badge-we':'pc-day-badge-wd'}">${d?.l||'—'}</span></td>
+                        <td><span class="pc-price-display">${fmt(c.price)}</span></td>
+                        <td><div class="pc-action-btns">
+                            <button class="pc-btn-edit"   onclick="openEditModal(${c.id})">✏️ Sửa</button>
+                            <button class="pc-btn-delete" onclick="openDeleteModal(${c.id})">🗑️ Xóa</button>
+                        </div></td>
+                    </tr>`;
+                }).join('');
+            }
+            renderListPagination(total, tp);
+        }
 
-init();
-</script>
+        function renderListPagination(total, tp) {
+            const s=(listPage-1)*listPerPage+1, e=Math.min(listPage*listPerPage,total);
+            document.getElementById('listPageInfo').textContent = total ? `Hiển thị ${s}–${e} / ${total}` : 'Không có dữ liệu';
+            let btns=`<button class="pc-page-btn" onclick="goListPage(${listPage-1})" ${listPage<=1?'disabled':''}>‹</button>`;
+            for(let p=1;p<=tp;p++){
+                if(tp<=7||p===1||p===tp||Math.abs(p-listPage)<=1)
+                    btns+=`<button class="pc-page-btn ${p===listPage?'active':''}" onclick="goListPage(${p})">${p}</button>`;
+                else if(Math.abs(p-listPage)===2)
+                    btns+=`<button class="pc-page-btn" disabled>…</button>`;
+            }
+            btns+=`<button class="pc-page-btn" onclick="goListPage(${listPage+1})" ${listPage>=tp?'disabled':''}>›</button>`;
+            document.getElementById('listPageBtns').innerHTML=btns;
+        }
+        function goListPage(p){listPage=p;renderList();}
+        function onListPerPage(s){listPerPage=parseInt(s.value);listPage=1;renderList();}
+
+        // ── CREATE MODAL ───────────────────────────────────────
+        function openCreateModal() {
+            createCTIds=[]; createTSIds=[]; createDayIds=[];
+            document.getElementById('createPrice').value='';
+            document.getElementById('createPricePreview').style.display='none';
+            // reset chips
+            courtTypes.forEach(ct=>updateCTChip(ct.id,false));
+            // reset ts multi-select
+            Array.from(document.getElementById('tsMultiSelect').options).forEach(o=>o.selected=false);
+            // reset days
+            DAYS.forEach(d=>updateCreateDayBtn(d.v,false));
+            updateComboBadge();
+            document.getElementById('createError').style.display='none';
+            showModal('createModalOverlay');
+        }
+
+        // CT chips
+        function toggleCT(id) {
+            if(createCTIds.includes(id)) createCTIds=createCTIds.filter(x=>x!==id);
+            else createCTIds.push(id);
+            updateCTChip(id, createCTIds.includes(id));
+            updateComboBadge();
+        }
+        function updateCTChip(id, active) {
+            const el=document.getElementById(`ctChip-${id}`);
+            if(!el) return;
+            el.className='pc-multi-chip'+(active?' active':'');
+            const name=courtTypes.find(c=>c.id===id)?.name||'';
+            el.innerHTML=`🏸 ${name}${active?'<span class="pc-chip-check">✓</span>':''}`;
+        }
+        function selectAllCT(){ createCTIds=courtTypes.map(ct=>ct.id); courtTypes.forEach(ct=>updateCTChip(ct.id,true)); updateComboBadge(); }
+        function clearAllCT() { createCTIds=[]; courtTypes.forEach(ct=>updateCTChip(ct.id,false)); updateComboBadge(); }
+
+        // TS multi select
+        function onTSSelectChange(sel){ createTSIds=Array.from(sel.selectedOptions).map(o=>parseInt(o.value)); updateComboBadge(); }
+        function selectAllTS(){ createTSIds=timeSlots.map(ts=>ts.id); Array.from(document.getElementById('tsMultiSelect').options).forEach(o=>o.selected=true); updateComboBadge(); }
+        function clearAllTS() { createTSIds=[]; Array.from(document.getElementById('tsMultiSelect').options).forEach(o=>o.selected=false); updateComboBadge(); }
+
+        // Create days
+        function toggleCreateDay(v) {
+            if(createDayIds.includes(v)) createDayIds=createDayIds.filter(x=>x!==v);
+            else createDayIds.push(v);
+            updateCreateDayBtn(v, createDayIds.includes(v));
+            updateComboBadge();
+        }
+        function selectDays(arr) {
+            createDayIds=[...arr];
+            DAYS.forEach(d=>updateCreateDayBtn(d.v, arr.includes(d.v)));
+            updateComboBadge();
+        }
+        function updateCreateDayBtn(v, active) {
+            const el=document.getElementById(`createDay-${v}`);
+            if(!el) return;
+            const we=WEEKEND.includes(v);
+            el.className='pc-day-btn'+(active?(we?' pc-day-btn-we-active':' pc-day-btn-active'):'');
+        }
+        function updateComboBadge() {
+            const cnt=createCTIds.length*createTSIds.length*createDayIds.length;
+            const el=document.getElementById('comboBadge');
+            if(cnt>0){
+                el.style.display='block';
+                el.innerHTML=`🎯 Sẽ tạo / cập nhật <strong>${cnt}</strong> cấu hình giá &nbsp;(${createCTIds.length} loại sân × ${createTSIds.length} khung giờ × ${createDayIds.length} ngày)`;
+            } else { el.style.display='none'; }
+            document.getElementById('createSaveBtn').textContent = cnt>0 ? `✅ Tạo ${cnt} cấu hình` : '✅ Tạo cấu hình';
+            document.getElementById('createSaveBtn').disabled = cnt===0;
+        }
+
+        async function saveMulti() {
+            const price=parseFloat(document.getElementById('createPrice').value);
+            if(!createCTIds.length||!createTSIds.length||!createDayIds.length||isNaN(price)||price<0){
+                showCreateError('Vui lòng chọn ít nhất 1 loại sân, 1 khung giờ, 1 ngày và nhập giá hợp lệ.');return;
+            }
+            const items=[];
+            for(const ct of createCTIds) for(const ts of createTSIds) for(const d of createDayIds)
+                items.push({courtTypeId:ct, timeSlotId:ts, dayOfWeek:d, price});
+            setSaving(true);
+            try {
+                const res=await fetch(`${API}/admin/price-configs/bulk`,{method:'POST',headers:H,body:JSON.stringify({items})});
+                if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Tạo thất bại (${res.status})`);}
+                await reloadConfigs(); closeCreateModalDirect();
+                showSuccess(`✅ Đã tạo ${items.length} cấu hình giá thành công!`);
+                if(activeView==='list') renderList();
+                renderGrid();
+            } catch(e){showCreateError(e.message);}
+            finally   {setSaving(false);}
+        }
+
+        // ── EDIT MODAL ─────────────────────────────────────────
+        function openEditModal(id) {
+            const c=configs.find(x=>x.id===id);
+            document.getElementById('editConfigId').value=c.id;
+            document.getElementById('editCT').value=c.courtTypeId;
+            document.getElementById('editTS').value=c.timeSlotId;
+            document.getElementById('editPrice').value=c.price;
+            editDayVal=String(c.dayOfWeek);
+            updatePricePreview('editPrice','editPricePreview');
+            DAYS.forEach(d=>{
+                const we=WEEKEND.includes(d.v), active=String(d.v)===editDayVal;
+                const el=document.getElementById(`editDay-${d.v}`);
+                if(el) el.className='pc-day-btn'+(active?(we?' pc-day-btn-we-active':' pc-day-btn-active'):'');
+            });
+            document.getElementById('editError').style.display='none';
+            showModal('editModalOverlay');
+        }
+        function selectEditDay(v) {
+            editDayVal=String(v);
+            DAYS.forEach(d=>{
+                const we=WEEKEND.includes(d.v), active=String(d.v)===editDayVal;
+                const el=document.getElementById(`editDay-${d.v}`);
+                if(el) el.className='pc-day-btn'+(active?(we?' pc-day-btn-we-active':' pc-day-btn-active'):'');
+            });
+        }
+        async function saveEdit() {
+            const id=document.getElementById('editConfigId').value;
+            const ct=document.getElementById('editCT').value;
+            const ts=document.getElementById('editTS').value;
+            const price=parseFloat(document.getElementById('editPrice').value);
+            if(!ct||!ts||editDayVal===''||isNaN(price)||price<0){showEditError('Vui lòng điền đầy đủ tất cả các trường.');return;}
+            setSaving(true);
+            try {
+                const res=await fetch(`${API}/admin/price-configs/${id}`,{method:'PUT',headers:H,body:JSON.stringify({courtTypeId:parseInt(ct),timeSlotId:parseInt(ts),dayOfWeek:parseInt(editDayVal),price})});
+                if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Cập nhật thất bại (${res.status})`);}
+                await reloadConfigs(); closeEditModalDirect();
+                showSuccess('✅ Cập nhật giá thành công!');
+                if(activeView==='list') renderList(); renderGrid();
+            } catch(e){showEditError(e.message);}
+            finally   {setSaving(false);}
+        }
+
+        // ── DELETE ─────────────────────────────────────────────
+        function openDeleteModal(id) { pendingDeleteId=id; showModal('deleteModalOverlay'); }
+        async function confirmDelete() {
+            if(!pendingDeleteId) return;
+            setSaving(true);
+            const btn=document.getElementById('delConfirmBtn'), btnC=document.getElementById('delCancelBtn');
+            btn.textContent='⏳ Đang xóa...'; btn.disabled=btnC.disabled=true;
+            try {
+                const res=await fetch(`${API}/admin/price-configs/${pendingDeleteId}`,{method:'DELETE',headers:H_GET});
+                if(!res.ok) throw new Error(`Xóa thất bại (${res.status})`);
+                await reloadConfigs(); closeDeleteModalDirect();
+                showSuccess('🗑️ Đã xóa cấu hình giá.');
+                if(activeView==='list') renderList(); renderGrid();
+            } catch(e){showError(e.message);closeDeleteModalDirect();}
+            finally   {setSaving(false);btn.textContent='Xóa';btn.disabled=btnC.disabled=false;}
+        }
+
+        // ── RELOAD ─────────────────────────────────────────────
+        async function reloadConfigs() {
+            const r=await fetch(`${API}/admin/price-configs`,{headers:H_GET});
+            if(r.ok){configs=await r.json(); updateStats();}
+        }
+
+        // ── PRICE PREVIEW ──────────────────────────────────────
+        function updatePricePreview(inputId, previewId) {
+            const val=parseFloat(document.getElementById(inputId).value);
+            const el=document.getElementById(previewId);
+            if(!isNaN(val)&&val>=0){
+                el.textContent='= '+new Intl.NumberFormat('vi-VN').format(val)+' đồng';
+                el.style.display='inline';
+            } else { el.style.display='none'; }
+        }
+        function setPrice(inputId, previewId, val) {
+            document.getElementById(inputId).value=val;
+            updatePricePreview(inputId, previewId);
+        }
+
+        // ── HELPERS ────────────────────────────────────────────
+        function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(n||0))+'đ'; }
+
+        function showLoading(on) {
+            document.getElementById('loadingWrap').style.display=on?'flex':'none';
+            if(!on){document.getElementById('sectionGrid').style.display='block';}
+        }
+        function setSaving(on) { document.getElementById('savingOverlay').classList.toggle('visible',on); }
+        function showError(m)  { document.getElementById('errorMsg').textContent='⚠️ '+m; document.getElementById('errorBanner').style.display='flex'; }
+        function hideError()   { document.getElementById('errorBanner').style.display='none'; }
+        function showSuccess(m){ document.getElementById('successMsg').textContent=m; document.getElementById('successBanner').style.display='flex'; setTimeout(()=>document.getElementById('successBanner').style.display='none',3500); }
+        function showCreateError(m){ const el=document.getElementById('createError'); el.textContent='⚠️ '+m; el.style.display='block'; }
+        function showEditError(m)  { const el=document.getElementById('editError');   el.textContent='⚠️ '+m; el.style.display='block'; }
+
+        function showModal(id)  { document.getElementById(id).classList.add('visible'); }
+        function hideModal(id)  { document.getElementById(id).classList.remove('visible'); }
+        function closeCreateModal(e) { if(e.target.id==='createModalOverlay') closeCreateModalDirect(); }
+        function closeCreateModalDirect() { hideModal('createModalOverlay'); }
+        function closeEditModal(e)   { if(e.target.id==='editModalOverlay')   closeEditModalDirect(); }
+        function closeEditModalDirect()   { hideModal('editModalOverlay'); editDayVal=''; }
+        function closeDeleteModal(e) { if(e.target.id==='deleteModalOverlay') closeDeleteModalDirect(); }
+        function closeDeleteModalDirect() { hideModal('deleteModalOverlay'); pendingDeleteId=null; }
+        function handleLogout()    { if(confirm('Bạn có chắc chắn muốn đăng xuất?')) window.location.href='/admin/login'; }
+
+        init();
+    </script>
 }

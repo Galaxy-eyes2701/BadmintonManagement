@@ -1,288 +1,425 @@
 @{
     ViewData["Title"] = "Quản lý Voucher";
-    ViewData["Page"]  = "vouchers";
+    ViewData["Page"] = "vouchers";
     Layout = "_AdminLayout";
 }
 
-<div class="p-4">
-    <!-- STATS -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm" style="border-left:4px solid #0f766e!important">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <span style="font-size:32px">🎟️</span>
-                    <div>
-                        <div class="text-muted small fw-semibold">TỔNG VOUCHER</div>
-                        <div class="fw-black fs-4" id="statTotal">—</div>
-                    </div>
-                </div>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="~/css/vouchers.css" />
+
+<div class="vc-wrap">
+
+    <!-- ══ HEADER ══ -->
+    <header class="vc-header">
+        <div class="vc-header-left">
+            <span class="vc-header-icon">🎟️</span>
+            <div>
+                <h1 class="vc-header-title">Quản lý Voucher</h1>
+                <p class="vc-header-sub">Admin · Mã giảm giá &amp; khuyến mãi</p>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm" style="border-left:4px solid #10b981!important">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <span style="font-size:32px">✅</span>
-                    <div>
-                        <div class="text-muted small fw-semibold">CÒN HIỆU LỰC</div>
-                        <div class="fw-black fs-4 text-success" id="statActive">—</div>
-                    </div>
+        <div class="vc-header-right">
+            <div class="vc-stat-chips">
+                <div class="vc-chip">
+                    <span class="vc-chip-num" id="hTotal">0</span>
+                    <span class="vc-chip-label">Tổng</span>
+                </div>
+                <div class="vc-chip-success">
+                    <span class="vc-chip-num" id="hActive">0</span>
+                    <span class="vc-chip-label">Còn hiệu lực</span>
+                </div>
+                <div class="vc-chip-warn">
+                    <span class="vc-chip-num" id="hExpired">0</span>
+                    <span class="vc-chip-label">Hết hạn</span>
                 </div>
             </div>
+            <button class="vc-btn-logout" onclick="handleLogout()">
+                <span>🚪</span><span>Đăng xuất</span>
+            </button>
         </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm" style="border-left:4px solid #f59e0b!important">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <span style="font-size:32px">⏰</span>
-                    <div>
-                        <div class="text-muted small fw-semibold">HẾT HẠN</div>
-                        <div class="fw-black fs-4 text-warning" id="statExpired">—</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    </header>
+
+    <!-- ══ BANNERS ══ -->
+    <div class="vc-banner vc-banner-error" id="errorBanner" style="display:none">
+        <span id="errorMsg"></span>
+        <button class="vc-banner-close" onclick="hideError()">✕</button>
+    </div>
+    <div class="vc-banner vc-banner-success" id="successBanner" style="display:none">
+        <span id="successMsg"></span>
+        <button class="vc-banner-close" onclick="document.getElementById('successBanner').style.display='none'">✕</button>
     </div>
 
-    <!-- TOOLBAR -->
-    <div class="d-flex gap-3 mb-3 flex-wrap">
-        <input type="text" id="searchInput" class="form-control"
-               placeholder="🔍 Tìm mã voucher..." style="max-width:280px" oninput="renderTable()"/>
-        <select id="statusFilter" class="form-select" style="width:180px" onchange="renderTable()">
-            <option value="">Tất cả</option>
-            <option value="active">✅ Còn hiệu lực</option>
-            <option value="expired">⏰ Hết hạn</option>
-        </select>
-        <button class="btn btn-primary ms-auto" onclick="openCreate()">+ Thêm voucher</button>
-    </div>
+    <main class="vc-content">
 
-    <!-- BẢNG -->
-    <div class="card shadow-sm">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead style="background:linear-gradient(135deg,#0d5e58,#0f766e);color:white">
-                    <tr>
-                        <th>#ID</th>
-                        <th>Mã voucher</th>
-                        <th>Giảm giá</th>
-                        <th>Giới hạn dùng</th>
-                        <th>Ngày hết hạn</th>
-                        <th>Trạng thái</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <tr><td colspan="7" class="text-center p-4 text-muted">Đang tải...</td></tr>
-                </tbody>
-            </table>
+        <!-- TOOLBAR -->
+        <div class="vc-toolbar">
+            <div class="vc-toolbar-left">
+                <div class="vc-search-box">
+                    <span class="vc-search-icon">🔍</span>
+                    <input type="text" class="vc-search-input" id="searchInput"
+                           placeholder="Tìm mã voucher..." oninput="onSearch(this)" />
+                    <button class="vc-search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+                </div>
+                <select class="vc-filter-select" id="statusFilter" onchange="onFilterChange()">
+                    <option value="all">🎟️ Tất cả</option>
+                    <option value="active">✅ Còn hiệu lực</option>
+                    <option value="expired">⏰ Hết hạn</option>
+                </select>
+            </div>
+            <button class="vc-btn-primary" onclick="openCreate()">+ Thêm voucher</button>
+        </div>
+
+        <!-- LOADING -->
+        <div class="vc-loading" id="loadingWrap">
+            <div class="vc-spinner"></div>
+            <p>Đang tải dữ liệu...</p>
+        </div>
+
+        <!-- TABLE SECTION -->
+        <div id="tableSection" style="display:none">
+            <div class="vc-table-wrap">
+                <table class="vc-table">
+                    <thead>
+                        <tr>
+                            <th class="vc-th-sort" onclick="handleSort('id')">ID <span class="sort-icon"></span></th>
+                            <th class="vc-th-sort" onclick="handleSort('code')">Mã voucher <span class="sort-icon"></span></th>
+                            <th class="vc-th-sort" onclick="handleSort('discountAmount')">Giảm giá <span class="sort-icon"></span></th>
+                            <th class="vc-th-sort" onclick="handleSort('usageLimit')">Giới hạn dùng <span class="sort-icon"></span></th>
+                            <th class="vc-th-sort" onclick="handleSort('expiryDate')">Ngày hết hạn <span class="sort-icon"></span></th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+                <div class="vc-empty" id="emptyState" style="display:none">
+                    <span class="vc-empty-icon">🎟️</span>
+                    <p id="emptyMsg">Chưa có voucher nào.</p>
+                </div>
+            </div>
+
+            <!-- PAGINATION -->
+            <div class="vc-pagination">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <span id="pageInfo"></span>
+                    <select class="vc-per-page-select" onchange="onPerPageChange(this)">
+                        <option value="10" selected>10 / trang</option>
+                        <option value="20">20 / trang</option>
+                        <option value="50">50 / trang</option>
+                    </select>
+                </div>
+                <div class="vc-page-btns" id="pageBtns"></div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- ══ SAVING OVERLAY ══ -->
+<div class="vc-saving-overlay" id="savingOverlay">
+    <div class="vc-saving-box"><div class="vc-spinner"></div><span>Đang xử lý...</span></div>
+</div>
+
+<!-- ══ MODAL: CREATE / EDIT ══ -->
+<div class="vc-modal-overlay" id="voucherModalOverlay" onclick="closeVoucherModal(event)">
+    <div class="vc-modal" onclick="event.stopPropagation()">
+        <div class="vc-modal-header">
+            <div class="vc-modal-title-group">
+                <span class="vc-modal-title-icon">🎟️</span>
+                <h3 class="vc-modal-title" id="modalTitle">Thêm Voucher mới</h3>
+            </div>
+            <button class="vc-modal-close" onclick="closeVoucherModalDirect()">✕</button>
+        </div>
+        <div class="vc-modal-body">
+            <div class="vc-inline-error" id="modalError" style="display:none"></div>
+            <input type="hidden" id="editId" />
+
+            <!-- Mã voucher -->
+            <div class="vc-form-group">
+                <label class="vc-label">Mã voucher <span class="vc-required">*</span></label>
+                <div class="vc-code-input-wrap">
+                    <input type="text" id="vCode" class="vc-input vc-code-input"
+                           placeholder="VD: SALE20, SUMMER2025"
+                           oninput="this.value=this.value.toUpperCase();updateCodePreview()" />
+                    <span class="vc-code-preview" id="codePreview"></span>
+                </div>
+                <p class="vc-field-hint">Mã sẽ tự động chuyển thành CHỮ HOA khi lưu</p>
+            </div>
+
+            <!-- Giảm giá + Giới hạn -->
+            <div class="vc-form-row">
+                <div class="vc-form-group">
+                    <label class="vc-label">Số tiền giảm (VNĐ) <span class="vc-required">*</span></label>
+                    <div class="vc-price-wrap">
+                        <input type="number" id="vDiscount" class="vc-input vc-price-input"
+                               placeholder="VD: 50000" min="0"
+                               oninput="updateDiscountHint()" />
+                        <span class="vc-price-unit">đ</span>
+                    </div>
+                    <p class="vc-field-hint" id="discountHint"></p>
+                    <div class="vc-quick-fill">
+                        <button type="button" class="vc-quick-fill-btn" onclick="setDiscount(20000)">20k</button>
+                        <button type="button" class="vc-quick-fill-btn" onclick="setDiscount(50000)">50k</button>
+                        <button type="button" class="vc-quick-fill-btn" onclick="setDiscount(100000)">100k</button>
+                        <button type="button" class="vc-quick-fill-btn" onclick="setDiscount(200000)">200k</button>
+                    </div>
+                </div>
+                <div class="vc-form-group">
+                    <label class="vc-label">Giới hạn sử dụng <span class="vc-required">*</span></label>
+                    <input type="number" id="vLimit" class="vc-input" placeholder="VD: 100" min="1" />
+                    <p class="vc-field-hint">Số lượt tối đa có thể dùng</p>
+                    <div class="vc-quick-fill">
+                        <button type="button" class="vc-quick-fill-btn" onclick="document.getElementById('vLimit').value=10">10 lượt</button>
+                        <button type="button" class="vc-quick-fill-btn" onclick="document.getElementById('vLimit').value=50">50 lượt</button>
+                        <button type="button" class="vc-quick-fill-btn" onclick="document.getElementById('vLimit').value=100">100 lượt</button>
+                        <button type="button" class="vc-quick-fill-btn" onclick="document.getElementById('vLimit').value=500">500 lượt</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ngày hết hạn -->
+            <div class="vc-form-group">
+                <label class="vc-label">Ngày hết hạn <span class="vc-required">*</span></label>
+                <input type="date" id="vExpiry" class="vc-input" />
+                <div class="vc-quick-fill">
+                    <button type="button" class="vc-quick-fill-btn" onclick="addDays(7)">+7 ngày</button>
+                    <button type="button" class="vc-quick-fill-btn" onclick="addDays(30)">+1 tháng</button>
+                    <button type="button" class="vc-quick-fill-btn" onclick="addDays(90)">+3 tháng</button>
+                    <button type="button" class="vc-quick-fill-btn" onclick="addDays(365)">+1 năm</button>
+                </div>
+            </div>
+        </div>
+        <div class="vc-modal-footer">
+            <button class="vc-btn-cancel" onclick="closeVoucherModalDirect()">Hủy</button>
+            <button class="vc-btn-primary" id="saveBtnLabel" onclick="saveVoucher()">✅ Tạo voucher</button>
         </div>
     </div>
 </div>
 
-<!-- MODAL THÊM/SỬA -->
-<div class="modal fade" id="voucherModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header" style="background:linear-gradient(135deg,#f0fdf9,#e6faf8)">
-                <h5 class="modal-title" id="modalTitle">🎟️ Thêm voucher</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="editId"/>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Mã voucher *</label>
-                    <input type="text" id="vCode" class="form-control"
-                           placeholder="VD: SUMMER2025" oninput="this.value=this.value.toUpperCase()"/>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col">
-                        <label class="form-label fw-semibold">Số tiền giảm (đ) *</label>
-                        <input type="number" id="vDiscount" class="form-control" min="0" placeholder="50000"/>
-                        <!-- Quick fill -->
-                        <div class="d-flex gap-1 mt-1 flex-wrap">
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    onclick="document.getElementById('vDiscount').value=20000">20k</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    onclick="document.getElementById('vDiscount').value=50000">50k</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    onclick="document.getElementById('vDiscount').value=100000">100k</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    onclick="document.getElementById('vDiscount').value=200000">200k</button>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <label class="form-label fw-semibold">Giới hạn dùng *</label>
-                        <input type="number" id="vLimit" class="form-control" min="1" placeholder="100"/>
-                        <div class="d-flex gap-1 mt-1 flex-wrap">
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    onclick="document.getElementById('vLimit').value=10">10</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    onclick="document.getElementById('vLimit').value=50">50</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    onclick="document.getElementById('vLimit').value=100">100</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Ngày hết hạn *</label>
-                    <input type="date" id="vExpiry" class="form-control"/>
-                    <div class="d-flex gap-1 mt-1 flex-wrap">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addDays(7)">+7 ngày</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addDays(30)">+1 tháng</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addDays(90)">+3 tháng</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addDays(365)">+1 năm</button>
-                    </div>
-                </div>
-                <div id="modalError" class="alert alert-danger d-none"></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button class="btn btn-primary" onclick="save()">💾 Lưu</button>
-            </div>
+<!-- ══ MODAL: DELETE ══ -->
+<div class="vc-modal-overlay" id="deleteModalOverlay" onclick="closeDeleteModal(event)">
+    <div class="vc-modal-sm" onclick="event.stopPropagation()">
+        <div class="vc-delete-icon">🗑️</div>
+        <h3 class="vc-delete-title">Xác nhận xóa</h3>
+        <p class="vc-delete-desc">Bạn có chắc muốn xóa voucher này không? Hành động này không thể hoàn tác!</p>
+        <div class="vc-modal-footer">
+            <button class="vc-btn-cancel" id="delCancelBtn" onclick="closeDeleteModalDirect()">Hủy</button>
+            <button class="vc-btn-delete-confirm" id="delConfirmBtn" onclick="confirmDelete()">Xóa</button>
         </div>
     </div>
 </div>
 
 @section Scripts {
-<script>
-const API   = 'http://localhost:5043/api';
-const token = '@Context.Session.GetString("AuthToken")';
-let allVouchers = [];
-const today = new Date().toISOString().split('T')[0];
+    <script>
+        const API   = 'http://localhost:5043/api';
+        const TOKEN = '@Context.Session.GetString("AuthToken")';
+        const H     = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };
+        const H_GET = { 'Authorization': 'Bearer ' + TOKEN };
 
-async function init() {
-    const res   = await fetch(`${API}/admin/vouchers`, { headers:{ 'Authorization':'Bearer '+token } });
-    allVouchers = await res.json();
+        let allVouchers = [];
+        let search = '', filterStatus = 'all';
+        let sortField = 'id', sortDir = 'desc';
+        let page = 1, perPage = 10;
+        let pendingDeleteId = null;
 
-    document.getElementById('statTotal').textContent   = allVouchers.length;
-    document.getElementById('statActive').textContent  = allVouchers.filter(v => !v.isExpired).length;
-    document.getElementById('statExpired').textContent = allVouchers.filter(v =>  v.isExpired).length;
+        // ── INIT ───────────────────────────────────────────────
+        async function init() {
+            showLoading(true);
+            try {
+                const res = await fetch(`${API}/admin/vouchers`, { headers: H_GET });
+                if (!res.ok) throw new Error(`Lỗi tải dữ liệu (${res.status})`);
+                allVouchers = await res.json();
+                updateChips();
+                renderTable();
+            } catch(e) { showError(e.message); }
+            finally    { showLoading(false); }
+        }
 
-    renderTable();
-}
+        function updateChips() {
+            document.getElementById('hTotal').textContent   = allVouchers.length;
+            document.getElementById('hActive').textContent  = allVouchers.filter(v=>!v.isExpired).length;
+            document.getElementById('hExpired').textContent = allVouchers.filter(v=> v.isExpired).length;
+        }
 
-function renderTable() {
-    const q      = document.getElementById('searchInput').value.toLowerCase();
-    const status = document.getElementById('statusFilter').value;
+        // ── FILTER + SORT + PAGINATE ───────────────────────────
+        function getFiltered() {
+            const q = search.toLowerCase();
+            let list = allVouchers.filter(v => {
+                const ms = v.code.toLowerCase().includes(q);
+                const mf = filterStatus==='all' || (filterStatus==='active'&&!v.isExpired) || (filterStatus==='expired'&&v.isExpired);
+                return ms && mf;
+            });
+            list.sort((a,b)=>{
+                let vA=a[sortField]??'', vB=b[sortField]??'';
+                if(typeof vA==='string'){vA=vA.toLowerCase();vB=vB.toLowerCase();}
+                return vA<vB?(sortDir==='asc'?-1:1):vA>vB?(sortDir==='asc'?1:-1):0;
+            });
+            return list;
+        }
 
-    const list = allVouchers.filter(v => {
-        const matchSearch = v.code.toLowerCase().includes(q);
-        const matchStatus = !status ||
-            (status === 'active'  && !v.isExpired) ||
-            (status === 'expired' &&  v.isExpired);
-        return matchSearch && matchStatus;
-    });
+        // ── RENDER TABLE ───────────────────────────────────────
+        function renderTable() {
+            // update sort icons
+            document.querySelectorAll('.vc-th-sort').forEach(th=>{
+                const f=th.getAttribute('onclick').match(/'(.+)'/)[1];
+                th.classList.remove('sorted-asc','sorted-desc');
+                if(f===sortField) th.classList.add(sortDir==='asc'?'sorted-asc':'sorted-desc');
+            });
 
-    if (!list.length) {
-        document.getElementById('tableBody').innerHTML =
-            '<tr><td colspan="7" class="text-center p-4 text-muted">Không có voucher nào</td></tr>';
-        return;
-    }
+            const filtered=getFiltered(), total=filtered.length;
+            const tp=Math.max(1,Math.ceil(total/perPage));
+            if(page>tp) page=tp;
+            const rows=filtered.slice((page-1)*perPage, page*perPage);
 
-    document.getElementById('tableBody').innerHTML = list.map(v => `
-        <tr>
-            <td class="text-muted fw-bold small">#${v.id}</td>
-            <td>
-                <span class="badge text-white fw-bold px-3 py-2"
-                      style="background:linear-gradient(135deg,#0d5e58,#0f766e);font-family:monospace;letter-spacing:1px">
-                    ${v.code}
-                </span>
-                <button class="btn btn-sm btn-link p-0 ms-1" onclick="copyCode('${v.code}')" title="Sao chép">📋</button>
-            </td>
-            <td class="fw-bold" style="color:#b45309">${fmt(v.discountAmount)}</td>
-            <td>
-                <span class="badge bg-light text-dark border">🔢 ${v.usageLimit} lượt</span>
-            </td>
-            <td class="${v.isExpired ? 'text-danger' : 'text-success'} fw-semibold small">
-                📅 ${v.expiryDate}
-            </td>
-            <td>
-                <span class="badge ${v.isExpired ? 'bg-danger' : 'bg-success'}">
-                    ${v.isExpired ? '⏰ Hết hạn' : '✅ Hiệu lực'}
-                </span>
-            </td>
-            <td>
-                <button class="btn btn-outline-primary btn-sm me-1" onclick="openEdit(${v.id})">✏️</button>
-                <button class="btn btn-outline-danger btn-sm"  onclick="deleteV(${v.id})">🗑️</button>
-            </td>
-        </tr>
-    `).join('');
-}
+            if(!rows.length){
+                document.getElementById('tableBody').innerHTML='';
+                document.getElementById('emptyState').style.display='block';
+                document.getElementById('emptyMsg').textContent=search?`Không tìm thấy voucher "${search}"`:'Chưa có voucher nào.';
+            } else {
+                document.getElementById('emptyState').style.display='none';
+                document.getElementById('tableBody').innerHTML=rows.map((v,i)=>{
+                    const exp=v.isExpired;
+                    return `<tr style="animation-delay:${i*0.04}s">
+                        <td class="vc-td-id">#${v.id}</td>
+                        <td><div class="vc-code-cell">
+                            <span class="vc-code-badge">${v.code}</span>
+                            <button class="vc-copy-btn" onclick="copyCode('${v.code}')" title="Sao chép mã">📋</button>
+                        </div></td>
+                        <td class="vc-td-discount">${fmt(v.discountAmount)}</td>
+                        <td><span class="vc-limit-badge">🔢 ${v.usageLimit} lượt</span></td>
+                        <td><span class="${exp?'vc-date-expired':'vc-date-active'}">📅 ${v.expiryDate}</span></td>
+                        <td><span class="vc-status-badge ${exp?'vc-status-expired':'vc-status-active'}">${exp?'⏰ Hết hạn':'✅ Hiệu lực'}</span></td>
+                        <td><div class="vc-action-btns">
+                            <button class="vc-btn-edit"   onclick="openEdit(${v.id})">✏️ Sửa</button>
+                            <button class="vc-btn-delete" onclick="openDeleteModal(${v.id})">🗑️ Xóa</button>
+                        </div></td>
+                    </tr>`;
+                }).join('');
+            }
+            renderPagination(total, tp);
+        }
 
-function openCreate() {
-    document.getElementById('editId').value    = '';
-    document.getElementById('vCode').value     = '';
-    document.getElementById('vDiscount').value = '';
-    document.getElementById('vLimit').value    = '';
-    document.getElementById('vExpiry').value   = '';
-    document.getElementById('modalTitle').textContent = '🎟️ Thêm voucher';
-    document.getElementById('modalError').classList.add('d-none');
-    new bootstrap.Modal(document.getElementById('voucherModal')).show();
-}
+        function renderPagination(total, tp) {
+            const s=(page-1)*perPage+1, e=Math.min(page*perPage,total);
+            document.getElementById('pageInfo').textContent=total?`Hiển thị ${s}–${e} / ${total}`:'Không có dữ liệu';
+            let btns=`<button class="vc-page-btn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>‹</button>`;
+            for(let p=1;p<=tp;p++){
+                if(tp<=7||p===1||p===tp||Math.abs(p-page)<=1)
+                    btns+=`<button class="vc-page-btn ${p===page?'active':''}" onclick="goPage(${p})">${p}</button>`;
+                else if(Math.abs(p-page)===2)
+                    btns+=`<button class="vc-page-btn" disabled>…</button>`;
+            }
+            btns+=`<button class="vc-page-btn" onclick="goPage(${page+1})" ${page>=tp?'disabled':''}>›</button>`;
+            document.getElementById('pageBtns').innerHTML=btns;
+        }
+        function goPage(p){page=p;renderTable();}
+        function onPerPageChange(s){perPage=parseInt(s.value);page=1;renderTable();}
+        function handleSort(field){if(sortField===field)sortDir=sortDir==='asc'?'desc':'asc';else{sortField=field;sortDir='asc';}page=1;renderTable();}
+        function onSearch(inp){search=inp.value;document.getElementById('searchClear').style.display=inp.value?'block':'none';page=1;renderTable();}
+        function clearSearch(){search='';document.getElementById('searchInput').value='';document.getElementById('searchClear').style.display='none';page=1;renderTable();}
+        function onFilterChange(){filterStatus=document.getElementById('statusFilter').value;page=1;renderTable();}
 
-function openEdit(id) {
-    const v = allVouchers.find(x => x.id === id);
-    document.getElementById('editId').value    = v.id;
-    document.getElementById('vCode').value     = v.code;
-    document.getElementById('vDiscount').value = v.discountAmount;
-    document.getElementById('vLimit').value    = v.usageLimit;
-    document.getElementById('vExpiry').value   = v.expiryDate;
-    document.getElementById('modalTitle').textContent = '✏️ Sửa voucher';
-    document.getElementById('modalError').classList.add('d-none');
-    new bootstrap.Modal(document.getElementById('voucherModal')).show();
-}
+        // ── MODAL ──────────────────────────────────────────────
+        function openCreate() {
+            document.getElementById('editId').value='';
+            document.getElementById('vCode').value=''; document.getElementById('vDiscount').value='';
+            document.getElementById('vLimit').value=''; document.getElementById('vExpiry').value='';
+            document.getElementById('codePreview').style.display='none';
+            document.getElementById('discountHint').textContent='';
+            document.getElementById('modalTitle').textContent='Thêm Voucher mới';
+            document.getElementById('saveBtnLabel').textContent='✅ Tạo voucher';
+            hideModalError(); showModal('voucherModalOverlay');
+        }
+        function openEdit(id) {
+            const v=allVouchers.find(x=>x.id===id);
+            document.getElementById('editId').value=v.id;
+            document.getElementById('vCode').value=v.code; document.getElementById('vDiscount').value=v.discountAmount;
+            document.getElementById('vLimit').value=v.usageLimit; document.getElementById('vExpiry').value=v.expiryDate;
+            updateCodePreview(); updateDiscountHint();
+            document.getElementById('modalTitle').textContent='Chỉnh sửa Voucher';
+            document.getElementById('saveBtnLabel').textContent='💾 Lưu thay đổi';
+            hideModalError(); showModal('voucherModalOverlay');
+        }
 
-async function save() {
-    const id   = document.getElementById('editId').value;
-    const body = {
-        code:           document.getElementById('vCode').value.trim().toUpperCase(),
-        discountAmount: parseFloat(document.getElementById('vDiscount').value),
-        usageLimit:     parseInt(document.getElementById('vLimit').value),
-        expiryDate:     document.getElementById('vExpiry').value
-    };
-    if (!body.code || !body.discountAmount || !body.usageLimit || !body.expiryDate) {
-        document.getElementById('modalError').textContent = 'Vui lòng điền đầy đủ!';
-        document.getElementById('modalError').classList.remove('d-none');
-        return;
-    }
-    const url    = id ? `${API}/admin/vouchers/${id}` : `${API}/admin/vouchers`;
-    const method = id ? 'PUT' : 'POST';
-    const res    = await fetch(url, {
-        method,
-        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
-        body: JSON.stringify(body)
-    });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        document.getElementById('modalError').textContent = err.message || 'Lỗi!';
-        document.getElementById('modalError').classList.remove('d-none');
-        return;
-    }
-    bootstrap.Modal.getInstance(document.getElementById('voucherModal')).hide();
-    init();
-}
+        async function saveVoucher() {
+            const id       = document.getElementById('editId').value;
+            const code     = document.getElementById('vCode').value.trim().toUpperCase();
+            const discount = parseFloat(document.getElementById('vDiscount').value);
+            const limit    = parseInt(document.getElementById('vLimit').value);
+            const expiry   = document.getElementById('vExpiry').value;
 
-async function deleteV(id) {
-    if (!confirm('Xóa voucher này?')) return;
-    await fetch(`${API}/admin/vouchers/${id}`, {
-        method: 'DELETE', headers: { 'Authorization':'Bearer '+token }
-    });
-    init();
-}
+            if (!code||isNaN(discount)||discount<0||isNaN(limit)||limit<1||!expiry){
+                showModalError('Vui lòng điền đầy đủ tất cả các trường bắt buộc.'); return;
+            }
+            setSaving(true);
+            const body={code, discountAmount:discount, usageLimit:limit, expiryDate:expiry};
+            try {
+                const res=await fetch(id?`${API}/admin/vouchers/${id}`:`${API}/admin/vouchers`,
+                    {method:id?'PUT':'POST', headers:H, body:JSON.stringify(body)});
+                if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Thao tác thất bại (${res.status})`);}
+                closeVoucherModalDirect();
+                await reload();
+                showSuccess(id?'✅ Cập nhật voucher thành công!':'✅ Tạo voucher mới thành công!');
+            } catch(e){showModalError(e.message);}
+            finally   {setSaving(false);}
+        }
 
-function addDays(days) {
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    document.getElementById('vExpiry').value = d.toISOString().split('T')[0];
-}
+        // ── DELETE ─────────────────────────────────────────────
+        function openDeleteModal(id){pendingDeleteId=id;showModal('deleteModalOverlay');}
+        async function confirmDelete(){
+            if(!pendingDeleteId) return;
+            setSaving(true);
+            const btn=document.getElementById('delConfirmBtn'),btnC=document.getElementById('delCancelBtn');
+            btn.textContent='⏳ Đang xóa...'; btn.disabled=btnC.disabled=true;
+            try {
+                const res=await fetch(`${API}/admin/vouchers/${pendingDeleteId}`,{method:'DELETE',headers:H_GET});
+                if(!res.ok) throw new Error(`Xóa thất bại (${res.status})`);
+                closeDeleteModalDirect(); await reload(); showSuccess('🗑️ Đã xóa voucher.');
+            } catch(e){showError(e.message);closeDeleteModalDirect();}
+            finally   {setSaving(false);btn.textContent='Xóa';btn.disabled=btnC.disabled=false;}
+        }
 
-function copyCode(code) {
-    navigator.clipboard.writeText(code);
-    alert(`Đã sao chép: ${code}`);
-}
+        // ── HELPERS ────────────────────────────────────────────
+        async function reload(){
+            const r=await fetch(`${API}/admin/vouchers`,{headers:H_GET});
+            if(r.ok){allVouchers=await r.json();updateChips();renderTable();}
+        }
 
-function fmt(n) {
-    return new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ';
-}
+        function fmt(n){return new Intl.NumberFormat('vi-VN').format(Math.round(n||0))+'đ';}
+        function addDays(days){const d=new Date();d.setDate(d.getDate()+days);document.getElementById('vExpiry').value=d.toISOString().slice(0,10);}
+        function setDiscount(v){document.getElementById('vDiscount').value=v;updateDiscountHint();}
 
-init();
-</script>
+        function updateCodePreview(){
+            const val=document.getElementById('vCode').value.trim();
+            const el=document.getElementById('codePreview');
+            if(val){el.textContent=val.toUpperCase();el.style.display='inline';}else{el.style.display='none';}
+        }
+        function updateDiscountHint(){
+            const val=parseFloat(document.getElementById('vDiscount').value);
+            document.getElementById('discountHint').textContent=(!isNaN(val)&&val>=0)?'= '+new Intl.NumberFormat('vi-VN').format(val)+' đồng':'';
+        }
+
+        function copyCode(code){
+            navigator.clipboard.writeText(code).then(()=>showSuccess(`📋 Đã sao chép "${code}"`));
+        }
+
+        function showLoading(on){document.getElementById('loadingWrap').style.display=on?'flex':'none';document.getElementById('tableSection').style.display=on?'none':'block';}
+        function setSaving(on) {document.getElementById('savingOverlay').classList.toggle('visible',on);}
+        function showError(m)  {document.getElementById('errorMsg').textContent='⚠️ '+m;document.getElementById('errorBanner').style.display='flex';}
+        function hideError()   {document.getElementById('errorBanner').style.display='none';}
+        function showSuccess(m){document.getElementById('successMsg').textContent=m;document.getElementById('successBanner').style.display='flex';setTimeout(()=>document.getElementById('successBanner').style.display='none',3500);}
+        function showModalError(m){const el=document.getElementById('modalError');el.textContent='⚠️ '+m;el.style.display='block';}
+        function hideModalError() {document.getElementById('modalError').style.display='none';}
+
+        function showModal(id)  {document.getElementById(id).classList.add('visible');}
+        function hideModal(id)  {document.getElementById(id).classList.remove('visible');}
+        function closeVoucherModal(e){if(e.target.id==='voucherModalOverlay')closeVoucherModalDirect();}
+        function closeVoucherModalDirect(){hideModal('voucherModalOverlay');hideModalError();}
+        function closeDeleteModal(e){if(e.target.id==='deleteModalOverlay')closeDeleteModalDirect();}
+        function closeDeleteModalDirect(){hideModal('deleteModalOverlay');pendingDeleteId=null;}
+        function handleLogout(){if(confirm('Bạn có chắc chắn muốn đăng xuất?'))window.location.href='/admin/login';}
+
+        init();
+    </script>
 }

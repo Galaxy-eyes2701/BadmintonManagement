@@ -6,1066 +6,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-
-<style>
-    :root {
-        --primary: #0f766e;
-        --primary-light: #14b8a6;
-        --primary-dark: #0d5e58;
-        --primary-glow: rgba(15,118,110,.18);
-        --success: #10b981;
-        --success-bg: #ecfdf5;
-        --success-border: #6ee7b7;
-        --warning: #f59e0b;
-        --warning-bg: #fffbeb;
-        --warning-border: #fcd34d;
-        --danger: #ef4444;
-        --danger-bg: #fef2f2;
-        --danger-border: #fca5a5;
-        --blue: #3b82f6;
-        --blue-bg: #eff6ff;
-        --blue-border: #93c5fd;
-        --text-h: #0f172a;
-        --text-body: #334155;
-        --text-muted: #94a3b8;
-        --bg-page: #f1f5f9;
-        --bg-card: #ffffff;
-        --bg-hover: #f8fafc;
-        --border: #e2e8f0;
-        --border-strong: #cbd5e1;
-        --shadow-sm: 0 2px 8px rgba(0,0,0,.07);
-        --shadow-md: 0 4px 20px rgba(0,0,0,.10);
-        --shadow-lg: 0 12px 48px rgba(0,0,0,.16);
-        --radius: 14px;
-        --radius-sm: 8px;
-        --radius-xs: 6px;
-    }
-
-    *, *::before, *::after {
-        box-sizing: border-box;
-    }
-
-    .bk-wrap {
-        font-family: 'Nunito',sans-serif;
-        color: var(--text-body);
-        display: flex;
-        flex-direction: column;
-        min-height: 100%;
-    }
-
-    /* ── HEADER ───────────────────────────────────────────────── */
-    .bk-header {
-        background: linear-gradient(135deg,#0d5e58 0%,#0f766e 55%,#14b8a6 100%);
-        padding: 26px 36px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-        flex-wrap: wrap;
-        position: relative;
-        overflow: hidden;
-        flex-shrink: 0;
-    }
-
-        .bk-header::before {
-            content: '';
-            position: absolute;
-            top: -50px;
-            right: -50px;
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            background: rgba(255,255,255,.06);
-            pointer-events: none;
-        }
-
-    .bk-header-left {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        z-index: 1;
-        padding-left: 62px; /* avoid hamburger overlap */
-    }
-
-    .bk-header-icon {
-        font-size: 38px;
-        filter: drop-shadow(0 3px 8px rgba(0,0,0,.25));
-        animation: bk-float 2.8s ease-in-out infinite;
-    }
-    @keyframes bk-float {
-        0%,100%
-
-    {
-        transform: translateY(0) rotate(-5deg);
-    }
-
-    50% {
-        transform: translateY(-5px) rotate(5deg);
-    }
-
-    }
-
-    .bk-header-title {
-        margin: 0;
-        font-size: 1.55rem;
-        font-weight: 900;
-        color: #fff;
-        letter-spacing: -.4px;
-        text-shadow: 0 2px 6px rgba(0,0,0,.2);
-    }
-
-    .bk-header-sub {
-        margin: 3px 0 0;
-        font-size: .82rem;
-        color: rgba(255,255,255,.68);
-        font-weight: 500;
-    }
-
-    .bk-header-right {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        z-index: 1;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-    }
-
-    .bk-stat-chips {
-        display: flex;
-        gap: 10px;
-    }
-
-    .bk-chip, .bk-chip-warn, .bk-chip-success, .bk-chip-danger {
-        background: rgba(255,255,255,.13);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,.22);
-        border-radius: 10px;
-        padding: 10px 16px;
-        text-align: center;
-        min-width: 76px;
-        transition: transform .2s;
-    }
-
-        .bk-chip:hover, .bk-chip-warn:hover, .bk-chip-success:hover, .bk-chip-danger:hover {
-            transform: translateY(-2px);
-        }
-
-    .bk-chip-warn {
-        background: rgba(245,158,11,.18);
-        border-color: rgba(245,158,11,.35);
-    }
-
-    .bk-chip-success {
-        background: rgba(16,185,129,.20);
-        border-color: rgba(16,185,129,.40);
-    }
-
-    .bk-chip-danger {
-        background: rgba(239,68,68,.18);
-        border-color: rgba(239,68,68,.35);
-    }
-
-    .bk-chip-num {
-        display: block;
-        font-size: 1.4rem;
-        font-weight: 900;
-        color: #fff;
-        line-height: 1;
-    }
-
-    .bk-chip-label {
-        display: block;
-        font-size: .66rem;
-        color: rgba(255,255,255,.72);
-        margin-top: 4px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: .4px;
-        white-space: nowrap;
-    }
-
-    .bk-btn-logout {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(255,255,255,.1);
-        color: rgba(255,255,255,.9);
-        border: 1.5px solid rgba(255,255,255,.25);
-        border-radius: var(--radius-sm);
-        padding: 10px 18px;
-        font-size: .88rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all .2s;
-        font-family: inherit;
-        backdrop-filter: blur(8px);
-        white-space: nowrap;
-    }
-
-        .bk-btn-logout:hover {
-            background: rgba(239,68,68,.75);
-            border-color: rgba(239,68,68,.8);
-            color: #fff;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 14px rgba(239,68,68,.35);
-        }
-
-    /* ── BANNERS ──────────────────────────────────────────────── */
-    .bk-banner {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 24px;
-        font-size: .88rem;
-        font-weight: 600;
-        flex-shrink: 0;
-    }
-
-    .bk-banner-error {
-        background: var(--danger-bg);
-        border-bottom: 2px solid var(--danger-border);
-        color: #991b1b;
-    }
-
-    .bk-banner-success {
-        background: var(--success-bg);
-        border-bottom: 2px solid var(--success-border);
-        color: #065f46;
-    }
-
-    .bk-banner-close {
-        background: none;
-        border: none;
-        font-size: 14px;
-        cursor: pointer;
-        color: inherit;
-        opacity: .6;
-        padding: 2px 6px;
-        border-radius: 4px;
-    }
-
-        .bk-banner-close:hover {
-            opacity: 1;
-        }
-
-    /* ── CONTENT ──────────────────────────────────────────────── */
-    .bk-content {
-        padding: 28px 36px;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    /* ── TOOLBAR ──────────────────────────────────────────────── */
-    .bk-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .bk-toolbar-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex: 1;
-        flex-wrap: wrap;
-    }
-
-    .bk-search-box {
-        position: relative;
-        display: flex;
-        align-items: center;
-        min-width: 240px;
-    }
-
-    .bk-search-icon {
-        position: absolute;
-        left: 12px;
-        font-size: 14px;
-        pointer-events: none;
-        z-index: 1;
-    }
-
-    .bk-search-input {
-        width: 100%;
-        font-family: inherit;
-        font-size: .86rem;
-        font-weight: 600;
-        color: var(--text-body);
-        background: var(--bg-card);
-        border: 1.5px solid var(--border);
-        border-radius: var(--radius-sm);
-        padding: 9px 36px;
-        outline: none;
-        transition: border-color .2s,box-shadow .2s;
-    }
-
-        .bk-search-input:focus {
-            border-color: var(--primary-light);
-            box-shadow: 0 0 0 3px var(--primary-glow);
-        }
-
-        .bk-search-input::placeholder {
-            color: var(--text-muted);
-        }
-
-    .bk-search-clear {
-        position: absolute;
-        right: 10px;
-        background: none;
-        border: none;
-        font-size: 12px;
-        cursor: pointer;
-        color: var(--text-muted);
-        padding: 2px 4px;
-        border-radius: 4px;
-        transition: all .15s;
-        display: none;
-    }
-
-        .bk-search-clear:hover {
-            background: var(--border);
-            color: var(--text-h);
-        }
-
-    .bk-filter-select {
-        font-family: inherit;
-        font-size: .86rem;
-        font-weight: 600;
-        color: var(--text-body);
-        background: var(--bg-card);
-        border: 1.5px solid var(--border);
-        border-radius: var(--radius-sm);
-        padding: 9px 14px;
-        cursor: pointer;
-        outline: none;
-        transition: border-color .2s,box-shadow .2s;
-    }
-
-        .bk-filter-select:focus {
-            border-color: var(--primary-light);
-            box-shadow: 0 0 0 3px var(--primary-glow);
-        }
-
-    .bk-date-range {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .bk-date-sep {
-        color: var(--text-muted);
-        font-weight: 700;
-    }
-
-    .bk-btn-primary {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        background: linear-gradient(135deg,var(--primary),var(--primary-light));
-        color: white;
-        border: none;
-        border-radius: var(--radius-sm);
-        padding: 10px 20px;
-        font-size: .88rem;
-        font-weight: 800;
-        cursor: pointer;
-        transition: all .2s;
-        font-family: inherit;
-        box-shadow: 0 2px 10px rgba(15,118,110,.3);
-        white-space: nowrap;
-    }
-
-        .bk-btn-primary:hover:not(:disabled) {
-            background: linear-gradient(135deg,var(--primary-dark),var(--primary));
-            box-shadow: 0 4px 16px rgba(15,118,110,.4);
-            transform: translateY(-1px);
-        }
-
-        .bk-btn-primary:disabled {
-            opacity: .55;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-    .bk-spinner-sm {
-        display: inline-block;
-        width: 14px;
-        height: 14px;
-        border: 2px solid rgba(255,255,255,.4);
-        border-top-color: #fff;
-        border-radius: 50%;
-        animation: bk-spin .7s linear infinite;
-    }
-
-    /* ── LOADING ──────────────────────────────────────────────── */
-    .bk-loading {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 16px;
-        padding: 80px 20px;
-        color: var(--text-muted);
-        font-weight: 600;
-    }
-
-    .bk-spinner {
-        width: 36px;
-        height: 36px;
-        border: 3px solid var(--border);
-        border-top-color: var(--primary);
-        border-radius: 50%;
-        animation: bk-spin .7s linear infinite;
-    }
-    @keyframes bk-spin {
-        to
-
-    {
-        transform: rotate(360deg);
-    }
-
-    }
-
-    /* ── TABLE ────────────────────────────────────────────────── */
-    .bk-table-wrap {
-        background: var(--bg-card);
-        border-radius: var(--radius);
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-    }
-
-    .bk-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: .88rem;
-    }
-
-        .bk-table thead tr {
-            background: linear-gradient(135deg,#0d5e58,#0f766e);
-        }
-
-        .bk-table thead th {
-            padding: 13px 18px;
-            text-align: left;
-            font-weight: 700;
-            font-size: .78rem;
-            color: rgba(255,255,255,.88);
-            text-transform: uppercase;
-            letter-spacing: .5px;
-            white-space: nowrap;
-        }
-
-        .bk-table tbody tr {
-            border-bottom: 1px solid var(--border);
-            transition: background .15s;
-            animation: bk-rowIn .3s ease both;
-        }
-    @keyframes bk-rowIn {
-        from
-
-    {
-        opacity: 0;
-        transform: translateY(5px)
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0)
-    }
-
-    }
-
-    .bk-table tbody tr:last-child {
-        border-bottom: none;
-    }
-
-    .bk-table tbody tr:hover {
-        background: rgba(15,118,110,.03);
-    }
-
-    .bk-table td {
-        padding: 12px 18px;
-        color: var(--text-body);
-        vertical-align: middle;
-    }
-
-    .bk-td-id {
-        font-weight: 800;
-        color: var(--text-muted);
-        font-size: .82rem;
-    }
-
-    .bk-td-money {
-        font-weight: 900;
-        font-size: .95rem;
-        color: #b45309;
-    }
-
-    .bk-cust-name {
-        font-weight: 800;
-        color: var(--text-h);
-    }
-
-    .bk-muted {
-        color: var(--text-muted);
-        font-size: .84rem;
-    }
-
-    .bk-detail-badge {
-        display: inline-block;
-        background: rgba(15,118,110,.07);
-        color: var(--primary-dark);
-        font-size: .78rem;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 20px;
-        border: 1px solid rgba(15,118,110,.18);
-    }
-
-    .bk-empty-td {
-        text-align: center;
-        color: var(--text-muted);
-        font-weight: 600;
-        padding: 48px;
-    }
-
-    /* status badges */
-    .bk-status {
-        display: inline-block;
-        font-size: .78rem;
-        font-weight: 700;
-        padding: 4px 12px;
-        border-radius: 20px;
-        white-space: nowrap;
-    }
-
-    .bk-status-pending {
-        background: var(--warning-bg);
-        border: 1px solid var(--warning-border);
-        color: #92400e;
-    }
-
-    .bk-status-confirmed {
-        background: var(--success-bg);
-        border: 1px solid var(--success-border);
-        color: #065f46;
-    }
-
-    .bk-status-cancelled {
-        background: var(--danger-bg);
-        border: 1px solid var(--danger-border);
-        color: #991b1b;
-    }
-
-    /* action buttons */
-    .bk-action-btns {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .bk-btn-view, .bk-btn-confirm, .bk-btn-cancel {
-        font-family: inherit;
-        font-size: .78rem;
-        font-weight: 700;
-        padding: 5px 12px;
-        border-radius: var(--radius-xs);
-        cursor: pointer;
-        border: none;
-        transition: all .15s;
-        white-space: nowrap;
-    }
-
-    .bk-btn-view {
-        background: var(--blue-bg);
-        color: #1d4ed8;
-        border: 1px solid var(--blue-border);
-    }
-
-        .bk-btn-view:hover {
-            background: #dbeafe;
-            transform: translateY(-1px);
-        }
-
-    .bk-btn-confirm {
-        background: var(--success-bg);
-        color: #065f46;
-        border: 1px solid var(--success-border);
-    }
-
-        .bk-btn-confirm:hover {
-            background: #d1fae5;
-            transform: translateY(-1px);
-        }
-
-    .bk-btn-cancel {
-        background: var(--danger-bg);
-        color: #991b1b;
-        border: 1px solid var(--danger-border);
-    }
-
-        .bk-btn-cancel:hover {
-            background: #fee2e2;
-            transform: translateY(-1px);
-        }
-
-    /* ── PAGINATION ───────────────────────────────────────────── */
-    .bk-pagination {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 14px;
-        font-size: .84rem;
-        font-weight: 600;
-        color: var(--text-muted);
-    }
-
-    .bk-page-btns {
-        display: flex;
-        gap: 4px;
-    }
-
-    .bk-page-btn {
-        min-width: 34px;
-        height: 34px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: var(--radius-xs);
-        border: 1.5px solid var(--border);
-        background: var(--bg-card);
-        color: var(--text-body);
-        font-weight: 700;
-        font-size: .82rem;
-        cursor: pointer;
-        transition: all .15s;
-        font-family: inherit;
-    }
-
-        .bk-page-btn:hover:not(:disabled) {
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
-        .bk-page-btn.active {
-            background: linear-gradient(135deg,var(--primary),var(--primary-light));
-            border-color: transparent;
-            color: #fff;
-        }
-
-        .bk-page-btn:disabled {
-            opacity: .4;
-            cursor: not-allowed;
-        }
-
-    .bk-per-page-select {
-        font-family: inherit;
-        font-size: .82rem;
-        font-weight: 600;
-        color: var(--text-body);
-        background: var(--bg-card);
-        border: 1.5px solid var(--border);
-        border-radius: var(--radius-xs);
-        padding: 6px 10px;
-        outline: none;
-        cursor: pointer;
-    }
-
-    /* ── SAVING OVERLAY ───────────────────────────────────────── */
-    .bk-saving-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(10,20,30,.35);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 3000;
-    }
-
-        .bk-saving-overlay.visible {
-            display: flex;
-        }
-
-    .bk-saving-box {
-        background: var(--bg-card);
-        border-radius: var(--radius);
-        padding: 24px 36px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        box-shadow: var(--shadow-lg);
-        font-weight: 700;
-        color: var(--text-h);
-    }
-
-    /* ── MODAL ────────────────────────────────────────────────── */
-    .bk-modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(15,23,42,.55);
-        backdrop-filter: blur(4px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 1200;
-        padding: 20px;
-    }
-
-        .bk-modal-overlay.visible {
-            display: flex;
-        }
-
-    .bk-modal-lg {
-        background: var(--bg-card);
-        border-radius: var(--radius);
-        box-shadow: var(--shadow-lg);
-        width: 100%;
-        max-width: 820px;
-        max-height: 90vh;
-        display: flex;
-        flex-direction: column;
-        animation: bk-modalIn .25s ease;
-    }
-
-    .bk-modal-sm {
-        background: var(--bg-card);
-        border-radius: var(--radius);
-        box-shadow: var(--shadow-lg);
-        width: 100%;
-        max-width: 420px;
-        padding: 32px 28px 24px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        animation: bk-modalIn .25s ease;
-    }
-    @keyframes bk-modalIn {
-        from
-
-    {
-        opacity: 0;
-        transform: scale(.95) translateY(10px)
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0)
-    }
-
-    }
-
-    .bk-modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 20px 24px 16px;
-        border-bottom: 1px solid var(--border);
-        flex-shrink: 0;
-        background: linear-gradient(135deg,#f0fdf9,#e6faf8);
-    }
-
-    .bk-modal-title-group {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .bk-modal-title-icon {
-        font-size: 22px;
-    }
-
-    .bk-modal-title {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 800;
-        color: var(--text-h);
-    }
-
-    .bk-modal-close {
-        background: none;
-        border: none;
-        font-size: 18px;
-        cursor: pointer;
-        color: var(--text-muted);
-        padding: 4px 8px;
-        border-radius: var(--radius-xs);
-        transition: color .15s,background .15s;
-    }
-
-        .bk-modal-close:hover {
-            color: var(--danger);
-            background: var(--danger-bg);
-        }
-
-    .bk-modal-body {
-        padding: 22px 24px;
-        overflow-y: auto;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .bk-modal-footer {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 10px;
-        padding: 16px 24px;
-        border-top: 1px solid var(--border);
-        flex-shrink: 0;
-        flex-wrap: wrap;
-        background: var(--bg-hover);
-    }
-
-    .bk-modal-sm .bk-modal-footer {
-        border-top: none;
-        background: none;
-        padding: 0;
-        margin-top: 4px;
-        justify-content: center;
-    }
-
-    /* detail sections */
-    .bk-detail-section {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .bk-detail-section-title {
-        font-size: .85rem;
-        font-weight: 800;
-        color: var(--primary-dark);
-        text-transform: uppercase;
-        letter-spacing: .5px;
-        margin: 0;
-        padding-bottom: 8px;
-        border-bottom: 2px solid rgba(15,118,110,.12);
-    }
-
-    .bk-detail-grid {
-        display: grid;
-        grid-template-columns: repeat(3,1fr);
-        gap: 12px;
-    }
-
-    .bk-detail-item {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        background: var(--bg-hover);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        padding: 10px 14px;
-    }
-
-    .bk-detail-label {
-        font-size: .72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .4px;
-        color: var(--text-muted);
-    }
-
-    .bk-detail-value {
-        font-size: .9rem;
-        font-weight: 700;
-        color: var(--text-h);
-    }
-
-    .bk-detail-money {
-        color: #b45309 !important;
-        font-size: 1rem !important;
-        font-weight: 900 !important;
-    }
-
-    /* modal small */
-    .bk-confirm-icon {
-        font-size: 44px;
-        margin-bottom: 12px;
-    }
-
-    .bk-confirm-title {
-        margin: 0 0 10px;
-        font-size: 1.15rem;
-        font-weight: 900;
-        color: var(--text-h);
-    }
-
-    .bk-confirm-desc {
-        margin: 0 0 20px;
-        font-size: .88rem;
-        color: var(--text-muted);
-        line-height: 1.6;
-    }
-
-    /* footer buttons */
-    .bk-btn-close {
-        font-family: inherit;
-        font-size: .88rem;
-        font-weight: 700;
-        padding: 10px 20px;
-        border-radius: var(--radius-sm);
-        border: 1.5px solid var(--border);
-        background: var(--bg-card);
-        color: var(--text-body);
-        cursor: pointer;
-        transition: all .15s;
-    }
-
-        .bk-btn-close:hover:not(:disabled) {
-            border-color: var(--border-strong);
-            background: var(--bg-hover);
-        }
-
-        .bk-btn-close:disabled {
-            opacity: .5;
-            cursor: not-allowed;
-        }
-
-    .bk-btn-do-confirm {
-        font-family: inherit;
-        font-size: .88rem;
-        font-weight: 800;
-        padding: 10px 22px;
-        border-radius: var(--radius-sm);
-        border: none;
-        background: linear-gradient(135deg,#059669,#10b981);
-        color: #fff;
-        cursor: pointer;
-        transition: all .2s;
-        box-shadow: 0 2px 10px rgba(16,185,129,.3);
-    }
-
-        .bk-btn-do-confirm:hover:not(:disabled) {
-            background: linear-gradient(135deg,#047857,#059669);
-            box-shadow: 0 4px 16px rgba(16,185,129,.4);
-            transform: translateY(-1px);
-        }
-
-        .bk-btn-do-confirm:disabled {
-            opacity: .55;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-    .bk-btn-do-cancel-soft {
-        font-family: inherit;
-        font-size: .88rem;
-        font-weight: 800;
-        padding: 10px 22px;
-        border-radius: var(--radius-sm);
-        border: 1.5px solid var(--danger-border);
-        background: rgba(239,68,68,.08);
-        color: #dc2626;
-        cursor: pointer;
-        transition: all .2s;
-    }
-
-        .bk-btn-do-cancel-soft:hover:not(:disabled) {
-            background: var(--danger-bg);
-            transform: translateY(-1px);
-        }
-
-    .bk-btn-do-cancel-hard {
-        font-family: inherit;
-        font-size: .88rem;
-        font-weight: 800;
-        padding: 10px 22px;
-        border-radius: var(--radius-sm);
-        border: none;
-        background: linear-gradient(135deg,#dc2626,#ef4444);
-        color: #fff;
-        cursor: pointer;
-        transition: all .2s;
-        box-shadow: 0 2px 10px rgba(239,68,68,.3);
-    }
-
-        .bk-btn-do-cancel-hard:hover:not(:disabled) {
-            background: linear-gradient(135deg,#b91c1c,#dc2626);
-            box-shadow: 0 4px 16px rgba(239,68,68,.4);
-            transform: translateY(-1px);
-        }
-
-        .bk-btn-do-cancel-hard:disabled {
-            opacity: .55;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-    /* ── RESPONSIVE ───────────────────────────────────────────── */
-    @@media (max-width:1024px) {
-        .bk-detail-grid {
-            grid-template-columns: repeat(2,1fr);
-        }
-    }
-
-    @@media (max-width:768px) {
-        .bk-header {
-            padding: 18px 20px;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 14px;
-        }
-
-        .bk-header-left {
-            padding-left: 56px;
-        }
-
-        .bk-stat-chips {
-            flex-wrap: wrap;
-        }
-
-        .bk-content {
-            padding: 18px 16px;
-        }
-
-        .bk-toolbar {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .bk-toolbar-left {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .bk-search-box {
-            min-width: 100%;
-        }
-
-        .bk-detail-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .bk-modal-lg {
-            max-height: 95vh;
-        }
-
-        .bk-btn-logout span:last-child {
-            display: none;
-        }
-
-        .bk-btn-logout {
-            padding: 10px 12px;
-        }
-    }
-
-    @@media (max-width:480px) {
-        .bk-stat-chips {
-            flex-wrap: wrap;
-        }
-    }
-</style>
+<link rel="stylesheet" href="~/css/bookings.css" />
 
 <div class="bk-wrap">
 
@@ -1136,7 +77,7 @@
                     <input type="date" class="bk-filter-select" id="toDate" onchange="onFilterChange()" />
                 </div>
             </div>
-            <button class="bk-btn-primary" id="btnRefresh" onclick="fetchData()">🔄 Làm mới</button>
+            <button class="bk-btn-primary" onclick="fetchData()">🔄 Làm mới</button>
         </div>
 
         <!-- LOADING -->
@@ -1164,12 +105,10 @@
                     <tbody id="tableBody"></tbody>
                 </table>
             </div>
-
-            <!-- PAGINATION -->
-            <div class="bk-pagination" id="paginationWrap">
+            <div class="bk-pagination">
                 <div style="display:flex;align-items:center;gap:10px">
                     <span id="pageInfo"></span>
-                    <select class="bk-per-page-select" id="perPageSelect" onchange="onPerPageChange(this)">
+                    <select class="bk-per-page-select" onchange="onPerPageChange(this)">
                         <option value="10" selected>10 / trang</option>
                         <option value="20">20 / trang</option>
                         <option value="50">50 / trang</option>
@@ -1184,13 +123,10 @@
 
 <!-- ══ SAVING OVERLAY ══ -->
 <div class="bk-saving-overlay" id="savingOverlay">
-    <div class="bk-saving-box">
-        <div class="bk-spinner"></div>
-        <span>Đang xử lý...</span>
-    </div>
+    <div class="bk-saving-box"><div class="bk-spinner"></div><span>Đang xử lý...</span></div>
 </div>
 
-<!-- ══ MODAL: CHI TIẾT BOOKING ══ -->
+<!-- ══ MODAL: CHI TIẾT ══ -->
 <div class="bk-modal-overlay" id="detailModalOverlay" onclick="closeDetailModal(event)">
     <div class="bk-modal-lg" onclick="event.stopPropagation()">
         <div class="bk-modal-header">
@@ -1207,7 +143,7 @@
     </div>
 </div>
 
-<!-- ══ MODAL: XÁC NHẬN HÀNH ĐỘNG ══ -->
+<!-- ══ MODAL: XÁC NHẬN ══ -->
 <div class="bk-modal-overlay" id="confirmModalOverlay" onclick="closeConfirmModal(event)">
     <div class="bk-modal-sm" onclick="event.stopPropagation()">
         <div class="bk-confirm-icon" id="confirmIcon">✅</div>
@@ -1222,277 +158,180 @@
 
 @section Scripts {
     <script>
-        // ══════════════════════════════════════════════════════
-        //  CONFIG
-        // ══════════════════════════════════════════════════════
         const API   = 'http://localhost:5043/api';
         const TOKEN = '@Context.Session.GetString("AuthToken")';
-        const H     = { 'Authorization':'Bearer '+TOKEN };
+        const H     = { 'Authorization': 'Bearer ' + TOKEN };
+        let page = 1, pageSize = 10, totalItems = 0, pendingAction = null;
 
-        // ── State ──
-        let page      = 1;
-        let pageSize  = 10;
-        let totalItems = 0;
-        let pendingAction = null; // { id, action:'confirm'|'cancel' }
-        let currentDetail = null;
-
-        // ══════════════════════════════════════════════════════
-        //  FETCH LIST
-        // ══════════════════════════════════════════════════════
-        async function fetchData(){
-            setLoading(true);
-            hideError();
-            const qs = buildQS();
+        async function fetchData() {
+            setLoading(true); hideError();
             try {
-                const res  = await fetch(`${API}/admin/bookings?${qs}`, {headers:H});
-                if(!res.ok) throw new Error(`Lỗi tải danh sách (${res.status})`);
+                const qs  = buildQS();
+                const res = await fetch(`${API}/admin/bookings?${qs}`, { headers: H });
+                if (!res.ok) throw new Error(`Lỗi tải danh sách (${res.status})`);
                 const data = await res.json();
                 totalItems = data.totalItems ?? 0;
                 renderStats(data.items ?? []);
                 renderTable(data.items ?? []);
                 renderPagination();
-            } catch(e){ showError(e.message); }
-            finally   { setLoading(false); }
+            } catch(e) { showError(e.message); }
+            finally    { setLoading(false); }
         }
 
-        function buildQS(){
+        function buildQS() {
             const p = new URLSearchParams({ page, pageSize });
             const s = document.getElementById('searchInput').value;
             const st= document.getElementById('statusFilter').value;
             const fd= document.getElementById('fromDate').value;
             const td= document.getElementById('toDate').value;
-            if(s)  p.set('search',   s);
-            if(st) p.set('status',   st);
-            if(fd) p.set('fromDate', fd);
-            if(td) p.set('toDate',   td);
+            if (s)  p.set('search',   s);
+            if (st) p.set('status',   st);
+            if (fd) p.set('fromDate', fd);
+            if (td) p.set('toDate',   td);
             return p.toString();
         }
 
-        // ══════════════════════════════════════════════════════
-        //  RENDER STATS (header chips)
-        // ══════════════════════════════════════════════════════
-        function renderStats(items){
+        function renderStats(items) {
             document.getElementById('hTotal').textContent     = totalItems;
-            document.getElementById('hPending').textContent   = items.filter(b=>b.status?.toLowerCase()==='pending').length;
-            document.getElementById('hConfirmed').textContent = items.filter(b=>b.status?.toLowerCase()==='confirmed').length;
-            document.getElementById('hCancelled').textContent = items.filter(b=>b.status?.toLowerCase()==='cancelled').length;
+            document.getElementById('hPending').textContent   = items.filter(b => b.status?.toLowerCase() === 'pending').length;
+            document.getElementById('hConfirmed').textContent = items.filter(b => b.status?.toLowerCase() === 'confirmed').length;
+            document.getElementById('hCancelled').textContent = items.filter(b => b.status?.toLowerCase() === 'cancelled').length;
         }
 
-        // ══════════════════════════════════════════════════════
-        //  RENDER TABLE
-        // ══════════════════════════════════════════════════════
-        function renderTable(items){
-            if(!items.length){
-                document.getElementById('tableBody').innerHTML =
-                    `<tr><td colspan="8" class="bk-empty-td">Không có booking nào</td></tr>`;
-                return;
-            }
-            document.getElementById('tableBody').innerHTML = items.map((b,i)=>{
-                const st  = b.status?.toLowerCase();
-                const sBadge = statusBadge(b.status);
-                const actions = `
-                    <button class="bk-btn-view" onclick="openDetail(${b.id})">👁️ Chi tiết</button>
-                    ${st==='pending'  ? `<button class="bk-btn-confirm" onclick="askAction(${b.id},'confirm')">✅ Duyệt</button>` : ''}
-                    ${st!=='cancelled'? `<button class="bk-btn-cancel"  onclick="askAction(${b.id},'cancel')">🚫 Hủy</button>`  : ''}
-                `;
-                return `
-                <tr style="animation-delay:${i*0.04}s">
+        function renderTable(items) {
+            if (!items.length) { document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="bk-empty-td">Không có booking nào</td></tr>'; return; }
+            document.getElementById('tableBody').innerHTML = items.map((b, i) => {
+                const st = b.status?.toLowerCase();
+                return `<tr style="animation-delay:${i * 0.04}s">
                     <td class="bk-td-id">#${b.id}</td>
                     <td><span class="bk-cust-name">${b.customerName}</span></td>
                     <td class="bk-muted">${b.customerPhone}</td>
                     <td class="bk-muted">${fmtDate(b.createdAt)}</td>
                     <td><span class="bk-detail-badge">🏸 ${b.totalDetails} sân</span></td>
                     <td class="bk-td-money">${fmt(b.totalPrice)}</td>
-                    <td>${sBadge}</td>
-                    <td><div class="bk-action-btns">${actions}</div></td>
+                    <td>${statusBadge(b.status)}</td>
+                    <td><div class="bk-action-btns">
+                        <button class="bk-btn-view" onclick="openDetail(${b.id})">👁️ Chi tiết</button>
+                        ${st === 'pending'    ? `<button class="bk-btn-confirm" onclick="askAction(${b.id},'confirm')">✅ Duyệt</button>` : ''}
+                        ${st !== 'cancelled' ? `<button class="bk-btn-cancel"  onclick="askAction(${b.id},'cancel')">🚫 Hủy</button>`   : ''}
+                    </div></td>
                 </tr>`;
             }).join('');
         }
 
-        // ══════════════════════════════════════════════════════
-        //  PAGINATION
-        // ══════════════════════════════════════════════════════
-        function renderPagination(){
-            const totalPages = Math.max(1, Math.ceil(totalItems/pageSize));
-            if(page>totalPages) page=totalPages;
-            const s = (page-1)*pageSize+1;
-            const e = Math.min(page*pageSize, totalItems);
+        function renderPagination() {
+            const tp = Math.max(1, Math.ceil(totalItems / pageSize));
+            if (page > tp) page = tp;
+            const s = (page-1)*pageSize+1, e = Math.min(page*pageSize, totalItems);
             document.getElementById('pageInfo').textContent = totalItems ? `Hiển thị ${s}–${e} / ${totalItems}` : 'Không có dữ liệu';
-
             let btns = `<button class="bk-page-btn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>‹</button>`;
-            for(let p=1;p<=totalPages;p++){
-                if(totalPages<=7 || p===1 || p===totalPages || Math.abs(p-page)<=1)
+            for (let p=1; p<=tp; p++) {
+                if (tp<=7 || p===1 || p===tp || Math.abs(p-page)<=1)
                     btns += `<button class="bk-page-btn ${p===page?'active':''}" onclick="goPage(${p})">${p}</button>`;
-                else if(Math.abs(p-page)===2)
+                else if (Math.abs(p-page)===2)
                     btns += `<button class="bk-page-btn" disabled>…</button>`;
             }
-            btns += `<button class="bk-page-btn" onclick="goPage(${page+1})" ${page>=totalPages?'disabled':''}>›</button>`;
+            btns += `<button class="bk-page-btn" onclick="goPage(${page+1})" ${page>=tp?'disabled':''}>›</button>`;
             document.getElementById('pageBtns').innerHTML = btns;
         }
+        function goPage(p) { page = p; fetchData(); }
+        function onPerPageChange(s) { pageSize = parseInt(s.value); page = 1; fetchData(); }
 
-        function goPage(p)         { page=p; fetchData(); }
-        function onPerPageChange(s){ pageSize=parseInt(s.value); page=1; fetchData(); }
-
-        // ══════════════════════════════════════════════════════
-        //  DETAIL MODAL
-        // ══════════════════════════════════════════════════════
-        async function openDetail(id){
+        async function openDetail(id) {
             document.getElementById('detailTitle').textContent = `Chi tiết Booking #${id}`;
             document.getElementById('detailBody').innerHTML    = '<div class="bk-loading"><div class="bk-spinner"></div><p>Đang tải...</p></div>';
             document.getElementById('detailFooter').innerHTML  = '';
             showModal('detailModalOverlay');
             try {
-                const res = await fetch(`${API}/admin/bookings/${id}`, {headers:H});
-                if(!res.ok) throw new Error('Không tải được chi tiết');
-                const b = await res.json();
-                currentDetail = b;
-                const st = b.status?.toLowerCase();
-
+                const res = await fetch(`${API}/admin/bookings/${id}`, { headers: H });
+                if (!res.ok) throw new Error('Không tải được chi tiết');
+                const b = await res.json(), st = b.status?.toLowerCase();
                 document.getElementById('detailBody').innerHTML = `
                     <div class="bk-detail-section">
                         <h4 class="bk-detail-section-title">👤 Thông tin khách hàng</h4>
                         <div class="bk-detail-grid">
-                            ${detailItem('Họ tên', b.customerName)}
-                            ${detailItem('Số điện thoại', b.customerPhone)}
-                            ${detailItem('Email', b.customerEmail||'—')}
-                            ${detailItem('Ngày tạo', fmtDate(b.createdAt))}
-                            ${detailItem('Tổng tiền', fmt(b.totalPrice), 'bk-detail-money')}
-                            ${detailItem('Trạng thái', statusBadge(b.status))}
+                            ${di('Họ tên', b.customerName)}${di('Số điện thoại', b.customerPhone)}${di('Email', b.customerEmail||'—')}
+                            ${di('Ngày tạo', fmtDate(b.createdAt))}${di('Tổng tiền', fmt(b.totalPrice), 'bk-detail-money')}${di('Trạng thái', statusBadge(b.status))}
                         </div>
                     </div>
                     <div class="bk-detail-section">
                         <h4 class="bk-detail-section-title">🏸 Danh sách sân đặt</h4>
-                        <div style="overflow-x:auto">
-                            <table class="bk-table">
-                                <thead><tr>
-                                    <th>Sân</th><th>Chi nhánh</th><th>Loại sân</th><th>Ngày chơi</th><th>Giờ chơi</th><th>Giá</th>
-                                </tr></thead>
-                                <tbody>
-                                ${(b.details||[]).map((d,i)=>`
-                                    <tr style="animation-delay:${i*0.05}s">
-                                        <td><span class="bk-cust-name">${d.courtName}</span></td>
-                                        <td class="bk-muted">${d.branchName}</td>
-                                        <td><span class="bk-detail-badge">${d.courtTypeName}</span></td>
-                                        <td class="bk-muted">${new Date(d.playDate).toLocaleDateString('vi-VN')}</td>
-                                        <td class="bk-muted">${(d.startTime||'').slice(0,5)} – ${(d.endTime||'').slice(0,5)}</td>
-                                        <td class="bk-td-money">${fmt(d.priceSnapshot)}</td>
-                                    </tr>`).join('')}
-                                </tbody>
-                            </table>
-                        </div>
+                        <div style="overflow-x:auto"><table class="bk-table">
+                            <thead><tr><th>Sân</th><th>Chi nhánh</th><th>Loại sân</th><th>Ngày chơi</th><th>Giờ chơi</th><th>Giá</th></tr></thead>
+                            <tbody>${(b.details||[]).map((d,i) => `<tr style="animation-delay:${i*0.05}s">
+                                <td><span class="bk-cust-name">${d.courtName}</span></td>
+                                <td class="bk-muted">${d.branchName}</td>
+                                <td><span class="bk-detail-badge">${d.courtTypeName}</span></td>
+                                <td class="bk-muted">${new Date(d.playDate).toLocaleDateString('vi-VN')}</td>
+                                <td class="bk-muted">${(d.startTime||'').slice(0,5)} – ${(d.endTime||'').slice(0,5)}</td>
+                                <td class="bk-td-money">${fmt(d.priceSnapshot)}</td>
+                            </tr>`).join('')}</tbody>
+                        </table></div>
                     </div>`;
-
-                // footer
                 let footer = `<button class="bk-btn-close" onclick="closeDetailModalDirect()">Đóng</button>`;
-                if(st !== 'cancelled'){
-                    if(st==='pending')
-                        footer += `<button class="bk-btn-do-confirm" onclick="closeDetailModalDirect();askAction(${b.id},'confirm')">✅ Duyệt booking</button>`;
+                if (st !== 'cancelled') {
+                    if (st === 'pending') footer += `<button class="bk-btn-do-confirm" onclick="closeDetailModalDirect();askAction(${b.id},'confirm')">✅ Duyệt booking</button>`;
                     footer += `<button class="bk-btn-do-cancel-soft" onclick="closeDetailModalDirect();askAction(${b.id},'cancel')">🚫 Hủy booking</button>`;
                 }
                 document.getElementById('detailFooter').innerHTML = footer;
-            } catch(e){ showError(e.message); closeDetailModalDirect(); }
+            } catch(e) { showError(e.message); closeDetailModalDirect(); }
+        }
+        function di(label, val, extra='') {
+            return `<div class="bk-detail-item"><span class="bk-detail-label">${label}</span><span class="bk-detail-value ${extra}">${val}</span></div>`;
         }
 
-        function detailItem(label, val, extraClass=''){
-            return `<div class="bk-detail-item">
-                <span class="bk-detail-label">${label}</span>
-                <span class="bk-detail-value ${extraClass}">${val}</span>
-            </div>`;
-        }
-
-        // ══════════════════════════════════════════════════════
-        //  CONFIRM ACTION MODAL
-        // ══════════════════════════════════════════════════════
-        function askAction(id, action){
+        function askAction(id, action) {
             pendingAction = { id, action };
-            const isConfirm = action==='confirm';
-            document.getElementById('confirmIcon').textContent  = isConfirm ? '✅' : '🚫';
-            document.getElementById('confirmTitle').textContent = isConfirm ? 'Xác nhận duyệt?' : 'Xác nhận hủy?';
-            document.getElementById('confirmDesc').textContent  = isConfirm
-                ? `Bạn có chắc muốn duyệt booking #${id} không?`
-                : `Bạn có chắc muốn hủy booking #${id}? Hành động này không thể hoàn tác!`;
-
-            const okBtn = document.getElementById('confirmOkBtn');
-            okBtn.className = isConfirm ? 'bk-btn-do-confirm' : 'bk-btn-do-cancel-hard';
-            okBtn.textContent = isConfirm ? '✅ Xác nhận duyệt' : '🚫 Xác nhận hủy';
+            const ok = action === 'confirm';
+            document.getElementById('confirmIcon').textContent  = ok ? '✅' : '🚫';
+            document.getElementById('confirmTitle').textContent = ok ? 'Xác nhận duyệt?' : 'Xác nhận hủy?';
+            document.getElementById('confirmDesc').textContent  = ok ? `Bạn có chắc muốn duyệt booking #${id} không?` : `Bạn có chắc muốn hủy booking #${id}? Hành động này không thể hoàn tác!`;
+            const btn = document.getElementById('confirmOkBtn');
+            btn.className   = ok ? 'bk-btn-do-confirm' : 'bk-btn-do-cancel-hard';
+            btn.textContent = ok ? '✅ Xác nhận duyệt' : '🚫 Xác nhận hủy';
             showModal('confirmModalOverlay');
         }
 
-        async function doAction(){
-            if(!pendingAction) return;
+        async function doAction() {
+            if (!pendingAction) return;
             setSaving(true);
             const { id, action } = pendingAction;
-            document.getElementById('confirmOkBtn').textContent = '⏳ Đang xử lý...';
-            document.getElementById('confirmOkBtn').disabled = true;
-            document.getElementById('confirmCancelBtn').disabled = true;
+            const btn = document.getElementById('confirmOkBtn'), btnC = document.getElementById('confirmCancelBtn');
+            btn.textContent = '⏳ Đang xử lý...'; btn.disabled = btnC.disabled = true;
             try {
-                const res  = await fetch(`${API}/admin/bookings/${id}/${action}`, {method:'PATCH', headers:H});
+                const res  = await fetch(`${API}/admin/bookings/${id}/${action}`, { method: 'PATCH', headers: H });
                 const data = await res.json();
-                if(!res.ok) throw new Error(data.message||`Thao tác thất bại (${res.status})`);
+                if (!res.ok) throw new Error(data.message || `Thao tác thất bại (${res.status})`);
                 closeConfirmModalDirect();
-                showSuccess(data.message || (action==='confirm' ? 'Đã duyệt booking!' : 'Đã hủy booking!'));
+                showSuccess(data.message || (action === 'confirm' ? 'Đã duyệt booking!' : 'Đã hủy booking!'));
                 await fetchData();
-            } catch(e){ showError(e.message); closeConfirmModalDirect(); }
-            finally   { setSaving(false); document.getElementById('confirmOkBtn').disabled=false; document.getElementById('confirmCancelBtn').disabled=false; }
+            } catch(e) { showError(e.message); closeConfirmModalDirect(); }
+            finally    { setSaving(false); btn.disabled = btnC.disabled = false; }
         }
 
-        // ══════════════════════════════════════════════════════
-        //  HELPERS
-        // ══════════════════════════════════════════════════════
-        function statusBadge(status){
-            const map = {
-                pending:   `<span class="bk-status bk-status-pending">⏳ Chờ xác nhận</span>`,
-                confirmed: `<span class="bk-status bk-status-confirmed">✅ Đã xác nhận</span>`,
-                cancelled: `<span class="bk-status bk-status-cancelled">🚫 Đã hủy</span>`,
-            };
-            return map[status?.toLowerCase()] || `<span class="bk-status bk-status-pending">${status}</span>`;
+        function statusBadge(s) {
+            const m = { pending:'<span class="bk-status bk-status-pending">⏳ Chờ xác nhận</span>', confirmed:'<span class="bk-status bk-status-confirmed">✅ Đã xác nhận</span>', cancelled:'<span class="bk-status bk-status-cancelled">🚫 Đã hủy</span>' };
+            return m[s?.toLowerCase()] || `<span class="bk-status bk-status-pending">${s}</span>`;
         }
-        function fmt(n)    { return new Intl.NumberFormat('vi-VN').format(Math.round(n||0))+'đ'; }
+        function fmt(n)    { return new Intl.NumberFormat('vi-VN').format(Math.round(n||0)) + 'đ'; }
         function fmtDate(d){ return d ? new Date(d).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'; }
 
-        // ── UI state ──
-        function setLoading(on){
-            document.getElementById('loadingWrap').style.display  = on ? 'flex' : 'none';
-            document.getElementById('tableSection').style.display = on ? 'none' : 'block';
-        }
-        function setSaving(on){ document.getElementById('savingOverlay').classList.toggle('visible',on); }
-        function showError(msg){ document.getElementById('errorMsg').textContent='⚠️ '+msg; document.getElementById('errorBanner').style.display='flex'; }
-        function hideError()   { document.getElementById('errorBanner').style.display='none'; }
-        function showSuccess(msg){
-            document.getElementById('successMsg').textContent=msg;
-            document.getElementById('successBanner').style.display='flex';
-            setTimeout(()=>document.getElementById('successBanner').style.display='none', 3500);
-        }
+        function setLoading(on) { document.getElementById('loadingWrap').style.display = on?'flex':'none'; document.getElementById('tableSection').style.display = on?'none':'block'; }
+        function setSaving(on)  { document.getElementById('savingOverlay').classList.toggle('visible', on); }
+        function showError(m)   { document.getElementById('errorMsg').textContent = '⚠️ '+m; document.getElementById('errorBanner').style.display = 'flex'; }
+        function hideError()    { document.getElementById('errorBanner').style.display = 'none'; }
+        function showSuccess(m) { document.getElementById('successMsg').textContent = m; document.getElementById('successBanner').style.display = 'flex'; setTimeout(() => document.getElementById('successBanner').style.display = 'none', 3500); }
+        function showModal(id)  { document.getElementById(id).classList.add('visible'); }
+        function hideModal(id)  { document.getElementById(id).classList.remove('visible'); }
+        function closeDetailModal(e)       { if (e.target.id==='detailModalOverlay')  closeDetailModalDirect(); }
+        function closeDetailModalDirect()  { hideModal('detailModalOverlay'); }
+        function closeConfirmModal(e)      { if (e.target.id==='confirmModalOverlay') closeConfirmModalDirect(); }
+        function closeConfirmModalDirect() { hideModal('confirmModalOverlay'); pendingAction = null; }
+        function onSearch(inp) { document.getElementById('searchClear').style.display = inp.value?'block':'none'; page=1; fetchData(); }
+        function clearSearch() { document.getElementById('searchInput').value=''; document.getElementById('searchClear').style.display='none'; page=1; fetchData(); }
+        function onFilterChange() { page=1; fetchData(); }
+        function handleLogout() { if (confirm('Bạn có chắc chắn muốn đăng xuất?')) window.location.href='/admin/login'; }
 
-        // ── Modal ──
-        function showModal(id)    { document.getElementById(id).classList.add('visible'); }
-        function hideModal(id)    { document.getElementById(id).classList.remove('visible'); }
-        function closeDetailModal(e)  { if(e.target.id==='detailModalOverlay')  closeDetailModalDirect(); }
-        function closeDetailModalDirect()  { hideModal('detailModalOverlay'); currentDetail=null; }
-        function closeConfirmModal(e) { if(e.target.id==='confirmModalOverlay') closeConfirmModalDirect(); }
-        function closeConfirmModalDirect() { hideModal('confirmModalOverlay'); pendingAction=null; }
-
-        // ── Search / filter ──
-        function onSearch(inp){
-            document.getElementById('searchClear').style.display = inp.value ? 'block':'none';
-            page=1; fetchData();
-        }
-        function clearSearch(){
-            document.getElementById('searchInput').value='';
-            document.getElementById('searchClear').style.display='none';
-            page=1; fetchData();
-        }
-        function onFilterChange(){ page=1; fetchData(); }
-
-        function handleLogout(){
-            if(confirm('Bạn có chắc chắn muốn đăng xuất?')){
-                window.location.href='/admin/login';
-            }
-        }
-
-        // ══════════════════════════════════════════════════════
-        //  KICK OFF
-        // ══════════════════════════════════════════════════════
         fetchData();
     </script>
 }
