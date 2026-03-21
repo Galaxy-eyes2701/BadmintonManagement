@@ -1,0 +1,335 @@
+@{
+    ViewData["Title"] = "Quản lý Kho & Sản phẩm";
+    ViewData["Page"]  = "products";
+    Layout = "_StaffLayout";
+}
+
+<div class="p-4">
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h5 class="fw-bold mb-0">📦 Quản lý Kho & Sản phẩm</h5>
+            <p class="text-muted small mb-0">Thêm, sửa, xóa nước uống, dụng cụ</p>
+        </div>
+        <button class="btn btn-primary" onclick="openCreate()">
+            + Thêm sản phẩm
+        </button>
+    </div>
+
+    <!-- FILTER -->
+    <div class="card shadow-sm p-3 mb-3">
+        <div class="d-flex gap-3 flex-wrap">
+            <div class="position-relative flex-grow-1" style="max-width:320px">
+                <span class="position-absolute" style="left:12px;top:50%;transform:translateY(-50%)">🔍</span>
+                <input type="text" id="searchInput" class="form-control ps-5"
+                       placeholder="Tìm tên sản phẩm..." oninput="renderTable()"/>
+            </div>
+            <select id="catFilter" class="form-select" style="width:180px" onchange="renderTable()">
+                <option value="">Tất cả danh mục</option>
+            </select>
+            <span class="d-flex align-items-center text-muted small" id="totalCount"></span>
+        </div>
+    </div>
+
+    <!-- BẢNG -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead style="background:#0f172a;color:white">
+                    <tr>
+                        <th style="width:50px">ID</th>
+                        <th style="width:60px">Ảnh</th>
+                        <th>Tên sản phẩm</th>
+                        <th>Danh mục</th>
+                        <th>Tồn kho</th>
+                        <th>Đơn giá</th>
+                        <th style="text-align:right">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="7" class="text-center p-4 text-muted">Đang tải...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="p-3 border-top bg-light rounded-bottom">
+            <span class="text-muted small" id="footerCount"></span>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL THÊM/SỬA -->
+<div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold" id="modalTitle">Thêm sản phẩm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId"/>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Tên sản phẩm *</label>
+                    <input type="text" id="pName" class="form-control"
+                           placeholder="VD: Nước khoáng Lavie 500ml"/>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Danh mục *</label>
+                    <select id="pCat" class="form-select"></select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Link ảnh</label>
+                    <input type="text" id="pImage" class="form-control"
+                           placeholder="https://... hoặc để trống"
+                           oninput="previewImg()"/>
+                    <!-- PREVIEW ẢNH -->
+                    <div class="mt-2 text-center" id="imgPreviewWrap" style="display:none">
+                        <img id="imgPreview"
+                             style="max-height:120px;border-radius:8px;border:1px solid #e2e8f0;object-fit:contain;padding:4px"/>
+                    </div>
+                    <div class="mt-1">
+                        <small class="text-muted">Gợi ý tìm ảnh:
+                            <a href="https://www.google.com/imghp" target="_blank">Google Images</a> →
+                            click ảnh → chuột phải → Copy image address
+                        </small>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col">
+                        <label class="form-label fw-semibold">Tồn kho</label>
+                        <input type="number" id="pStock" class="form-control" min="0" value="0"/>
+                    </div>
+                    <div class="col">
+                        <label class="form-label fw-semibold">Đơn giá (đ) *</label>
+                        <div class="input-group">
+                            <input type="number" id="pPrice" class="form-control" min="0" placeholder="15000"/>
+                            <span class="input-group-text">đ</span>
+                        </div>
+                        <!-- Quick fill giá -->
+                        <div class="d-flex gap-1 mt-1 flex-wrap">
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    onclick="document.getElementById('pPrice').value=5000">5k</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    onclick="document.getElementById('pPrice').value=10000">10k</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    onclick="document.getElementById('pPrice').value=15000">15k</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    onclick="document.getElementById('pPrice').value=20000">20k</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    onclick="document.getElementById('pPrice').value=50000">50k</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="modalError" class="alert alert-danger d-none py-2 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-primary" onclick="save()">💾 Lưu sản phẩm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL XÁC NHẬN XÓA -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content text-center p-4">
+            <div style="font-size:48px">🗑️</div>
+            <h6 class="fw-bold mt-2">Xác nhận xóa</h6>
+            <p class="text-muted small" id="deleteMsg"></p>
+            <div class="d-flex gap-2 justify-content-center mt-2">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-danger btn-sm" id="btnConfirmDelete">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const API   = 'http://localhost:5043/api';
+const token = '@Context.Session.GetString("AuthToken")';
+let allProducts = [];
+let categories  = [];
+
+async function init() {
+    const [prodRes, catRes] = await Promise.all([
+        fetch(`${API}/products`,        { headers:{ 'Authorization':'Bearer '+token } }),
+        fetch(`${API}/pos/categories`,  { headers:{ 'Authorization':'Bearer '+token } })
+    ]);
+    allProducts = await prodRes.json();
+    categories  = await catRes.json();
+
+    // Điền dropdown danh mục filter
+    document.getElementById('catFilter').innerHTML =
+        '<option value="">Tất cả danh mục</option>' +
+        categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+    // Điền dropdown modal
+    document.getElementById('pCat').innerHTML =
+        '<option value="">-- Chọn danh mục --</option>' +
+        categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+    renderTable();
+}
+
+function renderTable() {
+    const q      = document.getElementById('searchInput').value.toLowerCase();
+    const catId  = document.getElementById('catFilter').value;
+
+    const list = allProducts.filter(p => {
+        const matchName = p.name.toLowerCase().includes(q);
+        const matchCat  = !catId || p.categoryId === parseInt(catId);
+        return matchName && matchCat;
+    });
+
+    document.getElementById('totalCount').textContent = `${list.length} sản phẩm`;
+    document.getElementById('footerCount').textContent = `Tổng: ${list.length} sản phẩm`;
+
+    if (!list.length) {
+        document.getElementById('tableBody').innerHTML =
+            '<tr><td colspan="7" class="text-center p-4 text-muted">Không có sản phẩm nào</td></tr>';
+        return;
+    }
+
+    document.getElementById('tableBody').innerHTML = list.map(p => `
+        <tr>
+            <td class="text-muted fw-bold small">#${p.id}</td>
+            <td>
+                <div style="width:44px;height:44px;background:#f8fafc;border-radius:8px;
+                            border:1px solid #e2e8f0;display:flex;align-items:center;
+                            justify-content:center;overflow:hidden">
+                    ${p.imageUrl
+                        ? `<img src="${p.imageUrl}"
+                                style="width:100%;height:100%;object-fit:cover"
+                                onerror="this.parentElement.innerHTML='<span style=font-size:20px>📦</span>'"/>`
+                        : `<span style="font-size:20px">📦</span>`}
+                </div>
+            </td>
+            <td class="fw-semibold">${p.name}</td>
+            <td>
+                <span class="badge bg-light text-dark border" style="font-size:11px">
+                    ${categories.find(c=>c.id===p.categoryId)?.name || '—'}
+                </span>
+            </td>
+            <td>
+                ${p.stockQuantity <= 10
+                    ? `<span class="text-danger fw-bold">⚠️ ${p.stockQuantity}</span>`
+                    : `<span class="fw-semibold">${p.stockQuantity}</span>`}
+            </td>
+            <td class="fw-bold text-primary">${fmt(p.unitPrice)}</td>
+            <td style="text-align:right">
+                <button class="btn btn-outline-primary btn-sm me-1"
+                        onclick="openEdit(${p.id})">✏️ Sửa</button>
+                <button class="btn btn-outline-danger btn-sm"
+                        onclick="confirmDelete(${p.id},'${p.name.replace(/'/g,"\\'")}')">🗑️</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ── PREVIEW ẢNH KHI NHẬP LINK ─────────────────────────────────────────
+function previewImg() {
+    const url  = document.getElementById('pImage').value.trim();
+    const wrap = document.getElementById('imgPreviewWrap');
+    const img  = document.getElementById('imgPreview');
+    if (url) {
+        img.src = url;
+        wrap.style.display = '';
+        img.onerror = () => { wrap.style.display = 'none'; };
+        img.onload  = () => { wrap.style.display = ''; };
+    } else {
+        wrap.style.display = 'none';
+    }
+}
+
+// ── CRUD ──────────────────────────────────────────────────────────────
+function openCreate() {
+    document.getElementById('editId').value  = '';
+    document.getElementById('pName').value   = '';
+    document.getElementById('pCat').value    = '';
+    document.getElementById('pImage').value  = '';
+    document.getElementById('pStock').value  = '0';
+    document.getElementById('pPrice').value  = '';
+    document.getElementById('imgPreviewWrap').style.display = 'none';
+    document.getElementById('modalTitle').textContent = '➕ Thêm sản phẩm';
+    document.getElementById('modalError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('productModal')).show();
+}
+
+function openEdit(id) {
+    const p = allProducts.find(x => x.id === id);
+    document.getElementById('editId').value  = p.id;
+    document.getElementById('pName').value   = p.name;
+    document.getElementById('pCat').value    = p.categoryId;
+    document.getElementById('pImage').value  = p.imageUrl || '';
+    document.getElementById('pStock').value  = p.stockQuantity;
+    document.getElementById('pPrice').value  = p.unitPrice;
+    document.getElementById('modalTitle').textContent = '✏️ Sửa sản phẩm';
+    document.getElementById('modalError').classList.add('d-none');
+    previewImg();
+    new bootstrap.Modal(document.getElementById('productModal')).show();
+}
+
+async function save() {
+    const id = document.getElementById('editId').value;
+    const body = {
+        id:            id ? parseInt(id) : 0,
+        name:          document.getElementById('pName').value.trim(),
+        categoryId:    parseInt(document.getElementById('pCat').value),
+        imageUrl:      document.getElementById('pImage').value.trim() || null,
+        stockQuantity: parseInt(document.getElementById('pStock').value) || 0,
+        unitPrice:     parseFloat(document.getElementById('pPrice').value)
+    };
+
+    if (!body.name || !body.categoryId || !body.unitPrice) {
+        document.getElementById('modalError').textContent = 'Vui lòng điền đầy đủ tên, danh mục và giá!';
+        document.getElementById('modalError').classList.remove('d-none');
+        return;
+    }
+
+    const url    = id ? `${API}/products/${id}` : `${API}/products`;
+    const method = id ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+        method,
+        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+        document.getElementById('modalError').textContent = 'Lỗi khi lưu sản phẩm!';
+        document.getElementById('modalError').classList.remove('d-none');
+        return;
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+    init();
+}
+
+function confirmDelete(id, name) {
+    document.getElementById('deleteMsg').textContent = `Xóa "${name}"? Hành động này không thể hoàn tác.`;
+    document.getElementById('btnConfirmDelete').onclick = () => deleteProduct(id);
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+async function deleteProduct(id) {
+    await fetch(`${API}/products/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization':'Bearer '+token }
+    });
+    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+    init();
+}
+
+function fmt(n) {
+    return new Intl.NumberFormat('vi-VN').format(n||0) + 'đ';
+}
+
+init();
+</script>
+}

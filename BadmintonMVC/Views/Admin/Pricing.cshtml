@@ -1,0 +1,370 @@
+@{
+    ViewData["Title"] = "Cấu hình Bảng Giá";
+    ViewData["Page"]  = "pricing";
+    Layout = "_AdminLayout";
+}
+
+<div class="p-4">
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-grid" onclick="switchView('grid')">📊 Bảng giá tổng quan</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-list" onclick="switchView('list')">📋 Danh sách chi tiết</button>
+        </li>
+    </ul>
+
+    <!-- VIEW GRID -->
+    <div id="viewGrid">
+        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+            <span class="fw-semibold">Loại sân:</span>
+            <div id="courtTypeTabs" class="d-flex gap-2 flex-wrap"></div>
+            <div class="ms-auto d-flex gap-2 align-items-center">
+                <span id="dirtyBadge" class="badge bg-warning text-dark d-none">⚡ Có thay đổi chưa lưu</span>
+                <button class="btn btn-outline-secondary btn-sm" onclick="resetGrid()">↺ Hoàn tác</button>
+                <button class="btn btn-primary btn-sm" id="btnSaveGrid" onclick="saveGrid()" disabled>💾 Lưu bảng giá</button>
+            </div>
+        </div>
+        <div class="card shadow-sm overflow-auto">
+            <table class="table table-bordered mb-0" id="gridTable" style="min-width:700px">
+                <thead id="gridHead"></thead>
+                <tbody id="gridBody"></tbody>
+            </table>
+        </div>
+        <p class="text-muted small mt-2">💡 Nhập giá trực tiếp vào ô rồi nhấn Lưu bảng giá</p>
+    </div>
+
+    <!-- VIEW LIST -->
+    <div id="viewList" style="display:none">
+        <div class="d-flex gap-3 mb-3 flex-wrap">
+            <select id="filterCT" class="form-select" style="width:200px" onchange="renderList()">
+                <option value="">🏸 Tất cả loại sân</option>
+            </select>
+            <select id="filterDay" class="form-select" style="width:180px" onchange="renderList()">
+                <option value="">📅 Tất cả các ngày</option>
+                <option value="0">Chủ nhật</option>
+                <option value="1">Thứ 2</option>
+                <option value="2">Thứ 3</option>
+                <option value="3">Thứ 4</option>
+                <option value="4">Thứ 5</option>
+                <option value="5">Thứ 6</option>
+                <option value="6">Thứ 7</option>
+            </select>
+            <button class="btn btn-primary ms-auto" onclick="openCreateConfig()">+ Thêm cấu hình</button>
+        </div>
+        <div class="card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead style="background:linear-gradient(135deg,#0d5e58,#0f766e);color:white">
+                        <tr>
+                            <th>Loại sân</th><th>Khung giờ</th>
+                            <th>Ngày trong tuần</th><th>Giá thuê</th><th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listBody">
+                        <tr><td colspan="5" class="text-center p-4 text-muted">Đang tải...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL THÊM/SỬA CONFIG -->
+<div class="modal fade" id="configModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#f0fdf9,#e6faf8)">
+                <h5 class="modal-title" id="configModalTitle">💰 Thêm cấu hình giá</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editConfigId"/>
+                <div class="row g-3 mb-3">
+                    <div class="col">
+                        <label class="form-label fw-semibold">Loại sân *</label>
+                        <select id="cfCourtType" class="form-select"></select>
+                    </div>
+                    <div class="col">
+                        <label class="form-label fw-semibold">Khung giờ *</label>
+                        <select id="cfTimeSlot" class="form-select"></select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Ngày trong tuần *</label>
+                    <div class="d-flex gap-2 flex-wrap" id="dayBtns"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Giá thuê (đ) *</label>
+                    <input type="number" id="cfPrice" class="form-control" min="0" placeholder="150000"/>
+                    <div class="d-flex gap-1 mt-1">
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="document.getElementById('cfPrice').value=80000">80k</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="document.getElementById('cfPrice').value=100000">100k</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="document.getElementById('cfPrice').value=150000">150k</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="document.getElementById('cfPrice').value=200000">200k</button>
+                    </div>
+                </div>
+                <div id="configError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-primary" onclick="saveConfig()">💾 Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const API   = 'http://localhost:5043/api';
+const token = '@Context.Session.GetString("AuthToken")';
+const DAYS  = ['CN','T2','T3','T4','T5','T6','T7'];
+const DAYS_FULL = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
+const WEEKEND = [0,6];
+
+let allConfigs  = [];
+let courtTypes  = [];
+let timeSlots   = [];
+let activeCtId  = null;
+let gridEdits   = {};
+
+async function init() {
+    const [cfRes, ctRes, tsRes] = await Promise.all([
+        fetch(`${API}/admin/price-configs`, { headers:{ 'Authorization':'Bearer '+token } }),
+        fetch(`${API}/courttypes`,          { headers:{ 'Authorization':'Bearer '+token } }),
+        fetch(`${API}/timeslots`,           { headers:{ 'Authorization':'Bearer '+token } })
+    ]);
+    allConfigs = await cfRes.json();
+    courtTypes = await ctRes.json();
+    timeSlots  = await tsRes.json();
+    activeCtId = courtTypes[0]?.id;
+
+    // Court type tabs
+    document.getElementById('courtTypeTabs').innerHTML = courtTypes.map(ct => `
+        <button class="btn btn-sm ${ct.id===activeCtId?'btn-primary':'btn-outline-secondary'}"
+                id="ctTab-${ct.id}" onclick="selectCT(${ct.id})">${ct.name}</button>
+    `).join('');
+
+    // Dropdowns cho modal
+    document.getElementById('cfCourtType').innerHTML =
+        courtTypes.map(ct => `<option value="${ct.id}">${ct.name}</option>`).join('');
+    document.getElementById('cfTimeSlot').innerHTML =
+        timeSlots.map(ts => `<option value="${ts.id}">${ts.label}</option>`).join('');
+    document.getElementById('filterCT').innerHTML =
+        '<option value="">🏸 Tất cả loại sân</option>' +
+        courtTypes.map(ct => `<option value="${ct.id}">${ct.name}</option>`).join('');
+
+    // Day buttons trong modal
+    document.getElementById('dayBtns').innerHTML = DAYS.map((d,i) => `
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="dayBtn-${i}"
+                onclick="toggleDay(${i})">${d}</button>
+    `).join('');
+
+    renderGrid();
+    renderList();
+}
+
+function selectCT(id) {
+    activeCtId = id;
+    courtTypes.forEach(ct => {
+        const btn = document.getElementById(`ctTab-${ct.id}`);
+        btn.className = `btn btn-sm ${ct.id===id?'btn-primary':'btn-outline-secondary'}`;
+    });
+    gridEdits = {};
+    updateDirty();
+    renderGrid();
+}
+
+function switchView(v) {
+    document.getElementById('viewGrid').style.display = v==='grid' ? '' : 'none';
+    document.getElementById('viewList').style.display = v==='list' ? '' : 'none';
+    document.getElementById('tab-grid').classList.toggle('active', v==='grid');
+    document.getElementById('tab-list').classList.toggle('active', v==='list');
+}
+
+// ── GRID VIEW ──────────────────────────────────────────────────────────
+function renderGrid() {
+    const gridData = {};
+    allConfigs
+        .filter(c => c.courtTypeId === activeCtId)
+        .forEach(c => { gridData[`${c.timeSlotId}_${c.dayOfWeek}`] = c.price; });
+
+    // Header
+    document.getElementById('gridHead').innerHTML =
+        '<tr><th style="background:#f8fafc;min-width:120px">Khung giờ</th>' +
+        DAYS.map((d,i) => `
+            <th style="background:${WEEKEND.includes(i)?'#fffbeb':'#f0fdf9'};text-align:center;min-width:110px">
+                <div class="fw-bold">${d}</div>
+                <small class="text-muted" style="font-size:10px">${DAYS_FULL[i]}</small>
+            </th>`).join('') + '</tr>';
+
+    // Body
+    document.getElementById('gridBody').innerHTML = timeSlots.map(ts => `
+        <tr>
+            <td style="background:#f8fafc;font-weight:600;font-size:13px">
+                ${ts.label}
+            </td>
+            ${DAYS.map((_,i) => {
+                const key = `${ts.id}_${i}`;
+                const val = key in gridEdits ? gridEdits[key] : (gridData[key] ?? '');
+                const isEdited = key in gridEdits;
+                const isEmpty  = !(key in gridData) && !isEdited;
+                return `<td style="padding:4px;background:${isEdited?'#fffbeb':isEmpty?'#fafafa':'white'}">
+                    <div style="position:relative">
+                        <input type="number" min="0"
+                               style="width:100%;border:1px solid ${isEdited?'#f59e0b':'#e2e8f0'};
+                                      border-radius:6px;padding:5px 20px 5px 8px;
+                                      font-size:13px;font-weight:600;color:#0f172a;
+                                      background:transparent;outline:none"
+                               value="${val}" placeholder="—"
+                               onchange="editGrid('${ts.id}',${i},this.value)"/>
+                        ${val ? `<span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;color:#0f766e;pointer-events:none">đ</span>` : ''}
+                    </div>
+                </td>`;
+            }).join('')}
+        </tr>
+    `).join('');
+}
+
+function editGrid(slotId, day, val) {
+    gridEdits[`${slotId}_${day}`] = val;
+    updateDirty();
+}
+
+function updateDirty() {
+    const dirty = Object.keys(gridEdits).length > 0;
+    document.getElementById('dirtyBadge').classList.toggle('d-none', !dirty);
+    document.getElementById('btnSaveGrid').disabled = !dirty;
+}
+
+function resetGrid() {
+    gridEdits = {};
+    updateDirty();
+    renderGrid();
+}
+
+async function saveGrid() {
+    const items = [];
+    for (const [key, val] of Object.entries(gridEdits)) {
+        if (!val) continue;
+        const [slotId, day] = key.split('_').map(Number);
+        items.push({ courtTypeId: activeCtId, timeSlotId: slotId, dayOfWeek: day, price: parseFloat(val) });
+    }
+    if (!items.length) return;
+    await fetch(`${API}/admin/price-configs/bulk`, {
+        method: 'POST',
+        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify({ items })
+    });
+    gridEdits = {};
+    updateDirty();
+    const cfRes = await fetch(`${API}/admin/price-configs`, { headers:{ 'Authorization':'Bearer '+token } });
+    allConfigs  = await cfRes.json();
+    renderGrid();
+    alert('✅ Đã lưu bảng giá!');
+}
+
+// ── LIST VIEW ──────────────────────────────────────────────────────────
+function renderList() {
+    const filterCT  = document.getElementById('filterCT')?.value;
+    const filterDay = document.getElementById('filterDay')?.value;
+
+    const list = allConfigs.filter(c =>
+        (!filterCT  || c.courtTypeId === parseInt(filterCT)) &&
+        (!filterDay && filterDay !== '0' ? true : c.dayOfWeek === parseInt(filterDay))
+    );
+
+    document.getElementById('listBody').innerHTML = list.length
+        ? list.map(c => `
+            <tr>
+                <td><span class="badge bg-light text-dark border">🏸 ${c.courtTypeName}</span></td>
+                <td><span class="badge" style="background:rgba(15,118,110,.08);color:#0d5e58;border:1px solid rgba(15,118,110,.2)">⏰ ${c.timeSlotLabel}</span></td>
+                <td><span class="badge ${WEEKEND.includes(c.dayOfWeek)?'bg-warning text-dark':'bg-light text-dark border'}">${c.dayLabel}</span></td>
+                <td class="fw-bold" style="color:#b45309">${fmt(c.price)}</td>
+                <td>
+                    <button class="btn btn-outline-primary btn-sm me-1" onclick="openEditConfig(${c.id})">✏️</button>
+                    <button class="btn btn-outline-danger btn-sm"  onclick="deleteConfig(${c.id})">🗑️</button>
+                </td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="5" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>';
+}
+
+let selectedDay = 0;
+function toggleDay(i) {
+    selectedDay = i;
+    DAYS.forEach((_,j) => {
+        const btn = document.getElementById(`dayBtn-${j}`);
+        btn.className = `btn btn-sm ${j===i ? 'btn-primary' : 'btn-outline-secondary'}`;
+    });
+}
+
+function openCreateConfig() {
+    document.getElementById('editConfigId').value = '';
+    document.getElementById('cfPrice').value      = '';
+    document.getElementById('configModalTitle').textContent = '💰 Thêm cấu hình giá';
+    document.getElementById('configError').classList.add('d-none');
+    toggleDay(0);
+    new bootstrap.Modal(document.getElementById('configModal')).show();
+}
+
+function openEditConfig(id) {
+    const c = allConfigs.find(x => x.id === id);
+    document.getElementById('editConfigId').value  = c.id;
+    document.getElementById('cfCourtType').value   = c.courtTypeId;
+    document.getElementById('cfTimeSlot').value    = c.timeSlotId;
+    document.getElementById('cfPrice').value       = c.price;
+    document.getElementById('configModalTitle').textContent = '✏️ Sửa cấu hình giá';
+    document.getElementById('configError').classList.add('d-none');
+    toggleDay(c.dayOfWeek);
+    new bootstrap.Modal(document.getElementById('configModal')).show();
+}
+
+async function saveConfig() {
+    const id   = document.getElementById('editConfigId').value;
+    const body = {
+        courtTypeId: parseInt(document.getElementById('cfCourtType').value),
+        timeSlotId:  parseInt(document.getElementById('cfTimeSlot').value),
+        dayOfWeek:   selectedDay,
+        price:       parseFloat(document.getElementById('cfPrice').value)
+    };
+    const url    = id ? `${API}/admin/price-configs/${id}` : `${API}/admin/price-configs`;
+    const method = id ? 'PUT' : 'POST';
+    const res    = await fetch(url, {
+        method,
+        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        document.getElementById('configError').textContent = err.message || 'Lỗi!';
+        document.getElementById('configError').classList.remove('d-none');
+        return;
+    }
+    bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
+    const cfRes = await fetch(`${API}/admin/price-configs`, { headers:{ 'Authorization':'Bearer '+token } });
+    allConfigs  = await cfRes.json();
+    renderGrid();
+    renderList();
+}
+
+async function deleteConfig(id) {
+    if (!confirm('Xóa cấu hình giá này?')) return;
+    await fetch(`${API}/admin/price-configs/${id}`, {
+        method: 'DELETE', headers: { 'Authorization':'Bearer '+token }
+    });
+    const cfRes = await fetch(`${API}/admin/price-configs`, { headers:{ 'Authorization':'Bearer '+token } });
+    allConfigs  = await cfRes.json();
+    renderGrid();
+    renderList();
+}
+
+function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n||0) + 'đ'; }
+
+init();
+</script>
+}

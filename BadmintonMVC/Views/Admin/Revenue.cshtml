@@ -1,0 +1,289 @@
+@{
+    ViewData["Title"] = "Thống kê Doanh thu";
+    ViewData["Page"]  = "revenue";
+    Layout = "_AdminLayout";
+}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<div class="p-4">
+    <!-- FILTER -->
+    <div class="card shadow-sm p-3 mb-4">
+        <div class="d-flex gap-3 flex-wrap align-items-center">
+            <span class="fw-semibold">🗓️ Khoảng thời gian:</span>
+            <div class="d-flex gap-1 flex-wrap">
+                <button class="btn btn-sm btn-outline-secondary" onclick="preset(7)">7 ngày</button>
+                <button class="btn btn-sm btn-primary" id="preset30" onclick="preset(30)">30 ngày</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="preset(90)">3 tháng</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="preset(365)">1 năm</button>
+            </div>
+            <input type="date" id="startDate" class="form-control form-control-sm" style="width:150px"/>
+            <span class="text-muted">→</span>
+            <input type="date" id="endDate"   class="form-control form-control-sm" style="width:150px"/>
+            <select id="period" class="form-select form-select-sm" style="width:150px">
+                <option value="day">Theo ngày</option>
+                <option value="month" selected>Theo tháng</option>
+                <option value="year">Theo năm</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="loadAll()">🔄 Làm mới</button>
+            <button class="btn btn-outline-secondary btn-sm ms-auto" onclick="exportCsv()">⬇️ Xuất CSV</button>
+        </div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3" style="border-left:4px solid #0f766e!important">
+                <div class="text-muted small fw-semibold">TỔNG DOANH THU</div>
+                <div class="fw-black fs-4 mt-1" id="sTotalRev" style="color:#0f766e">—</div>
+                <div id="sGrowth" class="small mt-1"></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3" style="border-left:4px solid #3b82f6!important">
+                <div class="text-muted small fw-semibold">DOANH THU SÂN</div>
+                <div class="fw-black fs-4 mt-1 text-primary" id="sBookingRev">—</div>
+                <div class="text-muted small" id="sCompletedB"></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3" style="border-left:4px solid #f59e0b!important">
+                <div class="text-muted small fw-semibold">DOANH THU ĐỒ UỐNG</div>
+                <div class="fw-black fs-4 mt-1 text-warning" id="sOrderRev">—</div>
+                <div class="text-muted small" id="sTotalOrders"></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3" style="border-left:4px solid #8b5cf6!important">
+                <div class="text-muted small fw-semibold">TB / NGÀY</div>
+                <div class="fw-black fs-4 mt-1" style="color:#8b5cf6" id="sAvgDay">—</div>
+                <div class="text-muted small" id="sTotalCus"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="row g-4 mb-4">
+        <!-- BIỂU ĐỒ ĐƯỜNG -->
+        <div class="col-12">
+            <div class="card shadow-sm p-3">
+                <h6 class="fw-bold mb-3">📈 Doanh thu theo kỳ</h6>
+                <canvas id="lineChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- BAR CHART CHI NHÁNH -->
+        <div class="col-md-7">
+            <div class="card shadow-sm p-3">
+                <h6 class="fw-bold mb-3">🏢 Doanh thu theo chi nhánh</h6>
+                <canvas id="branchChart" height="140"></canvas>
+            </div>
+        </div>
+        <!-- DONUT LOẠI SÂN -->
+        <div class="col-md-5">
+            <div class="card shadow-sm p-3">
+                <h6 class="fw-bold mb-3">🎯 Tỉ trọng loại sân</h6>
+                <canvas id="donutChart" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP COURTS TABLE -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white fw-bold">🏆 Top sân theo doanh thu</div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead style="background:#f8fafc">
+                    <tr>
+                        <th>#</th><th>Tên sân</th><th>Chi nhánh</th>
+                        <th>Loại sân</th><th>Booking</th>
+                        <th>Doanh thu</th><th>Tỉ lệ lấp đầy</th>
+                    </tr>
+                </thead>
+                <tbody id="topBody">
+                    <tr><td colspan="7" class="text-center p-4 text-muted">Đang tải...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const API   = 'http://localhost:5043/api';
+const token = '@Context.Session.GetString("AuthToken")';
+let lineChart = null, branchChart = null, donutChart = null;
+
+// Khởi tạo ngày mặc định 30 ngày
+const endD = new Date(), startD = new Date();
+startD.setDate(startD.getDate() - 30);
+document.getElementById('endDate').value   = endD.toISOString().split('T')[0];
+document.getElementById('startDate').value = startD.toISOString().split('T')[0];
+
+function preset(days) {
+    const e = new Date(), s = new Date();
+    s.setDate(s.getDate() - days);
+    document.getElementById('endDate').value   = e.toISOString().split('T')[0];
+    document.getElementById('startDate').value = s.toISOString().split('T')[0];
+    document.getElementById('period').value    = days <= 30 ? 'day' : 'month';
+    loadAll();
+}
+
+function qs() {
+    return new URLSearchParams({
+        startDate: document.getElementById('startDate').value,
+        endDate:   document.getElementById('endDate').value,
+        period:    document.getElementById('period').value
+    }).toString();
+}
+
+async function loadAll() {
+    const q = qs();
+    const [sumRes, branchRes, ctRes, periodRes, topRes] = await Promise.all([
+        fetch(`${API}/admin/revenue/summary?${q}`,      { headers:{ 'Authorization':'Bearer '+token } }),
+        fetch(`${API}/admin/revenue/by-branch?${q}`,    { headers:{ 'Authorization':'Bearer '+token } }),
+        fetch(`${API}/admin/revenue/by-court-type?${q}`,{ headers:{ 'Authorization':'Bearer '+token } }),
+        fetch(`${API}/admin/revenue/by-period?${q}`,    { headers:{ 'Authorization':'Bearer '+token } }),
+        fetch(`${API}/admin/revenue/top-courts?${q}&top=8`,{ headers:{ 'Authorization':'Bearer '+token } }),
+    ]);
+
+    const [sum, branches, courtTypes, period, tops] = await Promise.all([
+        sumRes.json(), branchRes.json(), ctRes.json(), periodRes.json(), topRes.json()
+    ]);
+
+    renderSummary(sum);
+    renderLineChart(period);
+    renderBranchChart(branches);
+    renderDonut(courtTypes);
+    renderTop(tops);
+}
+
+function renderSummary(s) {
+    document.getElementById('sTotalRev').textContent  = fmt(s.totalRevenue);
+    document.getElementById('sBookingRev').textContent= fmt(s.bookingRevenue);
+    document.getElementById('sOrderRev').textContent  = fmt(s.orderRevenue);
+    document.getElementById('sAvgDay').textContent    = fmt(s.avgRevenuePerDay);
+    document.getElementById('sCompletedB').textContent= `${s.completedBookings} đã xác nhận`;
+    document.getElementById('sTotalOrders').textContent=`${s.totalOrders} đơn hàng`;
+    document.getElementById('sTotalCus').textContent  = `${s.totalCustomers} khách hàng`;
+    const g = s.revenueGrowthRate;
+    document.getElementById('sGrowth').innerHTML =
+        `<span class="badge ${g>=0?'bg-success':'bg-danger'}">${g>=0?'▲':'▼'} ${Math.abs(g).toFixed(1)}%</span>`;
+}
+
+function renderLineChart(data) {
+    if (lineChart) lineChart.destroy();
+    lineChart = new Chart(document.getElementById('lineChart'), {
+        type: 'line',
+        data: {
+            labels: data.map(d => d.label),
+            datasets: [
+                { label:'Booking', data: data.map(d=>d.bookingRevenue),
+                  borderColor:'#0f766e', backgroundColor:'rgba(15,118,110,.08)',
+                  fill:true, tension:.4, pointRadius:3 },
+                { label:'Đồ uống', data: data.map(d=>d.orderRevenue),
+                  borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.08)',
+                  fill:true, tension:.4, pointRadius:3, borderDash:[5,3] }
+            ]
+        },
+        options: {
+            responsive:true,
+            plugins:{ legend:{ position:'bottom' } },
+            scales:{
+                y:{ ticks:{ callback: v => fmtShort(v) } }
+            }
+        }
+    });
+}
+
+function renderBranchChart(data) {
+    if (branchChart) branchChart.destroy();
+    branchChart = new Chart(document.getElementById('branchChart'), {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.branchName),
+            datasets: [
+                { label:'Sân', data: data.map(d=>d.bookingRevenue),
+                  backgroundColor:'#0f766e', stack:'a' },
+                { label:'Đồ uống', data: data.map(d=>d.orderRevenue),
+                  backgroundColor:'#f59e0b', stack:'a' }
+            ]
+        },
+        options: {
+            responsive:true,
+            plugins:{ legend:{ position:'bottom' } },
+            scales:{
+                y:{ ticks:{ callback: v => fmtShort(v) } }
+            }
+        }
+    });
+}
+
+function renderDonut(data) {
+    if (donutChart) donutChart.destroy();
+    donutChart = new Chart(document.getElementById('donutChart'), {
+        type: 'doughnut',
+        data: {
+            labels: data.map(d => d.courtTypeName),
+            datasets: [{
+                data: data.map(d => d.totalRevenue),
+                backgroundColor: ['#0f766e','#f59e0b','#3b82f6','#8b5cf6','#ec4899']
+            }]
+        },
+        options: {
+            responsive:true,
+            plugins:{
+                legend:{ position:'bottom' },
+                tooltip:{ callbacks:{ label: ctx => ` ${fmtShort(ctx.raw)} (${data[ctx.dataIndex]?.percentage?.toFixed(1)}%)` } }
+            }
+        }
+    });
+}
+
+function renderTop(tops) {
+    const medals = ['🥇','🥈','🥉'];
+    document.getElementById('topBody').innerHTML = tops.length
+        ? tops.map((c,i) => `
+            <tr>
+                <td class="fw-bold">${medals[i]||'#'+(i+1)}</td>
+                <td class="fw-bold">${c.courtName}</td>
+                <td class="text-muted small">${c.branchName}</td>
+                <td><span class="badge bg-light text-dark border">${c.courtTypeName}</span></td>
+                <td class="fw-bold">${c.totalBookings}</td>
+                <td class="fw-bold" style="color:#b45309">${fmt(c.totalRevenue)}</td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="height:8px">
+                            <div class="progress-bar" style="width:${Math.min(c.occupancyRate,100)}%;background:#0f766e"></div>
+                        </div>
+                        <span class="small fw-bold" style="min-width:40px">${c.occupancyRate?.toFixed(1)}%</span>
+                    </div>
+                </td>
+            </tr>`).join('')
+        : '<tr><td colspan="7" class="text-center p-4 text-muted">Chưa có dữ liệu</td></tr>';
+}
+
+async function exportCsv() {
+    const res  = await fetch(`${API}/admin/revenue/export?${qs()}`, { headers:{ 'Authorization':'Bearer '+token } });
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `revenue_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function fmt(n)      { return new Intl.NumberFormat('vi-VN').format(Math.round(n||0)) + 'đ'; }
+function fmtShort(n) {
+    if (n >= 1e9) return (n/1e9).toFixed(1) + ' tỷ';
+    if (n >= 1e6) return (n/1e6).toFixed(1) + ' tr';
+    if (n >= 1e3) return (n/1e3).toFixed(0) + 'k';
+    return String(n);
+}
+
+loadAll();
+</script>
+}

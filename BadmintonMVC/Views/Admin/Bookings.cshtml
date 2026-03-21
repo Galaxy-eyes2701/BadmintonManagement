@@ -1,0 +1,256 @@
+@{
+    ViewData["Title"] = "Quản lý Booking";
+    ViewData["Page"]  = "bookings";
+    Layout = "_AdminLayout";
+}
+
+<div class="p-4">
+    <!-- STATS -->
+    <div class="row g-3 mb-4" id="statsRow">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="fw-black fs-3" id="sTot" style="color:#0f766e">—</div>
+                <div class="text-muted small">Tổng booking</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="fw-black fs-3 text-warning" id="sPend">—</div>
+                <div class="text-muted small">Chờ xác nhận</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="fw-black fs-3 text-success" id="sConf">—</div>
+                <div class="text-muted small">Đã xác nhận</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="fw-black fs-3 text-danger" id="sCanc">—</div>
+                <div class="text-muted small">Đã hủy</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="d-flex gap-3 mb-3 flex-wrap">
+        <input type="text" id="searchInput" class="form-control"
+               placeholder="🔍 Tìm tên / SĐT..." style="max-width:260px" oninput="loadData()"/>
+        <select id="statusFilter" class="form-select" style="width:190px" onchange="loadData()">
+            <option value="">🗂️ Tất cả</option>
+            <option value="pending">⏳ Chờ xác nhận</option>
+            <option value="confirmed">✅ Đã xác nhận</option>
+            <option value="cancelled">🚫 Đã hủy</option>
+        </select>
+        <input type="date" id="fromDate" class="form-control" style="width:160px" onchange="loadData()"/>
+        <span class="d-flex align-items-center text-muted">→</span>
+        <input type="date" id="toDate"   class="form-control" style="width:160px" onchange="loadData()"/>
+        <button class="btn btn-outline-secondary btn-sm" onclick="loadData()">🔄 Làm mới</button>
+    </div>
+
+    <!-- BẢNG -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead style="background:linear-gradient(135deg,#0d5e58,#0f766e);color:white">
+                    <tr>
+                        <th>#ID</th><th>Khách hàng</th><th>SĐT</th>
+                        <th>Ngày tạo</th><th>Số sân</th>
+                        <th>Tổng tiền</th><th>Trạng thái</th><th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="8" class="text-center p-4 text-muted">Đang tải...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <!-- PAGINATION -->
+        <div class="p-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span class="text-muted small" id="pageInfo"></span>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-secondary btn-sm" onclick="changePage(-1)">« Trước</button>
+                <span class="text-muted small" id="pageNum">1</span>
+                <button class="btn btn-outline-secondary btn-sm" onclick="changePage(1)">Tiếp »</button>
+            </div>
+            <select class="form-select form-select-sm" style="width:120px" onchange="changePageSize(this.value)">
+                <option value="10">10/trang</option>
+                <option value="20">20/trang</option>
+                <option value="50">50/trang</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CHI TIẾT -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailTitle">🏸 Chi tiết Booking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailBody">Đang tải...</div>
+            <div class="modal-footer" id="detailFooter"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const API   = 'http://localhost:5043/api';
+const token = '@Context.Session.GetString("AuthToken")';
+let page     = 1;
+let pageSize = 10;
+let total    = 0;
+
+async function loadData() {
+    page = 1;
+    await fetchData();
+}
+
+async function fetchData() {
+    const search = document.getElementById('searchInput').value;
+    const status = document.getElementById('statusFilter').value;
+    const from   = document.getElementById('fromDate').value;
+    const to     = document.getElementById('toDate').value;
+
+    const qs = new URLSearchParams({ page, pageSize });
+    if (search) qs.set('search', search);
+    if (status) qs.set('status', status);
+    if (from)   qs.set('fromDate', from);
+    if (to)     qs.set('toDate', to);
+
+    const res  = await fetch(`${API}/admin/bookings?${qs}`, { headers:{ 'Authorization':'Bearer '+token } });
+    const data = await res.json();
+    total      = data.totalItems;
+
+    // Stats
+    document.getElementById('sTot').textContent  = total;
+    document.getElementById('sPend').textContent = data.items.filter(b=>b.status==='pending').length;
+    document.getElementById('sConf').textContent = data.items.filter(b=>b.status==='confirmed').length;
+    document.getElementById('sCanc').textContent = data.items.filter(b=>b.status==='cancelled').length;
+
+    // Table
+    if (!data.items.length) {
+        document.getElementById('tableBody').innerHTML =
+            '<tr><td colspan="8" class="text-center p-4 text-muted">Không có booking nào</td></tr>';
+    } else {
+        document.getElementById('tableBody').innerHTML = data.items.map(b => `
+            <tr>
+                <td class="fw-bold text-muted">#${b.id}</td>
+                <td class="fw-bold">${b.customerName}</td>
+                <td class="text-muted small">${b.customerPhone}</td>
+                <td class="text-muted small">${new Date(b.createdAt).toLocaleString('vi-VN')}</td>
+                <td><span class="badge bg-light text-dark border">🏸 ${b.totalDetails} sân</span></td>
+                <td class="fw-bold" style="color:#b45309">${fmt(b.totalPrice)}</td>
+                <td>${badge(b.status)}</td>
+                <td>
+                    <div class="d-flex gap-1 flex-wrap">
+                        <button class="btn btn-outline-primary btn-sm" onclick="openDetail(${b.id})">👁️</button>
+                        ${b.status==='pending'
+                            ? `<button class="btn btn-success btn-sm" onclick="doAction(${b.id},'confirm')">✅</button>` : ''}
+                        ${b.status!=='cancelled'
+                            ? `<button class="btn btn-danger btn-sm"  onclick="doAction(${b.id},'cancel')">🚫</button>` : ''}
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Pagination info
+    const totalPages = Math.ceil(total / pageSize);
+    document.getElementById('pageInfo').textContent =
+        `Hiển thị ${(page-1)*pageSize+1}–${Math.min(page*pageSize,total)} / ${total}`;
+    document.getElementById('pageNum').textContent = `${page} / ${totalPages||1}`;
+}
+
+function changePage(dir) {
+    const totalPages = Math.ceil(total / pageSize);
+    page = Math.max(1, Math.min(totalPages, page + dir));
+    fetchData();
+}
+
+function changePageSize(val) {
+    pageSize = parseInt(val);
+    page = 1;
+    fetchData();
+}
+
+async function openDetail(id) {
+    document.getElementById('detailTitle').textContent = `🏸 Chi tiết Booking #${id}`;
+    document.getElementById('detailBody').innerHTML    = 'Đang tải...';
+    document.getElementById('detailFooter').innerHTML  = '';
+    new bootstrap.Modal(document.getElementById('detailModal')).show();
+
+    const res  = await fetch(`${API}/admin/bookings/${id}`, { headers:{ 'Authorization':'Bearer '+token } });
+    const b    = await res.json();
+
+    document.getElementById('detailBody').innerHTML = `
+        <div class="row g-3 mb-3">
+            ${[['👤 Khách hàng',b.customerName],['📞 SĐT',b.customerPhone],
+               ['📧 Email',b.customerEmail||'—'],['🕐 Ngày tạo',new Date(b.createdAt).toLocaleString('vi-VN')],
+               ['💰 Tổng tiền',fmt(b.totalPrice)],['📊 Trạng thái',badge(b.status)]]
+              .map(([l,v]) => `
+                <div class="col-md-6">
+                    <div class="p-2 rounded" style="background:#f8fafc;border:1px solid #e2e8f0">
+                        <small class="text-muted d-block">${l}</small>
+                        <span class="fw-semibold">${v}</span>
+                    </div>
+                </div>`).join('')}
+        </div>
+        <h6 class="fw-bold mb-2" style="color:#0f766e">🏸 Danh sách ca đặt</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead style="background:#f0fdf9">
+                    <tr><th>Sân</th><th>Chi nhánh</th><th>Loại sân</th><th>Ngày chơi</th><th>Giờ</th><th>Giá</th></tr>
+                </thead>
+                <tbody>
+                    ${b.details.map(d => `
+                        <tr>
+                            <td class="fw-semibold">${d.courtName}</td>
+                            <td>${d.branchName}</td>
+                            <td><span class="badge bg-light text-dark border">${d.courtTypeName}</span></td>
+                            <td>${new Date(d.playDate).toLocaleDateString('vi-VN')}</td>
+                            <td>${d.startTime?.slice(0,5)} – ${d.endTime?.slice(0,5)}</td>
+                            <td class="fw-bold" style="color:#b45309">${fmt(d.priceSnapshot)}</td>
+                        </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    const footer = document.getElementById('detailFooter');
+    footer.innerHTML = `<button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>`;
+    if (b.status !== 'cancelled') {
+        if (b.status === 'pending')
+            footer.innerHTML += `<button class="btn btn-success" onclick="doAction(${b.id},'confirm');bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide()">✅ Duyệt</button>`;
+        footer.innerHTML += `<button class="btn btn-danger" onclick="doAction(${b.id},'cancel');bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide()">🚫 Hủy</button>`;
+    }
+}
+
+async function doAction(id, action) {
+    if (!confirm(action==='confirm' ? `Duyệt booking #${id}?` : `Hủy booking #${id}?`)) return;
+    const res  = await fetch(`${API}/admin/bookings/${id}/${action}`, {
+        method: 'PATCH', headers: { 'Authorization':'Bearer '+token }
+    });
+    const data = await res.json();
+    alert(data.message);
+    fetchData();
+}
+
+function badge(status) {
+    const map = {
+        pending:   '<span class="badge bg-warning text-dark">⏳ Chờ xác nhận</span>',
+        confirmed: '<span class="badge bg-success">✅ Đã xác nhận</span>',
+        cancelled: '<span class="badge bg-danger">🚫 Đã hủy</span>',
+        completed: '<span class="badge bg-primary">🏆 Hoàn thành</span>',
+    };
+    return map[status] || `<span class="badge bg-secondary">${status}</span>`;
+}
+
+function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n||0) + 'đ'; }
+
+loadData();
+</script>
+}

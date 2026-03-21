@@ -1,0 +1,236 @@
+@{
+    ViewData["Title"] = "Kết quả thanh toán";
+    Layout = "_StaffLayout";
+
+    var success   = Context.Request.Query["success"].ToString().ToLower() == "true";
+    var txnRef    = Context.Request.Query["txnRef"].ToString();
+    var bookingId = Context.Request.Query["bookingId"].ToString();
+    var code      = Context.Request.Query["code"].ToString();
+    double amount = 0;
+    double.TryParse(Context.Request.Query["amount"].ToString(), out amount);
+}
+
+<style>
+    @@media screen { #print-bill { display:none !important; } }
+    @@media print {
+        @@page { margin:0; size:80mm auto; }
+        body * { visibility:hidden !important; }
+        #print-bill, #print-bill * { visibility:visible !important; }
+        header, nav, .sidebar, aside, .top-bar { display:none !important; }
+        #print-bill {
+            display:block !important; position:absolute !important;
+            left:0; top:0; width:80mm !important; padding:6mm !important;
+            background:white !important; color:black !important;
+            font-family:'Courier New',monospace !important; font-size:12px !important;
+        }
+    }
+</style>
+
+<div class="d-flex align-items-center justify-content-center"
+     style="min-height:calc(100vh - 120px)">
+    <div class="text-center" style="max-width:480px;width:100%">
+
+        @if (success)
+        {
+            <!-- THÀNH CÔNG -->
+            <div class="mb-4">
+                <div style="width:96px;height:96px;
+                            background:linear-gradient(135deg,#0f766e,#14b8a6);
+                            border-radius:50%;display:flex;align-items:center;
+                            justify-content:center;margin:0 auto;
+                            box-shadow:0 8px 32px rgba(15,118,110,.3);
+                            animation:pop .4s ease">
+                    <span style="font-size:48px">✅</span>
+                </div>
+            </div>
+            <h3 class="fw-black mb-1" style="color:#0f766e">Thanh toán thành công!</h3>
+            <p class="text-muted mb-4">Giao dịch VNPay đã được xác nhận</p>
+
+            <!-- Card thông tin -->
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between mb-3 pb-3"
+                         style="border-bottom:1px solid #f1f5f9">
+                        <span class="text-muted">Số tiền</span>
+                        <span class="fw-black fs-4 text-success">
+                            @amount.ToString("N0")đ
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 pb-3"
+                         style="border-bottom:1px solid #f1f5f9">
+                        <span class="text-muted">Phương thức</span>
+                        <span class="badge fs-6 text-white" style="background:#0f766e">🏦 VNPay</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(bookingId) && bookingId != "")
+                    {
+                        <div class="d-flex justify-content-between mb-3 pb-3"
+                             style="border-bottom:1px solid #f1f5f9">
+                            <span class="text-muted">Booking</span>
+                            <span class="fw-bold">#@bookingId</span>
+                        </div>
+                    }
+                    <div class="d-flex justify-content-between mb-3 pb-3"
+                         style="border-bottom:1px solid #f1f5f9">
+                        <span class="text-muted">Mã giao dịch</span>
+                        <span class="fw-semibold font-monospace small">@txnRef</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Thời gian</span>
+                        <span class="fw-semibold">@DateTime.Now.ToString("HH:mm - dd/MM/yyyy")</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nút -->
+            <div class="d-flex gap-3 justify-content-center">
+                <button class="btn btn-outline-secondary px-4" onclick="doPrint()">
+                    🖨️ In hóa đơn
+                </button>
+                <a href="/Staff/Pos" class="btn fw-bold px-4"
+                   style="background:linear-gradient(135deg,#0f766e,#14b8a6);color:white">
+                    ← Về POS
+                </a>
+            </div>
+        }
+        else
+        {
+            <!-- THẤT BẠI -->
+            <div class="mb-4">
+                <div style="width:96px;height:96px;
+                            background:linear-gradient(135deg,#dc2626,#ef4444);
+                            border-radius:50%;display:flex;align-items:center;
+                            justify-content:center;margin:0 auto;
+                            box-shadow:0 8px 32px rgba(220,38,38,.3)">
+                    <span style="font-size:48px">❌</span>
+                </div>
+            </div>
+            <h3 class="fw-black mb-1 text-danger">Thanh toán thất bại</h3>
+            <p class="text-muted mb-4">
+                @(code == "24" ? "Khách hàng huỷ giao dịch" :
+                  code == "11" ? "Đã hết hạn chờ thanh toán" :
+                  code == "09" ? "Thẻ / tài khoản bị khoá"   :
+                  code == "51" ? "Tài khoản không đủ số dư"   :
+                  $"Lỗi từ VNPay (mã {code})")
+            </p>
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between mb-3 pb-3"
+                         style="border-bottom:1px solid #f1f5f9">
+                        <span class="text-muted">Mã lỗi</span>
+                        <span class="badge bg-danger fs-6">@code</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Mã giao dịch</span>
+                        <span class="fw-semibold font-monospace small">@txnRef</span>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="javascript:history.back()" class="btn btn-outline-secondary px-4">← Thử lại</a>
+                <a href="/Staff/Pos" class="btn btn-dark fw-bold px-4">Về POS</a>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- ═══ KHU VỰC IN HÓA ĐƠN — chuẩn K80 ═══ -->
+<div id="print-bill">
+    <div style="font-family:'Courier New',Courier,monospace;font-size:12px;width:80mm">
+
+        <!-- Header -->
+        <div style="text-align:center;margin-bottom:8px">
+            <div style="font-size:17px;font-weight:900;letter-spacing:1px">
+                🏸 SÂN CẦU LÔNG FPT
+            </div>
+            <div style="font-size:10px">Khu Công Nghệ Cao Hòa Lạc</div>
+            <div style="font-size:10px">ĐT: 0123 456 789</div>
+        </div>
+
+        <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;
+                    padding:4px 0;margin-bottom:8px;text-align:center">
+            <div style="font-size:14px;font-weight:900">BIÊN LAI THANH TOÁN</div>
+            <div style="font-size:10px;margin-top:2px">VNPAY - THÀNH CÔNG</div>
+        </div>
+
+        <!-- Thông tin -->
+        <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px">
+                <span>Ngày:</span>
+                <span>@DateTime.Now.ToString("HH:mm - dd/MM/yyyy")</span>
+            </div>
+            @if (!string.IsNullOrEmpty(bookingId) && bookingId != "")
+            {
+                <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px">
+                    <span>Booking:</span>
+                    <span style="font-weight:700">#@bookingId</span>
+                </div>
+            }
+            <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px">
+                <span>Mã GD:</span>
+                <span style="font-family:'Courier New';font-size:10px">@txnRef</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px">
+                <span>Kênh TT:</span>
+                <span style="font-weight:700">VNPay</span>
+            </div>
+        </div>
+
+        <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;
+                    padding:6px 0;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;
+                        font-size:16px;font-weight:900">
+                <span>TỔNG THANH TOÁN:</span>
+                <span>@amount.ToString("N0")đ</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;
+                        color:#555;margin-top:3px">
+                <span>Trạng thái:</span>
+                <span style="font-weight:700">✓ ĐÃ THANH TOÁN</span>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align:center;font-size:10px;color:#555">
+            Cảm ơn quý khách đã sử dụng dịch vụ!<br/>
+            Hẹn gặp lại 🏸
+        </div>
+    </div>
+</div>
+
+<style>
+    @@keyframes pop {
+        0%   { transform:scale(0.5); opacity:0; }
+        70%  { transform:scale(1.1); }
+        100% { transform:scale(1);   opacity:1; }
+    }
+</style>
+
+@section Scripts {
+<script>
+function doPrint() { window.print(); }
+
+@if (success && !string.IsNullOrEmpty(bookingId) && bookingId != "")
+{
+    <text>
+    // Tự động checkout sân sau khi VNPay thành công
+    (async () => {
+        const token = '@Context.Session.GetString("AuthToken")';
+        if (!token) return;
+        try {
+            await fetch('http://localhost:5043/api/staff/checkout/@bookingId', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type':  'application/json'
+                },
+                body: JSON.stringify({ PaymentMethod: 'VNPay' })
+            });
+            console.log('✅ Auto-checkout sân #@bookingId thành công');
+        } catch(e) {
+            console.warn('Auto-checkout lỗi:', e);
+        }
+    })();
+    </text>
+}
+</script>
+}

@@ -1,0 +1,176 @@
+@{
+    ViewData["Title"] = "Lịch Sân Hôm Nay";
+    ViewData["Page"]  = "schedule";
+    Layout = "_StaffLayout";
+}
+
+<div class="p-4">
+    <!-- FILTER NGÀY -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <input type="date" id="selectedDate" class="form-control" style="width:200px"/>
+        <button class="btn btn-dark btn-sm" onclick="scrollToNow()">📍 Về giờ hiện tại</button>
+        <span class="text-muted small" id="loadingText"></span>
+    </div>
+
+    <!-- BẢNG LỊCH SÂN -->
+    <div class="card shadow-sm">
+        <div class="table-responsive" style="max-height:75vh;overflow-y:auto" id="scheduleContainer">
+            <table class="table table-bordered mb-0" id="scheduleTable">
+                <thead id="scheduleHead" class="sticky-top" style="background:#f8fafc"></thead>
+                <tbody id="scheduleBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL THANH TOÁN -->
+<div class="modal fade" id="checkoutModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">💰 Tất toán hóa đơn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="checkoutBody">Đang tải...</div>
+            <div class="modal-footer">
+                <button class="btn btn-dark" onclick="checkout('CASH')">💵 Tiền mặt</button>
+                <button class="btn btn-primary" onclick="checkout('VNPAY')">📱 Chuyển khoản</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const API = 'http://localhost:5043/api';
+const token = '@Context.Session.GetString("AuthToken")';
+let currentBookingId = null;
+let billData = null;
+
+// Set ngày hôm nay
+const dateInput = document.getElementById('selectedDate');
+dateInput.value = new Date().toISOString().split('T')[0];
+dateInput.addEventListener('change', loadSchedule);
+
+// Gọi API lấy lịch sân
+async function loadSchedule() {
+    document.getElementById('loadingText').textContent = 'Đang tải...';
+    const date = dateInput.value;
+    const res = await fetch(`${API}/staff/daily-schedule?date=${date}`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    renderSchedule(data);
+    document.getElementById('loadingText').textContent = '';
+}
+
+function renderSchedule(courts) {
+    if (!courts.length) {
+        document.getElementById('scheduleBody').innerHTML =
+            '<tr><td colspan="20" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>';
+        return;
+    }
+    const slots = courts[0].schedule;
+
+    // Header: cột giờ + tên sân
+    let head = '<tr><th style="min-width:90px;background:#f8fafc">Giờ</th>';
+    courts.forEach(c => {
+        const color = c.status === 'maintenance' ? '#fef2f2' : '#f0fdf9';
+        head += `<th style="min-width:160px;background:${color};text-align:center">
+                    ${c.courtName}
+                    ${c.status==='maintenance'?'<br><small class="text-danger">Bảo trì</small>':''}
+                 </th>`;
+    });
+    head += '</tr>';
+    document.getElementById('scheduleHead').innerHTML = head;
+
+    // Body: từng khung giờ
+    let body = '';
+    slots.forEach((slot, idx) => {
+        const hour = parseInt(slot.time.split(':')[0]);
+        body += `<tr id="time-row-${hour}">
+                    <td class="text-center fw-bold" style="background:#f8fafc;font-size:13px">
+                        ${slot.time.split(' - ')[0]}
+                    </td>`;
+        courts.forEach(c => {
+            const s = c.schedule[idx];
+            if (s.isBooked) {
+                const isDone = s.bookingInfo.paymentStatus === 'completed';
+                const isPending = s.bookingInfo.paymentStatus === 'pending';
+                body += `<td style="background:${isDone?'#f1f5f9':'#eff6ff'};cursor:pointer;padding:8px"
+                             onclick="openCheckout(${s.bookingInfo.bookingId})">
+                            <div class="fw-bold" style="font-size:13px;${isDone?'text-decoration:line-through;color:#94a3b8':''}">${s.bookingInfo.customerName}</div>
+                            ${isDone ? '<small class="text-success">✅ Hoàn tất</small>' : ''}
+                            ${isPending ? '<small class="text-warning">⏳ Chờ duyệt</small>' : ''}
+                         </td>`;
+            } else {
+                const maint = c.status === 'maintenance';
+                body += `<td style="background:${maint?'#fef2f2':'white'};text-align:center;color:#94a3b8;font-size:12px">
+                            ${maint ? 'Bảo trì' : 'Trống'}
+                         </td>`;
+            }
+        });
+        body += '</tr>';
+    });
+    document.getElementById('scheduleBody').innerHTML = body;
+}
+
+async function openCheckout(bookingId) {
+    currentBookingId = bookingId;
+    document.getElementById('checkoutBody').innerHTML = 'Đang tải...';
+    const modal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+    modal.show();
+
+    const res = await fetch(`${API}/staff/booking-bill/${bookingId}`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    billData = await res.json();
+
+    document.getElementById('checkoutBody').innerHTML = `
+        <div class="d-flex justify-content-between mb-2">
+            <span>Khách hàng</span><strong>${billData.customerName}</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+            <span>Tiền sân</span><strong>${fmt(billData.courtTotal)}</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+            <span>Dịch vụ</span><strong>${fmt(billData.posTotal)}</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-2 text-success">
+            <span>Đã đặt cọc</span><strong>- ${fmt(billData.alreadyPaid)}</strong>
+        </div>
+        <hr/>
+        <div class="d-flex justify-content-between">
+            <span class="fw-bold">CẦN THU</span>
+            <strong class="text-danger fs-5">${fmt(billData.remainingAmount)}</strong>
+        </div>
+    `;
+}
+
+async function checkout(method) {
+    if (!currentBookingId) return;
+    const res = await fetch(`${API}/staff/checkout/${currentBookingId}`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentMethod: method })
+    });
+    const data = await res.json();
+    alert(data.message || 'Thanh toán thành công!');
+    bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
+    loadSchedule();
+}
+
+function scrollToNow() {
+    const h = new Date().getHours();
+    const el = document.getElementById(`time-row-${h}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function fmt(n) {
+    return new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ';
+}
+
+loadSchedule();
+</script>
+}

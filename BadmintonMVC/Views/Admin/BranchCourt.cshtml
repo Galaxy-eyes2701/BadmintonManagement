@@ -1,0 +1,336 @@
+@{
+    ViewData["Title"] = "Quản lý Cơ sở & Sân";
+    ViewData["Page"]  = "branch";
+    Layout = "_AdminLayout";
+}
+
+<div class="p-4">
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-branch" onclick="switchTab('branch')">
+                🏢 Chi nhánh <span class="badge bg-secondary ms-1" id="branchCount">0</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-court" onclick="switchTab('court')">
+                🏟️ Sân <span class="badge bg-secondary ms-1" id="courtCount">0</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- TOOLBAR -->
+    <div class="d-flex gap-3 mb-3 flex-wrap">
+        <input type="text" id="searchInput" class="form-control"
+               placeholder="🔍 Tìm kiếm..." style="max-width:280px" oninput="renderTable()"/>
+        <div id="courtFilters" style="display:none" class="d-flex gap-2">
+            <select id="filterBranch" class="form-select" style="width:180px" onchange="renderTable()">
+                <option value="">Tất cả chi nhánh</option>
+            </select>
+            <select id="filterStatus" class="form-select" style="width:160px" onchange="renderTable()">
+                <option value="">Tất cả trạng thái</option>
+                <option value="active">✅ Hoạt động</option>
+                <option value="maintenance">🔧 Bảo trì</option>
+            </select>
+        </div>
+        <button class="btn btn-primary ms-auto" onclick="openCreate()">+ Thêm</button>
+    </div>
+
+    <!-- BẢNG -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead style="background:linear-gradient(135deg,#0d5e58,#0f766e);color:white">
+                    <tr id="tableHead"></tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="6" class="text-center p-4 text-muted">Đang tải...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CHI NHÁNH -->
+<div class="modal fade" id="branchModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#f0fdf9,#e6faf8)">
+                <h5 class="modal-title" id="branchModalTitle">🏢 Thêm chi nhánh</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editBranchId"/>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Tên chi nhánh *</label>
+                    <input type="text" id="branchName" class="form-control" placeholder="Cơ sở Quận 9"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Địa chỉ *</label>
+                    <input type="text" id="branchAddress" class="form-control" placeholder="123 Đường ABC"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Hotline *</label>
+                    <input type="text" id="branchHotline" class="form-control" placeholder="0901234567"/>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-primary" onclick="saveBranch()">💾 Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL SÂN -->
+<div class="modal fade" id="courtModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#f0fdf9,#e6faf8)">
+                <h5 class="modal-title" id="courtModalTitle">🏟️ Thêm sân</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editCourtId"/>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Tên sân *</label>
+                    <input type="text" id="courtName" class="form-control" placeholder="Sân số 1"/>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col">
+                        <label class="form-label fw-semibold">Chi nhánh *</label>
+                        <select id="courtBranch" class="form-select"></select>
+                    </div>
+                    <div class="col">
+                        <label class="form-label fw-semibold">Loại sân *</label>
+                        <select id="courtType" class="form-select"></select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Trạng thái</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="courtStatus"
+                                   id="statusActive" value="active" checked/>
+                            <label class="form-check-label" for="statusActive">✅ Hoạt động</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="courtStatus"
+                                   id="statusMaint" value="maintenance"/>
+                            <label class="form-check-label" for="statusMaint">🔧 Bảo trì</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-primary" onclick="saveCourt()">💾 Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const API   = 'http://localhost:5043/api';
+const token = '@Context.Session.GetString("AuthToken")';
+let branches   = [];
+let courts     = [];
+let courtTypes = [];
+let activeTab  = 'branch';
+
+async function init() {
+    const [bRes, cRes, ctRes] = await Promise.all([
+        fetch(`${API}/branches`,   { headers:{ 'Authorization':'Bearer '+token } }),
+        fetch(`${API}/courts`,     { headers:{ 'Authorization':'Bearer '+token } }),
+        fetch(`${API}/courttypes`, { headers:{ 'Authorization':'Bearer '+token } })
+    ]);
+    branches   = await bRes.json();
+    courts     = await cRes.json();
+    courtTypes = await ctRes.json();
+
+    document.getElementById('branchCount').textContent = branches.length;
+    document.getElementById('courtCount').textContent  = courts.length;
+
+    // Điền dropdown filter
+    document.getElementById('filterBranch').innerHTML =
+        '<option value="">Tất cả chi nhánh</option>' +
+        branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+
+    // Điền dropdown modal sân
+    document.getElementById('courtBranch').innerHTML =
+        branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+    document.getElementById('courtType').innerHTML =
+        courtTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+    renderTable();
+}
+
+function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('tab-branch').classList.toggle('active', tab === 'branch');
+    document.getElementById('tab-court').classList.toggle('active', tab === 'court');
+    document.getElementById('courtFilters').style.display = tab === 'court' ? '' : 'none';
+    document.getElementById('searchInput').value = '';
+    renderTable();
+}
+
+function renderTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+
+    if (activeTab === 'branch') {
+        const list = branches.filter(b =>
+            b.name.toLowerCase().includes(q) ||
+            (b.address||'').toLowerCase().includes(q)
+        );
+        document.getElementById('tableHead').innerHTML =
+            '<th>Tên chi nhánh</th><th>Địa chỉ</th><th>Hotline</th><th>Số sân</th><th>Thao tác</th>';
+        document.getElementById('tableBody').innerHTML = list.length
+            ? list.map(b => `
+                <tr>
+                    <td class="fw-bold">🏢 ${b.name}</td>
+                    <td class="text-muted small">${b.address||'—'}</td>
+                    <td>${b.hotline||'—'}</td>
+                    <td><span class="badge" style="background:#0f766e">${courts.filter(c=>c.branchId===b.id).length} sân</span></td>
+                    <td>
+                        <button class="btn btn-outline-primary btn-sm me-1" onclick="openEditBranch(${b.id})">✏️</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteBranch(${b.id})">🗑️</button>
+                    </td>
+                </tr>`).join('')
+            : '<tr><td colspan="5" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>';
+    } else {
+        const filterBranch = document.getElementById('filterBranch').value;
+        const filterStatus = document.getElementById('filterStatus').value;
+        const list = courts.filter(c =>
+            c.name.toLowerCase().includes(q) &&
+            (!filterBranch || c.branchId === parseInt(filterBranch)) &&
+            (!filterStatus || c.status === filterStatus)
+        );
+        document.getElementById('tableHead').innerHTML =
+            '<th>Tên sân</th><th>Chi nhánh</th><th>Loại sân</th><th>Trạng thái</th><th>Thao tác</th>';
+        document.getElementById('tableBody').innerHTML = list.length
+            ? list.map(c => `
+                <tr>
+                    <td class="fw-bold">🏸 ${c.name}</td>
+                    <td>${branches.find(b=>b.id===c.branchId)?.name||'—'}</td>
+                    <td><span class="badge bg-light text-dark border">${courtTypes.find(t=>t.id===c.courtTypeId)?.name||'—'}</span></td>
+                    <td>
+                        <button class="btn btn-sm ${c.status==='active'?'btn-success':'btn-warning'}"
+                                onclick="toggleCourtStatus(${c.id},'${c.status}')" style="font-size:11px;min-width:90px">
+                            ${c.status==='active'?'✅ Hoạt động':'🔧 Bảo trì'}
+                        </button>
+                    </td>
+                    <td>
+                        <button class="btn btn-outline-primary btn-sm me-1" onclick="openEditCourt(${c.id})">✏️</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteCourt(${c.id})">🗑️</button>
+                    </td>
+                </tr>`).join('')
+            : '<tr><td colspan="5" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>';
+    }
+}
+
+// ── BRANCH ──────────────────────────────────────────────────────────────
+function openCreate() {
+    if (activeTab === 'branch') {
+        document.getElementById('editBranchId').value = '';
+        document.getElementById('branchName').value    = '';
+        document.getElementById('branchAddress').value = '';
+        document.getElementById('branchHotline').value = '';
+        document.getElementById('branchModalTitle').textContent = '🏢 Thêm chi nhánh';
+        new bootstrap.Modal(document.getElementById('branchModal')).show();
+    } else {
+        document.getElementById('editCourtId').value = '';
+        document.getElementById('courtName').value   = '';
+        document.getElementById('courtModalTitle').textContent = '🏟️ Thêm sân';
+        document.getElementById('statusActive').checked = true;
+        new bootstrap.Modal(document.getElementById('courtModal')).show();
+    }
+}
+
+function openEditBranch(id) {
+    const b = branches.find(x => x.id === id);
+    document.getElementById('editBranchId').value  = b.id;
+    document.getElementById('branchName').value    = b.name;
+    document.getElementById('branchAddress').value = b.address || '';
+    document.getElementById('branchHotline').value = b.hotline || '';
+    document.getElementById('branchModalTitle').textContent = '✏️ Sửa chi nhánh';
+    new bootstrap.Modal(document.getElementById('branchModal')).show();
+}
+
+async function saveBranch() {
+    const id   = document.getElementById('editBranchId').value;
+    const body = {
+        name:    document.getElementById('branchName').value,
+        address: document.getElementById('branchAddress').value,
+        hotline: document.getElementById('branchHotline').value
+    };
+    const url    = id ? `${API}/branches/${id}` : `${API}/branches`;
+    const method = id ? 'PUT' : 'POST';
+    await fetch(url, {
+        method,
+        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+    });
+    bootstrap.Modal.getInstance(document.getElementById('branchModal')).hide();
+    init();
+}
+
+async function deleteBranch(id) {
+    if (!confirm('Xóa chi nhánh này? Tất cả sân bên trong cũng sẽ bị xóa!')) return;
+    await fetch(`${API}/branches/${id}`, {
+        method: 'DELETE', headers: { 'Authorization':'Bearer '+token }
+    });
+    init();
+}
+
+// ── COURT ───────────────────────────────────────────────────────────────
+function openEditCourt(id) {
+    const c = courts.find(x => x.id === id);
+    document.getElementById('editCourtId').value  = c.id;
+    document.getElementById('courtName').value    = c.name;
+    document.getElementById('courtBranch').value  = c.branchId;
+    document.getElementById('courtType').value    = c.courtTypeId;
+    document.querySelector(`input[name="courtStatus"][value="${c.status}"]`).checked = true;
+    document.getElementById('courtModalTitle').textContent = '✏️ Sửa sân';
+    new bootstrap.Modal(document.getElementById('courtModal')).show();
+}
+
+async function saveCourt() {
+    const id   = document.getElementById('editCourtId').value;
+    const body = {
+        name:       document.getElementById('courtName').value,
+        branchId:   parseInt(document.getElementById('courtBranch').value),
+        courtTypeId:parseInt(document.getElementById('courtType').value),
+        status:     document.querySelector('input[name="courtStatus"]:checked').value
+    };
+    const url    = id ? `${API}/courts/${id}` : `${API}/courts`;
+    const method = id ? 'PUT' : 'POST';
+    await fetch(url, {
+        method,
+        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+    });
+    bootstrap.Modal.getInstance(document.getElementById('courtModal')).hide();
+    init();
+}
+
+async function toggleCourtStatus(id, current) {
+    const newStatus = current === 'active' ? 'maintenance' : 'active';
+    await fetch(`${API}/courts/${id}`, {
+        method: 'PUT',
+        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify({ ...courts.find(c=>c.id===id), status: newStatus })
+    });
+    init();
+}
+
+async function deleteCourt(id) {
+    if (!confirm('Xóa sân này?')) return;
+    await fetch(`${API}/courts/${id}`, {
+        method: 'DELETE', headers: { 'Authorization':'Bearer '+token }
+    });
+    init();
+}
+
+init();
+</script>
+}

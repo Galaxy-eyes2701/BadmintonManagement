@@ -63,7 +63,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+        policy.WithOrigins("http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:5075",  // ← thêm port MVC vào đây
+    "https://localhost:7075")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -94,7 +97,7 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
-    
+
     // THÊM ĐOẠN NÀY ĐỂ XEM LỖI THẬT
     options.Events = new JwtBearerEvents
     {
@@ -150,6 +153,7 @@ builder.Services.AddScoped<IAdminRevenueRepository, AdminRevenueRepository>();
 builder.Services.AddScoped<IAdminRevenueService, AdminRevenueService>();
 builder.Services.AddScoped<IAdminBookingRepository, AdminBookingRepository>();
 builder.Services.AddScoped<IAdminBookingService, AdminBookingService>();
+builder.Services.AddScoped<VnPayService>();  // ← thêm dòng này
 
 
 var app = builder.Build();

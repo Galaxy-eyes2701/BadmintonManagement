@@ -1,0 +1,337 @@
+@{
+    ViewData["Title"] = "Quản lý Tài khoản";
+    ViewData["Page"]  = "users";
+    Layout = "_AdminLayout";
+}
+
+<div class="p-4">
+    <!-- TABS -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-staff" onclick="switchTab('staff')">
+                🧑‍💼 Nhân viên <span class="badge bg-secondary ms-1" id="staffCount">0</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-customer" onclick="switchTab('customer')">
+                🙋 Khách hàng <span class="badge bg-secondary ms-1" id="customerCount">0</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- TOOLBAR -->
+    <div class="d-flex gap-3 mb-3 flex-wrap">
+        <input type="text" id="searchInput" class="form-control" placeholder="🔍 Tìm tên, SĐT, email..."
+               style="max-width:320px" oninput="renderTable()"/>
+        <select id="statusFilter" class="form-select" style="width:180px" onchange="renderTable()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="active">✅ Hoạt động</option>
+            <option value="inactive">🔒 Bị khóa</option>
+        </select>
+        <button class="btn btn-primary ms-auto" id="btnAdd"
+                onclick="openCreate()" style="display:none">
+            + Thêm nhân viên
+        </button>
+    </div>
+
+    <!-- BẢNG -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead style="background:linear-gradient(135deg,#0d5e58,#0f766e);color:white">
+                    <tr id="tableHead"></tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="7" class="text-center p-4 text-muted">Đang tải...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL THÊM/SỬA NHÂN VIÊN -->
+<div class="modal fade" id="staffModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#f0fdf9,#e6faf8)">
+                <h5 class="modal-title" id="staffModalTitle">🧑‍💼 Thêm nhân viên</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editUserId"/>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Họ & Tên *</label>
+                    <input type="text" id="staffName" class="form-control" placeholder="Nguyễn Văn A"/>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col">
+                        <label class="form-label fw-semibold">Số điện thoại *</label>
+                        <input type="text" id="staffPhone" class="form-control" placeholder="0901234567"/>
+                    </div>
+                    <div class="col">
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" id="staffEmail" class="form-control" placeholder="nv@gmail.com"/>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Chi nhánh *</label>
+                    <select id="staffBranch" class="form-select"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        Mật khẩu <span id="pwHint" class="text-muted small">(để trống nếu không đổi)</span>
+                    </label>
+                    <input type="password" id="staffPw" class="form-control" placeholder="Mật khẩu mới"/>
+                </div>
+                <div id="modalError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-primary" onclick="saveStaff()">💾 Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL SỬA KHÁCH HÀNG -->
+<div class="modal fade" id="customerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#f0fdf9,#e6faf8)">
+                <h5 class="modal-title">🙋 Chỉnh sửa khách hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editCusId"/>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Họ & Tên *</label>
+                    <input type="text" id="cusName" class="form-control"/>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col">
+                        <label class="form-label fw-semibold">Số điện thoại *</label>
+                        <input type="text" id="cusPhone" class="form-control"/>
+                    </div>
+                    <div class="col">
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" id="cusEmail" class="form-control"/>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">⭐ Điểm tích lũy</label>
+                    <input type="number" id="cusPoints" class="form-control" min="0"/>
+                </div>
+                <div id="cusModalError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-primary" onclick="saveCustomer()">💾 Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const API   = 'http://localhost:5043/api';
+const token = '@Context.Session.GetString("AuthToken")';
+let allUsers  = [];
+let branches  = [];
+let activeTab = 'staff';
+
+async function init() {
+    const [usersRes, branchRes] = await Promise.all([
+        fetch(`${API}/admin/users`,    { headers:{ 'Authorization':'Bearer '+token } }),
+        fetch(`${API}/admin/branches`, { headers:{ 'Authorization':'Bearer '+token } })
+    ]);
+    allUsers = await usersRes.json();
+    branches = await branchRes.json();
+
+    document.getElementById('staffBranch').innerHTML =
+        branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+
+    updateCounts();
+    renderTable();
+}
+
+function updateCounts() {
+    document.getElementById('staffCount').textContent =
+        allUsers.filter(u => u.role?.toLowerCase() === 'staff').length;
+    document.getElementById('customerCount').textContent =
+        allUsers.filter(u => u.role?.toLowerCase() === 'customer').length;
+}
+
+function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('tab-staff').classList.toggle('active', tab === 'staff');
+    document.getElementById('tab-customer').classList.toggle('active', tab === 'customer');
+    document.getElementById('btnAdd').style.display = tab === 'staff' ? '' : 'none';
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    renderTable();
+}
+
+function renderTable() {
+    const q      = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+
+    const list = allUsers.filter(u => {
+        const matchRole   = u.role?.toLowerCase() === activeTab;
+        const matchSearch = u.fullName.toLowerCase().includes(q) ||
+                            u.phone.includes(q) ||
+                            (u.email||'').toLowerCase().includes(q);
+        const matchStatus = !status || u.status?.toLowerCase() === status;
+        return matchRole && matchSearch && matchStatus;
+    });
+
+    // Header
+    const isStaff = activeTab === 'staff';
+    document.getElementById('tableHead').innerHTML = `
+        <th>#ID</th><th>Họ tên</th><th>SĐT</th><th>Email</th>
+        ${isStaff ? '<th>Chi nhánh</th>' : '<th>⭐ Điểm</th>'}
+        <th>Trạng thái</th><th>Thao tác</th>
+    `;
+
+    if (!list.length) {
+        document.getElementById('tableBody').innerHTML =
+            `<tr><td colspan="7" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>`;
+        return;
+    }
+
+    document.getElementById('tableBody').innerHTML = list.map(u => `
+        <tr>
+            <td class="text-muted fw-bold small">#${u.id}</td>
+            <td class="fw-bold">${u.fullName}</td>
+            <td>${u.phone}</td>
+            <td class="text-muted small">${u.email || '—'}</td>
+            <td>${isStaff
+                ? (branches.find(b => b.id === u.branchId)?.name || '—')
+                : `<span class="badge bg-warning text-dark">⭐ ${u.loyaltyPoints||0}</span>`
+            }</td>
+            <td>
+                <button class="btn btn-sm ${u.status==='active'?'btn-success':'btn-secondary'}"
+                        onclick="toggleStatus(${u.id})" style="font-size:11px;min-width:100px">
+                    ${u.status==='active' ? '✅ Hoạt động' : '🔒 Bị khóa'}
+                </button>
+            </td>
+            <td>
+                <button class="btn btn-outline-primary btn-sm me-1"
+                        onclick="${isStaff ? `openEdit(${u.id})` : `openEditCustomer(${u.id})`}">
+                    ✏️
+                </button>
+                <button class="btn btn-outline-danger btn-sm"
+                        onclick="deleteUser(${u.id})">🗑️</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ── STAFF CRUD ──────────────────────────────────────────────────────────
+function openCreate() {
+    document.getElementById('editUserId').value = '';
+    document.getElementById('staffName').value  = '';
+    document.getElementById('staffPhone').value = '';
+    document.getElementById('staffEmail').value = '';
+    document.getElementById('staffPw').value    = '';
+    document.getElementById('staffModalTitle').textContent = '🧑‍💼 Thêm nhân viên';
+    document.getElementById('pwHint').textContent = '(bắt buộc)';
+    document.getElementById('modalError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('staffModal')).show();
+}
+
+function openEdit(id) {
+    const u = allUsers.find(x => x.id === id);
+    document.getElementById('editUserId').value  = u.id;
+    document.getElementById('staffName').value   = u.fullName;
+    document.getElementById('staffPhone').value  = u.phone;
+    document.getElementById('staffEmail').value  = u.email || '';
+    document.getElementById('staffBranch').value = u.branchId || '';
+    document.getElementById('staffPw').value     = '';
+    document.getElementById('staffModalTitle').textContent = '✏️ Sửa nhân viên';
+    document.getElementById('pwHint').textContent = '(để trống nếu không đổi)';
+    document.getElementById('modalError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('staffModal')).show();
+}
+
+async function saveStaff() {
+    const id   = document.getElementById('editUserId').value;
+    const body = {
+        fullName: document.getElementById('staffName').value,
+        phone:    document.getElementById('staffPhone').value,
+        email:    document.getElementById('staffEmail').value,
+        password: document.getElementById('staffPw').value,
+        branchId: parseInt(document.getElementById('staffBranch').value)
+    };
+    const url    = id ? `${API}/admin/users/${id}` : `${API}/admin/users`;
+    const method = id ? 'PUT' : 'POST';
+    const res    = await fetch(url, {
+        method,
+        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        document.getElementById('modalError').textContent = err.message || 'Lỗi!';
+        document.getElementById('modalError').classList.remove('d-none');
+        return;
+    }
+    bootstrap.Modal.getInstance(document.getElementById('staffModal')).hide();
+    init();
+}
+
+// ── CUSTOMER CRUD ───────────────────────────────────────────────────────
+function openEditCustomer(id) {
+    const u = allUsers.find(x => x.id === id);
+    document.getElementById('editCusId').value  = u.id;
+    document.getElementById('cusName').value    = u.fullName;
+    document.getElementById('cusPhone').value   = u.phone;
+    document.getElementById('cusEmail').value   = u.email || '';
+    document.getElementById('cusPoints').value  = u.loyaltyPoints || 0;
+    document.getElementById('cusModalError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('customerModal')).show();
+}
+
+async function saveCustomer() {
+    const id   = document.getElementById('editCusId').value;
+    const body = {
+        fullName:      document.getElementById('cusName').value,
+        phone:         document.getElementById('cusPhone').value,
+        email:         document.getElementById('cusEmail').value,
+        loyaltyPoints: parseInt(document.getElementById('cusPoints').value)
+    };
+    const res = await fetch(`${API}/admin/users/${id}/customer`, {
+        method: 'PUT',
+        headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        document.getElementById('cusModalError').textContent = err.message || 'Lỗi!';
+        document.getElementById('cusModalError').classList.remove('d-none');
+        return;
+    }
+    bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
+    init();
+}
+
+// ── SHARED ──────────────────────────────────────────────────────────────
+async function toggleStatus(id) {
+    await fetch(`${API}/admin/users/${id}/toggle-status`, {
+        method: 'PATCH',
+        headers: { 'Authorization':'Bearer '+token }
+    });
+    init();
+}
+
+async function deleteUser(id) {
+    if (!confirm('Xóa tài khoản này?')) return;
+    await fetch(`${API}/admin/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization':'Bearer '+token }
+    });
+    init();
+}
+
+init();
+</script>
+}

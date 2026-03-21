@@ -1,0 +1,237 @@
+@{
+    ViewData["Title"] = "Lịch Cố Định";
+    ViewData["Page"]  = "fixed";
+    Layout = "_StaffLayout";
+}
+
+<div class="p-4">
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm @(true?"btn-dark":"btn-outline-secondary")" onclick="filterStatus('all')">Tất cả</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="filterStatus('active')">Đang hoạt động</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="filterStatus('inactive')">Đã kết thúc</button>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
+            + Tạo hợp đồng mới
+        </button>
+    </div>
+
+    <!-- DANH SÁCH THẺ -->
+    <div class="row g-3" id="scheduleGrid">
+        <div class="col-12 text-center text-muted p-4">Đang tải...</div>
+    </div>
+</div>
+
+<!-- MODAL TẠO HỢP ĐỒNG -->
+<div class="modal fade" id="createModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">📋 Tạo Hợp Đồng Khách Ruột</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Khách hàng</label>
+                    <select id="userId" class="form-select"></select>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col">
+                        <label class="form-label fw-semibold">Sân</label>
+                        <select id="courtId" class="form-select" onchange="calcPreview()"></select>
+                    </div>
+                    <div class="col">
+                        <label class="form-label fw-semibold">Ca</label>
+                        <select id="timeSlotId" class="form-select" onchange="calcPreview()"></select>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col">
+                        <label class="form-label fw-semibold">Ngày bắt đầu</label>
+                        <input type="date" id="startDate" class="form-control" oninput="calcPreview()"/>
+                    </div>
+                    <div class="col">
+                        <label class="form-label fw-semibold">Ngày kết thúc</label>
+                        <input type="date" id="endDate" class="form-control" oninput="calcPreview()"/>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Đá vào thứ</label>
+                    <select id="dayOfWeek" class="form-select" onchange="calcPreview()">
+                        <option value="2">Thứ 2</option>
+                        <option value="3">Thứ 3</option>
+                        <option value="4">Thứ 4</option>
+                        <option value="5">Thứ 5</option>
+                        <option value="6">Thứ 6</option>
+                        <option value="7">Thứ 7</option>
+                        <option value="8">Chủ nhật</option>
+                    </select>
+                </div>
+                <!-- PREVIEW GIÁ -->
+                <div class="p-3 rounded" style="background:#f8fafc;border:1px solid #e2e8f0">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Số buổi:</span>
+                        <strong id="previewDays">—</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Đơn giá/ca:</span>
+                        <strong id="previewUnit">—</strong>
+                    </div>
+                    <hr class="my-2"/>
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-bold">Tổng tiền:</span>
+                        <strong class="text-success fs-5" id="previewTotal">—</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button class="btn btn-primary" onclick="createSchedule()">💾 Lưu & Xếp lịch</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const API = 'http://localhost:5043/api';
+const token = '@Context.Session.GetString("AuthToken")';
+let allSchedules = [];
+let currentFilter = 'all';
+
+// Load dữ liệu ban đầu
+async function init() {
+    const [schedulesRes, setupRes] = await Promise.all([
+        fetch(`${API}/staff/fixed-schedules`, { headers: { 'Authorization': 'Bearer ' + token } }),
+        fetch(`${API}/staff/setup-data`,      { headers: { 'Authorization': 'Bearer ' + token } })
+    ]);
+    allSchedules = await schedulesRes.json();
+    const setup  = await setupRes.json();
+
+    // Điền dropdown
+    document.getElementById('userId').innerHTML =
+        setup.customers.map(c => `<option value="${c.id}">${c.fullName} (${c.phone})</option>`).join('');
+    document.getElementById('courtId').innerHTML =
+        setup.courts.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    document.getElementById('timeSlotId').innerHTML =
+        setup.timeSlots.map(t => `<option value="${t.id}">${t.time}</option>`).join('');
+
+    renderCards();
+}
+
+function filterStatus(f) {
+    currentFilter = f;
+    renderCards();
+}
+
+function renderCards() {
+    const list = allSchedules.filter(s => {
+        if (currentFilter === 'active')   return s.status === 'active' || s.status === 'warning';
+        if (currentFilter === 'inactive') return s.status === 'expired' || s.status === 'cancelled';
+        return true;
+    });
+
+    if (!list.length) {
+        document.getElementById('scheduleGrid').innerHTML =
+            '<div class="col-12 text-center text-muted p-4">Không có hợp đồng nào</div>';
+        return;
+    }
+
+    const colorMap = { active:'#ecfdf5', warning:'#fffbeb', expired:'#f8fafc', cancelled:'#f8fafc' };
+    const borderMap = { active:'#10b981', warning:'#f59e0b', expired:'#94a3b8', cancelled:'#94a3b8' };
+
+    document.getElementById('scheduleGrid').innerHTML = list.map(s => `
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm" style="border-left:5px solid ${borderMap[s.status]||'#94a3b8'}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="fw-bold mb-0">${s.teamName}</h6>
+                            <small class="text-muted">📞 ${s.phone}</small>
+                        </div>
+                        ${badgeFixed(s.status)}
+                    </div>
+                    <div class="small text-muted mt-2">🏟️ ${s.courtName}</div>
+                    <div class="small text-muted">🕐 ${s.timeInfo}</div>
+                    <div class="small text-muted">📅 ${s.duration}</div>
+                    <div class="small text-success fw-bold mt-1">💰 ${fmt(s.totalPrice)}</div>
+                </div>
+                ${s.status !== 'cancelled' && s.status !== 'expired' ? `
+                <div class="card-footer bg-transparent">
+                    <button class="btn btn-danger btn-sm w-100" onclick="cancelSchedule(${s.id}, '${s.teamName}')">
+                        🗑️ Hủy hợp đồng
+                    </button>
+                </div>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+async function calcPreview() {
+    const courtId    = document.getElementById('courtId').value;
+    const timeSlotId = document.getElementById('timeSlotId').value;
+    const dayOfWeek  = document.getElementById('dayOfWeek').value;
+    const startDate  = document.getElementById('startDate').value;
+    const endDate    = document.getElementById('endDate').value;
+    if (!courtId || !timeSlotId || !startDate || !endDate) return;
+
+    const res = await fetch(
+        `${API}/staff/preview-fixed-price?courtId=${courtId}&timeSlotId=${timeSlotId}&dayOfWeek=${dayOfWeek}&startDate=${startDate}&endDate=${endDate}`,
+        { headers: { 'Authorization': 'Bearer ' + token } }
+    );
+    const data = await res.json();
+    document.getElementById('previewDays').textContent  = data.playDays + ' buổi';
+    document.getElementById('previewUnit').textContent  = fmt(data.unitPrice) + '/ca';
+    document.getElementById('previewTotal').textContent = fmt(data.totalPrice);
+}
+
+async function createSchedule() {
+    const body = {
+        userId:     parseInt(document.getElementById('userId').value),
+        courtId:    parseInt(document.getElementById('courtId').value),
+        timeSlotId: parseInt(document.getElementById('timeSlotId').value),
+        dayOfWeek:  parseInt(document.getElementById('dayOfWeek').value),
+        startDate:  document.getElementById('startDate').value,
+        endDate:    document.getElementById('endDate').value,
+        totalPrice: 0
+    };
+    const res = await fetch(`${API}/staff/fixed-schedules`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    alert(data.message || 'Tạo thành công!');
+    bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
+    init();
+}
+
+async function cancelSchedule(id, name) {
+    if (!confirm(`Hủy hợp đồng của ${name}?`)) return;
+    const res = await fetch(`${API}/staff/fixed-schedules/${id}/cancel`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    alert(data.message);
+    init();
+}
+
+function badgeFixed(status) {
+    const map = {
+        active:    '<span class="badge bg-success">Đang HĐ</span>',
+        warning:   '<span class="badge bg-warning text-dark">Sắp HH</span>',
+        expired:   '<span class="badge bg-secondary">Hết hạn</span>',
+        cancelled: '<span class="badge bg-danger">Đã hủy</span>',
+    };
+    return map[status] || '';
+}
+
+function fmt(n) {
+    return new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ';
+}
+
+init();
+</script>
+}
