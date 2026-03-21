@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Badminton Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/user.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <div class="user-shell">
+        <!-- HEADER -->
+        <header class="user-header">
+            <div class="header-inner">
+                <a href="/User/Index" class="logo">
+                    <span class="logo-icon">🏸</span>
+                    <div>
+                        <span class="logo-name">Badminton</span>
+                        <span class="logo-sub">Management</span>
+                    </div>
+                </a>
+
+                <nav class="nav-menu">
+                    <a href="/User/Booking" class="nav-link @(Context.Request.Path.Value?.Contains("Booking") == true ? "nav-active" : "")">
+                        <span class="nav-icon">🏟️</span>
+                        Đặt sân
+                    </a>
+                    <a href="/User/History" class="nav-link @(Context.Request.Path.Value?.Contains("History") == true ? "nav-active" : "")">
+                        <span class="nav-icon">📋</span>
+                        Lịch sử
+                    </a>
+                    <a href="/User/Profile" class="nav-link @(Context.Request.Path.Value?.Contains("Profile") == true ? "nav-active" : "")">
+                        <span class="nav-icon">👤</span>
+                        Hồ sơ
+                    </a>
+                    <a href="/User/Purchase" class="nav-link @(Context.Request.Path.Value?.Contains("Purchase") == true ? "nav-active" : "")">
+                        <span class="nav-icon">🛒</span>
+                        Mua hàng
+                    </a>
+                </nav>
+
+                <div class="user-area">
+                    @if (!string.IsNullOrEmpty(Context.Session.GetString("AuthToken")))
+                    {
+                        <div class="user-info">
+                            <div class="avatar">
+                                @(Context.Session.GetString("UserName")?.FirstOrDefault() ?? 'U')
+                            </div>
+                            <span class="user-name">@Context.Session.GetString("UserName")</span>
+                        </div>
+                        <a href="/Auth/Logout" class="logout-btn">Đăng xuất</a>
+                    }
+                    else
+                    {
+                        <div class="auth-buttons">
+                            <a href="/Auth/Login" class="login-btn">Đăng nhập</a>
+                            <a href="/Auth/Register" class="register-btn">Đăng ký</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN -->
+        <main class="main-content">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

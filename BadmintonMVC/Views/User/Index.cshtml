@@ -1,0 +1,103 @@
+@{
+    ViewData["Title"] = "Trang chủ";
+    Layout = "_UserLayout";
+}
+
+<div class="page">
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-badge">🏆 Hệ thống đặt sân thông minh</div>
+        <h1 class="hero-title">
+            @if (ViewBag.IsAuthenticated == true)
+            {
+                <text>Chào mừng trở lại,</text>
+                <br />
+                <span class="hero-name">@ViewBag.DisplayName! 👋</span>
+            }
+            else
+            {
+                <text>Chào mừng đến với</text>
+                <br />
+                <span class="hero-name">Badminton Management! 👋</span>
+            }
+        </h1>
+        <p class="hero-desc">
+            Đặt sân nhanh chóng, theo dõi lịch chơi và nhận ưu đãi hấp dẫn từ
+            hệ thống sân cầu lông hiện đại nhất.
+        </p>
+        <div class="hero-actions">
+            <a href="/User/Booking" class="btn-primary-action">
+                <span>🏟️</span> Đặt sân ngay
+            </a>
+            @if (ViewBag.IsAuthenticated == true)
+            {
+                <a href="/User/History" class="btn-outline-action">
+                    <span>📋</span> Lịch sử của tôi
+                </a>
+            }
+            else
+            {
+                <a href="/Auth/Login" class="btn-outline-action">
+                    <span>🔐</span> Đăng nhập
+                </a>
+            }
+        </div>
+    </section>
+
+    <!-- QUICK CARDS -->
+    <section class="quick-cards">
+        <a href="/User/Booking" class="quick-card card-green">
+            <div class="card-icon">🏸</div>
+            <div>
+                <h3 class="card-title">Đặt sân</h3>
+                <p class="card-desc">Chọn ngày, giờ và loại sân</p>
+            </div>
+            <span class="card-arrow">→</span>
+        </a>
+
+        <a href="/User/History" class="quick-card card-blue">
+            <div class="card-icon">📅</div>
+            <div>
+                <h3 class="card-title">Lịch sử đặt sân</h3>
+                <p class="card-desc">Xem booking & trạng thái</p>
+            </div>
+            <span class="card-arrow">→</span>
+        </a>
+
+        <a href="/User/Profile" class="quick-card card-purple">
+            <div class="card-icon">⭐</div>
+            <div>
+                <h3 class="card-title">Điểm tích lũy</h3>
+                <p class="card-desc">Xem hồ sơ & điểm thưởng</p>
+            </div>
+            <span class="card-arrow">→</span>
+        </a>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="features">
+        <h2 class="section-title">Tại sao chọn chúng tôi?</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <span class="feature-icon">⚡</span>
+                <h4 class="feature-title">Đặt sân siêu nhanh</h4>
+                <p class="feature-desc">Chỉ 3 bước để hoàn tất đặt sân online</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🎁</span>
+                <h4 class="feature-title">Điểm tích lũy</h4>
+                <p class="feature-desc">Mỗi lần đặt sân bạn sẽ nhận được điểm thưởng</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🏷️</span>
+                <h4 class="feature-title">Mã voucher</h4>
+                <p class="feature-desc">Sử dụng voucher để được giảm giá hấp dẫn</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">📱</span>
+                <h4 class="feature-title">Theo dõi realtime</h4>
+                <p class="feature-desc">Xem trạng thái booking và lịch sân trực tiếp</p>
+            </div>
+        </div>
+    </section>
+</div>

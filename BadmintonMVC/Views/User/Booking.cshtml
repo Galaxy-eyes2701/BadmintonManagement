@@ -1,0 +1,82 @@
+@{
+    ViewData["Title"] = "Đặt sân";
+    Layout = "_UserLayout";
+}
+
+<div class="booking-page">
+    <!-- Stepper -->
+    <div class="stepper">
+        <div class="step-item step-current">
+            <div class="step-circle">1</div>
+            <span class="step-label">Chọn ngày & bộ lọc</span>
+            <div class="step-line"></div>
+        </div>
+        <div class="step-item">
+            <div class="step-circle">2</div>
+            <span class="step-label">Chọn sân & ca</span>
+            <div class="step-line"></div>
+        </div>
+        <div class="step-item">
+            <div class="step-circle">3</div>
+            <span class="step-label">Xác nhận</span>
+        </div>
+    </div>
+
+    <!-- Step 1: Filter Section -->
+    <section class="filter-section">
+        <div class="filter-card">
+            <h1 class="page-title">🏟️ Tìm sân trống</h1>
+            <p class="page-desc">Chọn ngày, chi nhánh và loại sân</p>
+
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger">⚠️ @ViewBag.Error</div>
+            }
+
+            <form id="searchForm" action="/User/SearchCourts" method="post">
+                @Html.AntiForgeryToken()
+                <div class="filter-grid">
+                    <div class="form-group">
+                        <label class="form-label">📅 Ngày chơi *</label>
+                        <input type="date" name="selectedDate" id="selectedDate" class="form-input"
+                               value="@DateTime.Now.ToString("yyyy-MM-dd")"
+                               min="@DateTime.Now.ToString("yyyy-MM-dd")" required />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">🏢 Chi nhánh</label>
+                        <select name="branchId" id="branchId" class="form-input">
+                            <option value="">Tất cả chi nhánh</option>
+                            @if (ViewBag.Branches is JsonElement branchesEl && branchesEl.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var branch in branchesEl.EnumerateArray())
+                                {
+                                    <option value="@branch.GetProperty("id").GetInt32()">
+                                        @branch.GetProperty("name").GetString()
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">🏸 Loại sân</label>
+                        <select name="courtTypeId" id="courtTypeId" class="form-input">
+                            <option value="">Tất cả loại sân</option>
+                            @if (ViewBag.CourtTypes is JsonElement ctEl && ctEl.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var ct in ctEl.EnumerateArray())
+                                {
+                                    <option value="@ct.GetProperty("id").GetInt32()">
+                                        @ct.GetProperty("name").GetString()
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-search">
+                    🔍 Tìm sân trống
+                </button>
+            </form>
+        </div>
+    </section>
+</div>

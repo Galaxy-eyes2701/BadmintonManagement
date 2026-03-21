@@ -1,0 +1,435 @@
+@{
+    ViewData["Title"] = "Mua sản phẩm";
+    Layout = "_UserLayout";
+}
+
+<div class="purchase-page">
+    <!-- Header -->
+    <div class="page-header">
+        <h1 class="page-title">🛒 Mua sản phẩm</h1>
+        <p class="page-desc">Chọn booking và sản phẩm để mua tại sân</p>
+    </div>
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="alert alert-danger">⚠️ @ViewBag.Error</div>
+    }
+
+    <!-- Stepper -->
+    <div class="stepper">
+        <div class="step-item step-current" id="step1Indicator">
+            <div class="step-circle">1</div>
+            <span class="step-label">Chọn Booking</span>
+        </div>
+        <div class="step-item" id="step2Indicator">
+            <div class="step-circle">2</div>
+            <span class="step-label">Chọn Sản phẩm</span>
+        </div>
+        <div class="step-item" id="step3Indicator">
+            <div class="step-circle">3</div>
+            <span class="step-label">Xác nhận</span>
+        </div>
+    </div>
+
+    <!-- Step 1: Select Booking -->
+    <section class="section" id="step1Section">
+        <h2 class="section-title">📋 Chọn booking để mua hàng</h2>
+
+        @if (!(ViewBag.Bookings is JsonElement purchaseBookingsEl && purchaseBookingsEl.ValueKind == JsonValueKind.Array && purchaseBookingsEl.EnumerateArray().Any()))
+        {
+            <div class="empty-state">
+                <span class="empty-icon">📭</span>
+                <p>Bạn không có booking nào đang active.</p>
+                <a href="/User/Booking" class="btn-primary-action">Đặt sân ngay</a>
+            </div>
+        }
+        else
+        {
+            <div class="booking-grid">
+                @foreach (var b in purchaseBookingsEl.EnumerateArray())
+                {
+                    var bookingId = b.GetProperty("bookingId").GetInt32();
+                    var status = b.GetProperty("status").GetString();
+                    var firstCourtName = b.GetProperty("firstCourtName").GetString();
+                    var firstBranchName = b.GetProperty("firstBranchName").GetString();
+                    var firstPlayDate = b.GetProperty("firstPlayDate").GetString();
+                    var slotCount = b.GetProperty("slotCount").GetInt32();
+                    var totalPrice = b.GetProperty("totalPrice").GetDecimal();
+
+                    <div class="booking-select-card" data-booking-id="@bookingId" 
+                         data-court-name="@firstCourtName" data-total-price="@totalPrice"
+                         onclick="selectBooking(this)">
+                        <div class="booking-header">
+                            <span class="booking-id">#@bookingId</span>
+                            <span class="booking-status">@status</span>
+                        </div>
+                        <h3 class="court-name">@firstCourtName</h3>
+                        <p class="branch-name">📍 @firstBranchName</p>
+                        <p class="play-date">📅 @firstPlayDate</p>
+                        <div class="booking-footer">
+                            <span class="slot-count">@slotCount ca</span>
+                            <span class="booking-price">@totalPrice.ToString("N0")đ</span>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="actions">
+                <button class="btn-primary-action" id="continueBtn" disabled onclick="goToStep2()">
+                    Tiếp tục →
+                </button>
+            </div>
+        }
+    </section>
+
+    <!-- Step 2: Select Products -->
+    <section class="section" id="step2Section" style="display: none;">
+        <div class="selected-booking-bar">
+            <div>
+                <strong>🏸 Booking #<span id="selectedBookingId"></span></strong>
+                <span class="selected-booking-meta"> - <span id="selectedCourtName"></span> - <span id="selectedTotalPrice"></span></span>
+            </div>
+            <button class="btn-text" onclick="goToStep1()">Đổi booking</button>
+        </div>
+
+        <h2 class="section-title">🏸 Chọn sản phẩm</h2>
+
+        @if (!(ViewBag.Products is JsonElement productsEl && productsEl.ValueKind == JsonValueKind.Array && productsEl.EnumerateArray().Any()))
+        {
+            <div class="empty-state">
+                <span class="empty-icon">📭</span>
+                <p>Hiện không có sản phẩm nào.</p>
+            </div>
+        }
+        else
+        {
+            <div class="product-grid">
+                @foreach (var p in productsEl.EnumerateArray())
+                {
+                    var productId = p.GetProperty("id").GetInt32();
+                    var name = p.GetProperty("name").GetString();
+                    var category = p.GetProperty("category").GetString();
+                    var unitPrice = p.GetProperty("unitPrice").GetDecimal();
+                    var stockQuantity = p.GetProperty("stockQuantity").GetInt32();
+
+                    <div class="product-card" data-product-id="@productId" data-name="@name" data-price="@unitPrice" data-stock="@stockQuantity">
+                        <div class="product-image">
+                            <span class="product-placeholder">🏸</span>
+                        </div>
+                        <div class="product-info">
+                            <span class="product-category">@category</span>
+                            <h3 class="product-name">@name</h3>
+                            <p class="product-price">@unitPrice.ToString("N0")đ</p>
+                            <p class="product-stock">Còn: @stockQuantity</p>
+                        </div>
+                        <div class="product-actions">
+                            <div class="qty-control" style="display: none;">
+                                <button class="qty-btn" onclick="removeFromCart(@productId)">−</button>
+                                <span class="qty-value" id="qty-@productId">0</span>
+                                <button class="qty-btn" onclick="addToCart(@productId)">+</button>
+                            </div>
+                            <button class="btn-add" id="add-@productId" onclick="addToCart(@productId)">Thêm</button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Cart Summary -->
+            <div class="cart-summary" id="cartSummary" style="display: none;">
+                <h3 class="cart-title">🛒 Giỏ hàng</h3>
+                <div class="cart-items" id="cartItems"></div>
+                <div class="cart-totals">
+                    <div class="cart-row grand-total">
+                        <span>💰 Tiền sản phẩm:</span>
+                        <strong id="cartTotal">0đ</strong>
+                    </div>
+                    <p class="cart-note">* Tiền sân (<span id="bookingCourtPrice"></span>) sẽ thanh toán riêng</p>
+                </div>
+                <div class="cart-actions">
+                    <button class="btn-outline-action" onclick="goToStep1()">← Quay lại</button>
+                    <button class="btn-primary-action" onclick="confirmPurchase()">✅ Xác nhận mua</button>
+                </div>
+            </div>
+
+            <div class="actions" id="noCartActions">
+                <button class="btn-outline-action" onclick="goToStep1()">← Quay lại</button>
+            </div>
+        }
+    </section>
+
+    <!-- Step 3: Success -->
+    <section class="section" id="step3Section" style="display: none;">
+        <div class="success-wrap">
+            <div class="success-card">
+                <div class="success-icon">✅</div>
+                <h2 class="success-title">Mua hàng thành công!</h2>
+                <div class="success-details">
+                    <div class="success-row">
+                        <span>🏸 Booking:</span>
+                        <strong id="successBookingId"></strong>
+                    </div>
+                    <div class="success-row">
+                        <span>🛒 Sản phẩm đã mua:</span>
+                        <strong id="successItemCount"></strong>
+                    </div>
+                    <div class="success-row grand-total">
+                        <span>💰 Tiền sản phẩm:</span>
+                        <strong id="successOrderTotal"></strong>
+                    </div>
+                    <p class="note-text">* Tiền sân sẽ thanh toán riêng ở phần Lịch sử đặt sân</p>
+                </div>
+
+                <div class="payment-option-section">
+                    <h3 class="payment-option-title">💳 Phương thức thanh toán</h3>
+                    <div class="payment-options">
+                        <div class="payment-option selected" data-option="online" onclick="selectPaymentOption('online')">
+                            <div class="option-icon">💳</div>
+                            <div class="option-info">
+                                <strong>Thanh toán online</strong>
+                                <span>Thanh toán ngay qua VNPay</span>
+                            </div>
+                            <div class="option-check">✓</div>
+                        </div>
+                        <div class="payment-option" data-option="onsite" onclick="selectPaymentOption('onsite')">
+                            <div class="option-icon">🏟️</div>
+                            <div class="option-info">
+                                <strong>Thanh toán tại sân</strong>
+                                <span>Trả tiền khi đến chơi</span>
+                            </div>
+                            <div class="option-check"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="success-actions">
+                    <button class="btn-primary-action" id="paymentBtn" onclick="processPayment()">💳 Thanh toán online</button>
+                    <button class="btn-outline-action" onclick="resetPurchase()">Mua thêm</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+<script>
+    let selectedBooking = null;
+    let cart = {};
+    let paymentOption = 'online';
+    let successData = null;
+
+    function selectBooking(el) {
+        document.querySelectorAll('.booking-select-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        
+        selectedBooking = {
+            bookingId: el.dataset.bookingId,
+            courtName: el.dataset.courtName,
+            totalPrice: parseFloat(el.dataset.totalPrice)
+        };
+        
+        document.getElementById('continueBtn').disabled = false;
+    }
+
+    function goToStep2() {
+        if (!selectedBooking) return;
+
+        document.getElementById('step1Section').style.display = 'none';
+        document.getElementById('step2Section').style.display = 'block';
+        
+        document.getElementById('step1Indicator').classList.remove('step-current');
+        document.getElementById('step1Indicator').classList.add('step-done');
+        document.getElementById('step2Indicator').classList.add('step-current');
+
+        document.getElementById('selectedBookingId').textContent = selectedBooking.bookingId;
+        document.getElementById('selectedCourtName').textContent = selectedBooking.courtName;
+        document.getElementById('selectedTotalPrice').textContent = formatCurrency(selectedBooking.totalPrice);
+        document.getElementById('bookingCourtPrice').textContent = formatCurrency(selectedBooking.totalPrice);
+    }
+
+    function goToStep1() {
+        document.getElementById('step1Section').style.display = 'block';
+        document.getElementById('step2Section').style.display = 'none';
+        
+        document.getElementById('step1Indicator').classList.add('step-current');
+        document.getElementById('step1Indicator').classList.remove('step-done');
+        document.getElementById('step2Indicator').classList.remove('step-current');
+    }
+
+    function addToCart(productId) {
+        const card = document.querySelector(`.product-card[data-product-id="${productId}"]`);
+        const stock = parseInt(card.dataset.stock);
+        
+        if (!cart[productId]) cart[productId] = 0;
+        if (cart[productId] >= stock) return;
+        
+        cart[productId]++;
+        updateCartDisplay(productId, card);
+        updateCartSummary();
+    }
+
+    function removeFromCart(productId) {
+        if (!cart[productId] || cart[productId] <= 0) return;
+        
+        cart[productId]--;
+        if (cart[productId] === 0) delete cart[productId];
+        
+        const card = document.querySelector(`.product-card[data-product-id="${productId}"]`);
+        updateCartDisplay(productId, card);
+        updateCartSummary();
+    }
+
+    function updateCartDisplay(productId, card) {
+        const qty = cart[productId] || 0;
+        const qtyControl = card.querySelector('.qty-control');
+        const addBtn = card.querySelector('.btn-add');
+        const qtyValue = card.querySelector('.qty-value');
+
+        if (qty > 0) {
+            qtyControl.style.display = 'flex';
+            addBtn.style.display = 'none';
+            qtyValue.textContent = qty;
+        } else {
+            qtyControl.style.display = 'none';
+            addBtn.style.display = 'block';
+        }
+    }
+
+    function updateCartSummary() {
+        const totalItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+        const cartSummary = document.getElementById('cartSummary');
+        const noCartActions = document.getElementById('noCartActions');
+
+        if (totalItems === 0) {
+            cartSummary.style.display = 'none';
+            noCartActions.style.display = 'flex';
+            return;
+        }
+
+        cartSummary.style.display = 'block';
+        noCartActions.style.display = 'none';
+
+        // Render cart items
+        const container = document.getElementById('cartItems');
+        let total = 0;
+        let html = '';
+
+        for (const [productId, qty] of Object.entries(cart)) {
+            const card = document.querySelector(`.product-card[data-product-id="${productId}"]`);
+            const name = card.dataset.name;
+            const price = parseFloat(card.dataset.price);
+            const subTotal = price * qty;
+            total += subTotal;
+
+            html += `
+                <div class="cart-item">
+                    <span class="cart-item-name">${name}</span>
+                    <span class="cart-item-qty">×${qty}</span>
+                    <span class="cart-item-price">${formatCurrency(subTotal)}</span>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+        document.getElementById('cartTotal').textContent = formatCurrency(total);
+    }
+
+    async function confirmPurchase() {
+        const totalItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+        if (totalItems === 0) {
+            alert('Vui lòng chọn ít nhất một sản phẩm');
+            return;
+        }
+
+        try {
+            const products = Object.entries(cart).map(([productId, quantity]) => ({
+                productId: parseInt(productId),
+                quantity
+            }));
+
+            const formData = new FormData();
+            formData.append('bookingId', parseInt(selectedBooking.bookingId));
+            formData.append('productsJson', JSON.stringify(products));
+
+            const response = await fetch('/User/ConfirmPurchase', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                successData = data.data;
+                showSuccess();
+            } else {
+                alert(data.message || 'Mua hàng thất bại');
+            }
+        } catch (err) {
+            alert('Lỗi: ' + err.message);
+        }
+    }
+
+    function showSuccess() {
+        document.getElementById('step2Section').style.display = 'none';
+        document.getElementById('step3Section').style.display = 'block';
+        
+        document.getElementById('step2Indicator').classList.remove('step-current');
+        document.getElementById('step2Indicator').classList.add('step-done');
+        document.getElementById('step3Indicator').classList.add('step-current');
+
+        document.getElementById('successBookingId').textContent = '#' + successData.bookingId;
+        document.getElementById('successItemCount').textContent = successData.items?.length + ' loại';
+        document.getElementById('successOrderTotal').textContent = formatCurrency(successData.orderTotal);
+    }
+
+    function selectPaymentOption(option) {
+        paymentOption = option;
+        document.querySelectorAll('.payment-option').forEach(el => {
+            el.classList.toggle('selected', el.dataset.option === option);
+            el.querySelector('.option-check').textContent = el.dataset.option === option ? '✓' : '';
+        });
+
+        const paymentBtn = document.getElementById('paymentBtn');
+        if (option === 'online') {
+            paymentBtn.textContent = '💳 Thanh toán online ' + formatCurrency(successData.orderTotal);
+        } else {
+            paymentBtn.textContent = 'Xem lịch sử';
+        }
+    }
+
+    async function processPayment() {
+        if (paymentOption === 'onsite') {
+            window.location.href = '/User/History';
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('bookingId', successData.bookingId);
+            formData.append('amount', successData.orderTotal);
+
+            const response = await fetch('/User/CreateProductPayment', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success && data.paymentUrl) {
+                window.location.href = data.paymentUrl;
+            } else {
+                alert(data.message || 'Không thể tạo thanh toán');
+            }
+        } catch (err) {
+            alert('Lỗi: ' + err.message);
+        }
+    }
+
+    function resetPurchase() {
+        cart = {};
+        selectedBooking = null;
+        successData = null;
+        window.location.reload();
+    }
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    }
+</script>
+}

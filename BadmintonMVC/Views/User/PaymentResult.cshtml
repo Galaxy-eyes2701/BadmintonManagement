@@ -1,0 +1,114 @@
+@{
+    ViewData["Title"] = "Kết quả thanh toán";
+    Layout = "_UserLayout";
+}
+
+@{
+    var status = ViewBag.Status ?? "processing";
+    var message = ViewBag.Message ?? "Đang xác thực giao dịch...";
+}
+
+<div class="payment-result-page">
+    @if (status == "processing")
+    {
+        <div class="center-content">
+            <div class="spinner"></div>
+            <h2 class="status-title">@message</h2>
+            <p class="status-desc">Vui lòng không đóng trình duyệt...</p>
+        </div>
+    }
+    else if (status == "error")
+    {
+        <div class="center-content">
+            <div class="result-card">
+                <div class="icon-wrapper">
+                    <div class="error-bg"></div>
+                    <div class="error-icon-bg">
+                        <span class="material-symbols-outlined">close</span>
+                    </div>
+                </div>
+                <h1 class="result-title">Thanh toán thất bại</h1>
+                <p class="status-desc">@message</p>
+                <div class="actions">
+                    <a href="/User/History" class="btn-outline-action">Xem lịch sử booking</a>
+                    <a href="/User/Booking" class="btn-primary-action">Đặt sân mới</a>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="center-content">
+            <div class="result-card">
+                <div class="icon-wrapper">
+                    <div class="success-bg1"></div>
+                    <div class="success-bg2"></div>
+                    <div class="success-icon-bg">
+                        <span class="material-symbols-outlined">check</span>
+                    </div>
+                </div>
+                <h1 class="result-title">Thanh toán thành công!</h1>
+                <p class="status-desc">
+                    @if (ViewBag.PaymentType == "Đặt cọc 50%")
+                    {
+                        <text>Booking đã được xác nhận. Số tiền còn lại sẽ thanh toán tại sân.</text>
+                    }
+                    else if (ViewBag.PaymentType == "Thanh toán sản phẩm + sân")
+                    {
+                        <text>Thanh toán hoàn tất. Bạn có thể đến sân theo lịch đã đặt.</text>
+                    }
+                    else
+                    {
+                        <text>Giao dịch đã được ghi nhận.</text>
+                    }
+                </p>
+
+                <div class="bill-card">
+                    <div class="bill-header">
+                        <span>Chi tiết giao dịch</span>
+                        <span class="material-symbols-outlined">receipt_long</span>
+                    </div>
+                    <div class="bill-content">
+                        <div class="bill-row">
+                            <span class="bill-label">Mã Booking</span>
+                            <span class="bill-value">#@ViewBag.BookingId</span>
+                        </div>
+                        <div class="bill-row">
+                            <span class="bill-label">Loại thanh toán</span>
+                            <span class="bill-value">@ViewBag.PaymentType</span>
+                        </div>
+                        <div class="bill-row">
+                            <span class="bill-label">Thời gian</span>
+                            <span class="bill-value">@ViewBag.PayDate</span>
+                        </div>
+                        <div class="bill-row">
+                            <span class="bill-label">Phương thức</span>
+                            <div class="bill-value">
+                                <span class="material-symbols-outlined" style="color: #007bff;">account_balance</span>
+                                <span>VNPay - @ViewBag.BankCode</span>
+                            </div>
+                        </div>
+                        <div class="divider"></div>
+                        <div class="bill-row">
+                            <span class="total-label">Số tiền</span>
+                            <span class="total-value">@((ViewBag.Amount ?? 0).ToString("N0"))đ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <a href="/User/History" class="btn-primary-action">
+                        Xem lịch sử booking <span class="material-symbols-outlined">arrow_forward</span>
+                    </a>
+                    <a href="/User/Booking" class="btn-outline-action">Đặt sân mới</a>
+                </div>
+            </div>
+        </div>
+    }
+
+    <footer class="footer">
+        <div class="security-text">
+            <span class="material-symbols-outlined">shield</span> Giao dịch được bảo mật bởi VNPay
+        </div>
+    </footer>
+</div>

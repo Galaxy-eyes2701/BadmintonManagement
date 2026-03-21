@@ -39,6 +39,32 @@
                 border-color: #14b8a6;
                 box-shadow: 0 0 0 3px rgba(20, 184, 166, .15);
             }
+
+            .password-wrapper {
+                position: relative;
+            }
+
+            .password-toggle {
+                position: absolute;
+                right: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: none;
+                border: none;
+                color: #64748b;
+                cursor: pointer;
+                font-size: 1.1rem;
+                padding: 0;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .password-toggle:hover {
+                color: #0f766e;
+            }
     </style>
 </head>
 
@@ -58,20 +84,41 @@
         <form method="post">
             <div class="mb-3">
                 <label class="form-label fw-semibold">Số điện thoại</label>
-                <input type="text" name="phone" class="form-control" placeholder="0901234567" required autofocus />
+                <input type="text" name="phone" class="form-control" required autofocus />
             </div>
             <div class="mb-4">
                 <label class="form-label fw-semibold">Mật khẩu</label>
-                <input type="password" name="password" class="form-control" placeholder="••••••••" required />
+                <div class="password-wrapper">
+                    <input type="password" name="password" id="password" class="form-control" required />
+                    <button type="button" class="password-toggle" onclick="togglePassword()">👁️</button>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary w-100 py-2">Đăng nhập</button>
         </form>
 
+        <div class="text-center mb-3">
+            <a href="/Auth/ForgotPassword" style="color:#0f766e; font-size:0.85rem">Quên mật khẩu?</a>
+        </div>
         <hr class="my-3" />
         <p class="text-center text-muted small mb-0">
             Chưa có tài khoản? <a href="/Auth/Register" style="color:#0f766e">Đăng ký</a>
         </p>
     </div>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleBtn = document.querySelector('.password-toggle');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁️';
+            }
+        }
+    </script>
 </body>
 
 </html>
