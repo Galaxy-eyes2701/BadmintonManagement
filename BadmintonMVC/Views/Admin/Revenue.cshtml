@@ -1,289 +1,1590 @@
 @{
     ViewData["Title"] = "Thống kê Doanh thu";
-    ViewData["Page"]  = "revenue";
+    ViewData["Page"] = "revenue";
     Layout = "_AdminLayout";
 }
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<div class="p-4">
-    <!-- FILTER -->
-    <div class="card shadow-sm p-3 mb-4">
-        <div class="d-flex gap-3 flex-wrap align-items-center">
-            <span class="fw-semibold">🗓️ Khoảng thời gian:</span>
-            <div class="d-flex gap-1 flex-wrap">
-                <button class="btn btn-sm btn-outline-secondary" onclick="preset(7)">7 ngày</button>
-                <button class="btn btn-sm btn-primary" id="preset30" onclick="preset(30)">30 ngày</button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="preset(90)">3 tháng</button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="preset(365)">1 năm</button>
+<style>
+    /* ============================================================
+       CSS VARIABLES
+       ============================================================ */
+    :root {
+        --primary: #0f766e;
+        --primary-light: #14b8a6;
+        --primary-dark: #0d5e58;
+        --primary-glow: rgba(15,118,110,.18);
+        --success: #10b981;
+        --success-bg: #ecfdf5;
+        --success-border: #6ee7b7;
+        --warning: #f59e0b;
+        --warning-bg: #fffbeb;
+        --warning-border: #fcd34d;
+        --danger: #ef4444;
+        --danger-bg: #fef2f2;
+        --danger-border: #fca5a5;
+        --blue: #3b82f6;
+        --purple: #8b5cf6;
+        --text-h: #0f172a;
+        --text-body: #334155;
+        --text-muted: #94a3b8;
+        --bg-page: #f1f5f9;
+        --bg-card: #ffffff;
+        --bg-hover: #f8fafc;
+        --border: #e2e8f0;
+        --shadow-sm: 0 2px 8px rgba(0,0,0,.07);
+        --shadow-md: 0 4px 20px rgba(0,0,0,.10);
+        --radius: 14px;
+        --radius-sm: 8px;
+    }
+
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
+    body, .rv-wrap {
+        font-family: 'Nunito', sans-serif;
+        color: var(--text-body);
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────── */
+    .rv-header {
+        background: linear-gradient(135deg, #0d5e58 0%, #0f766e 55%, #14b8a6 100%);
+        padding: 26px 36px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .rv-header::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.06);
+            pointer-events: none;
+        }
+
+    .rv-header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        z-index: 1;
+        padding-left: 62px;
+    }
+
+    @@media (max-width:768px) {
+        .rv-header-left {
+            padding-left: 56px;
+        }
+    }
+
+    .rv-header-icon {
+        font-size: 38px;
+        filter: drop-shadow(0 3px 8px rgba(0,0,0,.25));
+        animation: rv-float 2.8s ease-in-out infinite;
+    }
+    @@keyframes rv-float {
+        0%,100%
+
+    {
+        transform: translateY(0) rotate(-5deg);
+    }
+
+    50% {
+        transform: translateY(-5px) rotate(5deg);
+    }
+
+    }
+
+    .rv-header-title {
+        margin: 0;
+        font-size: 1.55rem;
+        font-weight: 900;
+        color: #fff;
+        letter-spacing: -.4px;
+        text-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+
+    .rv-header-sub {
+        margin: 3px 0 0;
+        font-size: .82rem;
+        color: rgba(255,255,255,.68);
+        font-weight: 500;
+    }
+
+    .rv-header-right {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        z-index: 1;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .rv-stat-chips {
+        display: flex;
+        gap: 10px;
+    }
+
+    .rv-chip, .rv-chip-success, .rv-chip-warn {
+        background: rgba(255,255,255,.13);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,.22);
+        border-radius: 10px;
+        padding: 10px 16px;
+        text-align: center;
+        min-width: 76px;
+        transition: transform .2s;
+    }
+
+        .rv-chip:hover, .rv-chip-success:hover, .rv-chip-warn:hover {
+            transform: translateY(-2px);
+        }
+
+    .rv-chip-success {
+        background: rgba(16,185,129,.2);
+        border-color: rgba(16,185,129,.4);
+    }
+
+    .rv-chip-warn {
+        background: rgba(245,158,11,.18);
+        border-color: rgba(245,158,11,.35);
+    }
+
+    .rv-chip-num {
+        display: block;
+        font-size: 1.4rem;
+        font-weight: 900;
+        color: #fff;
+        line-height: 1;
+    }
+
+    .rv-chip-label {
+        display: block;
+        font-size: .66rem;
+        color: rgba(255,255,255,.72);
+        margin-top: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        white-space: nowrap;
+    }
+
+    .rv-btn-export, .rv-btn-logout {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255,255,255,.1);
+        color: rgba(255,255,255,.9);
+        border: 1.5px solid rgba(255,255,255,.25);
+        border-radius: var(--radius-sm);
+        padding: 10px 18px;
+        font-size: .88rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all .2s;
+        font-family: inherit;
+        backdrop-filter: blur(8px);
+        white-space: nowrap;
+    }
+
+        .rv-btn-export:hover:not(:disabled) {
+            background: rgba(255,255,255,.2);
+            border-color: rgba(255,255,255,.4);
+            transform: translateY(-1px);
+        }
+
+        .rv-btn-export:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        .rv-btn-logout:hover {
+            background: rgba(239,68,68,.75);
+            border-color: rgba(239,68,68,.8);
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(239,68,68,.35);
+        }
+
+    /* ── BANNERS ─────────────────────────────────────────────── */
+    .rv-error {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        font-size: .88rem;
+        font-weight: 600;
+        background: var(--danger-bg);
+        border-bottom: 2px solid var(--danger-border);
+        color: #991b1b;
+    }
+
+    .rv-error-close {
+        background: none;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        color: inherit;
+        opacity: .6;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+
+        .rv-error-close:hover {
+            opacity: 1;
+        }
+
+    /* ── CONTENT ─────────────────────────────────────────────── */
+    .rv-content {
+        padding: 28px 36px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* ── TOOLBAR ─────────────────────────────────────────────── */
+    .rv-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .rv-toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        flex-wrap: wrap;
+    }
+
+    .rv-filter-label {
+        font-size: .83rem;
+        font-weight: 700;
+        color: var(--text-body);
+        white-space: nowrap;
+    }
+
+    .rv-presets {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .rv-preset {
+        font-family: inherit;
+        font-size: .78rem;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: 20px;
+        border: 1.5px solid var(--border);
+        background: white;
+        color: var(--text-body);
+        cursor: pointer;
+        transition: all .15s;
+        white-space: nowrap;
+    }
+
+        .rv-preset:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(15,118,110,.05);
+        }
+
+        .rv-preset.active {
+            background: linear-gradient(135deg,var(--primary),var(--primary-light)) !important;
+            border-color: transparent !important;
+            color: white !important;
+            box-shadow: 0 2px 8px rgba(15,118,110,.3);
+        }
+
+    .rv-date-range {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .rv-date-sep {
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+
+    .rv-select, .rv-date-input {
+        font-family: inherit;
+        font-size: .86rem;
+        font-weight: 600;
+        color: var(--text-body);
+        background: var(--bg-card);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 9px 14px;
+        cursor: pointer;
+        outline: none;
+        transition: border-color .2s, box-shadow .2s;
+    }
+
+        .rv-select:focus, .rv-date-input:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+    .rv-btn-primary {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg,var(--primary),var(--primary-light));
+        color: white;
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: 10px 20px;
+        font-size: .88rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all .2s;
+        font-family: inherit;
+        box-shadow: 0 2px 10px rgba(15,118,110,.3);
+        white-space: nowrap;
+    }
+
+        .rv-btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg,var(--primary-dark),var(--primary));
+            box-shadow: 0 4px 16px rgba(15,118,110,.4);
+            transform: translateY(-1px);
+        }
+
+        .rv-btn-primary:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+    /* ── LOADING ─────────────────────────────────────────────── */
+    .rv-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 80px 20px;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .rv-spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: rv-spin .7s linear infinite;
+    }
+
+    .rv-spinner-sm {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255,255,255,.4);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: rv-spin .7s linear infinite;
+    }
+    @@keyframes rv-spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    /* ── SUMMARY CARDS ──────────────────────────────────────── */
+    .rv-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4,1fr);
+        gap: 16px;
+    }
+
+    .rv-card {
+        background: var(--bg-card);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-sm);
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: transform .2s, box-shadow .2s;
+        border-left: 4px solid transparent;
+        animation: rv-cardIn .4s ease both;
+    }
+
+        .rv-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+    @@keyframes rv-cardIn {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(12px)
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0)
+    }
+
+    }
+
+    .rv-card-revenue {
+        border-left-color: var(--primary);
+        animation-delay: .05s;
+    }
+
+    .rv-card-booking {
+        border-left-color: var(--blue);
+        animation-delay: .10s;
+    }
+
+    .rv-card-order {
+        border-left-color: var(--warning);
+        animation-delay: .15s;
+    }
+
+    .rv-card-avg {
+        border-left-color: var(--purple);
+        animation-delay: .20s;
+    }
+
+    .rv-card-icon {
+        font-size: 30px;
+        width: 52px;
+        height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-hover);
+        border-radius: 12px;
+        flex-shrink: 0;
+    }
+
+    .rv-card-label {
+        font-size: .76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        color: var(--text-muted);
+        margin: 0 0 4px;
+    }
+
+    .rv-card-value {
+        font-size: 1.2rem;
+        font-weight: 900;
+        color: var(--text-h);
+        margin: 0 0 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .rv-card-sub {
+        font-size: .75rem;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .rv-badge-pos {
+        display: inline-block;
+        font-size: .74rem;
+        font-weight: 800;
+        color: #065f46;
+        background: var(--success-bg);
+        border: 1px solid var(--success-border);
+        padding: 2px 8px;
+        border-radius: 20px;
+    }
+
+    .rv-badge-neg {
+        display: inline-block;
+        font-size: .74rem;
+        font-weight: 800;
+        color: #991b1b;
+        background: var(--danger-bg);
+        border: 1px solid var(--danger-border);
+        padding: 2px 8px;
+        border-radius: 20px;
+    }
+
+    /* ── TABS ────────────────────────────────────────────────── */
+    .rv-tabs {
+        display: flex;
+        gap: 6px;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .rv-tab {
+        font-family: inherit;
+        font-size: .88rem;
+        font-weight: 700;
+        padding: 10px 20px;
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all .2s;
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    }
+
+        .rv-tab:hover {
+            color: var(--primary);
+            background: rgba(15,118,110,.04);
+        }
+
+        .rv-tab.active {
+            color: var(--primary-dark);
+            border-bottom-color: var(--primary);
+            background: rgba(15,118,110,.05);
+        }
+
+    .rv-tab-content {
+        display: none;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+        .rv-tab-content.visible {
+            display: flex;
+        }
+
+    /* ── CHART PANELS ────────────────────────────────────────── */
+    .rv-panel {
+        background: var(--bg-card);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        padding: 20px;
+    }
+
+    .rv-panel-full {
+        width: 100%;
+    }
+
+    .rv-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .rv-panel-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--text-h);
+    }
+
+    .rv-chart-legend {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: .78rem;
+        font-weight: 700;
+        color: var(--text-muted);
+    }
+
+    .rv-dot-teal {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background: #0f766e;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+
+    .rv-dot-amber {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background: #f59e0b;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+
+    .rv-two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .rv-chart-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-muted);
+        font-size: .88rem;
+        font-weight: 600;
+    }
+
+    /* ── TABLE ───────────────────────────────────────────────── */
+    .rv-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: .88rem;
+    }
+
+        .rv-table thead tr {
+            background: linear-gradient(135deg,#0d5e58,#0f766e);
+        }
+
+        .rv-table thead th {
+            padding: 13px 18px;
+            text-align: left;
+            font-weight: 700;
+            font-size: .78rem;
+            color: rgba(255,255,255,.88);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            white-space: nowrap;
+        }
+
+        .rv-table tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background .15s;
+            animation: rv-rowIn .3s ease both;
+        }
+    @@keyframes rv-rowIn {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(5px)
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0)
+    }
+
+    }
+
+    .rv-table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .rv-table tbody tr:hover {
+        background: rgba(15,118,110,.03);
+    }
+
+    .rv-table td {
+        padding: 12px 18px;
+        color: var(--text-body);
+        vertical-align: middle;
+    }
+
+    .rv-td-id {
+        font-weight: 800;
+        color: var(--text-muted);
+        font-size: .82rem;
+    }
+
+    .rv-td-rev {
+        font-weight: 900;
+        font-size: .95rem;
+        color: #b45309;
+    }
+
+    .rv-court-name {
+        font-weight: 800;
+        color: var(--text-h);
+    }
+
+    .rv-muted {
+        color: var(--text-muted);
+        font-size: .84rem;
+    }
+
+    .rv-type-badge {
+        display: inline-block;
+        background: rgba(15,118,110,.07);
+        color: var(--primary-dark);
+        font-size: .78rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1px solid rgba(15,118,110,.18);
+    }
+
+    .rv-empty-td {
+        text-align: center;
+        color: var(--text-muted);
+        font-weight: 600;
+        padding: 40px;
+    }
+
+    /* occupancy bar */
+    .rv-occ-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 120px;
+    }
+
+    .rv-occ-track {
+        flex: 1;
+        height: 8px;
+        background: var(--bg-hover);
+        border-radius: 20px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+    }
+
+    .rv-occ-fill {
+        height: 100%;
+        background: linear-gradient(90deg,var(--primary),var(--primary-light));
+        border-radius: 20px;
+        min-width: 2px;
+        transition: width .6s ease;
+    }
+
+    .rv-occ-pct {
+        font-size: .78rem;
+        font-weight: 800;
+        color: var(--primary-dark);
+        white-space: nowrap;
+        width: 40px;
+        text-align: right;
+    }
+
+    /* ── BOOKING STATS SECTION ───────────────────────────────── */
+    .rv-avg-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(15,118,110,.05);
+        border: 1px solid rgba(15,118,110,.15);
+        border-radius: var(--radius-sm);
+        padding: 10px 14px;
+        margin-top: 16px;
+    }
+
+    .rv-avg-label {
+        font-size: .84rem;
+        font-weight: 700;
+        color: var(--text-body);
+    }
+
+    .rv-avg-value {
+        font-size: 1rem;
+        font-weight: 900;
+        color: var(--primary-dark);
+    }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────── */
+    @@media (max-width:1200px) {
+        .rv-summary-grid {
+            grid-template-columns: repeat(2,1fr);
+        }
+    }
+
+    @@media (max-width:900px) {
+        .rv-two-col {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width:768px) {
+        .rv-content {
+            padding: 18px 16px;
+        }
+
+        .rv-summary-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .rv-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .rv-toolbar-left {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .rv-tabs {
+            flex-wrap: wrap;
+        }
+    }
+
+    @@media (max-width:480px) {
+        .rv-summary-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="rv-wrap">
+
+    <!-- ══ HEADER ══ -->
+    <header class="rv-header">
+        <div class="rv-header-left">
+            <span class="rv-header-icon">📊</span>
+            <div>
+                <h1 class="rv-header-title">Thống kê Doanh thu</h1>
+                <p class="rv-header-sub">Admin · Báo cáo &amp; phân tích tổng hợp</p>
             </div>
-            <input type="date" id="startDate" class="form-control form-control-sm" style="width:150px"/>
-            <span class="text-muted">→</span>
-            <input type="date" id="endDate"   class="form-control form-control-sm" style="width:150px"/>
-            <select id="period" class="form-select form-select-sm" style="width:150px">
-                <option value="day">Theo ngày</option>
-                <option value="month" selected>Theo tháng</option>
-                <option value="year">Theo năm</option>
-            </select>
-            <button class="btn btn-primary btn-sm" onclick="loadAll()">🔄 Làm mới</button>
-            <button class="btn btn-outline-secondary btn-sm ms-auto" onclick="exportCsv()">⬇️ Xuất CSV</button>
         </div>
+        <div class="rv-header-right">
+            <div class="rv-stat-chips" id="headerChips" style="display:none">
+                <div class="rv-chip">
+                    <span class="rv-chip-num" id="hTotalRev">—</span>
+                    <span class="rv-chip-label">Tổng DT</span>
+                </div>
+                <div class="rv-chip-success">
+                    <span class="rv-chip-num" id="hBookings">—</span>
+                    <span class="rv-chip-label">Booking</span>
+                </div>
+                <div class="rv-chip-warn">
+                    <span class="rv-chip-num" id="hCustomers">—</span>
+                    <span class="rv-chip-label">Khách hàng</span>
+                </div>
+            </div>
+            <button class="rv-btn-export" id="btnExport" onclick="handleExport()">
+                <span>⬇️</span><span>Xuất CSV</span>
+            </button>
+            <button class="rv-btn-logout" onclick="handleLogout()">
+                <span>🚪</span><span>Đăng xuất</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ══ ERROR BANNER ══ -->
+    <div class="rv-error" id="errorBanner" style="display:none">
+        <span id="errorMsg"></span>
+        <button class="rv-error-close" onclick="hideError()">✕</button>
     </div>
 
-    <!-- SUMMARY CARDS -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3" style="border-left:4px solid #0f766e!important">
-                <div class="text-muted small fw-semibold">TỔNG DOANH THU</div>
-                <div class="fw-black fs-4 mt-1" id="sTotalRev" style="color:#0f766e">—</div>
-                <div id="sGrowth" class="small mt-1"></div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3" style="border-left:4px solid #3b82f6!important">
-                <div class="text-muted small fw-semibold">DOANH THU SÂN</div>
-                <div class="fw-black fs-4 mt-1 text-primary" id="sBookingRev">—</div>
-                <div class="text-muted small" id="sCompletedB"></div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3" style="border-left:4px solid #f59e0b!important">
-                <div class="text-muted small fw-semibold">DOANH THU ĐỒ UỐNG</div>
-                <div class="fw-black fs-4 mt-1 text-warning" id="sOrderRev">—</div>
-                <div class="text-muted small" id="sTotalOrders"></div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3" style="border-left:4px solid #8b5cf6!important">
-                <div class="text-muted small fw-semibold">TB / NGÀY</div>
-                <div class="fw-black fs-4 mt-1" style="color:#8b5cf6" id="sAvgDay">—</div>
-                <div class="text-muted small" id="sTotalCus"></div>
-            </div>
-        </div>
-    </div>
+    <main class="rv-content">
 
-    <!-- CHARTS -->
-    <div class="row g-4 mb-4">
-        <!-- BIỂU ĐỒ ĐƯỜNG -->
-        <div class="col-12">
-            <div class="card shadow-sm p-3">
-                <h6 class="fw-bold mb-3">📈 Doanh thu theo kỳ</h6>
-                <canvas id="lineChart" height="100"></canvas>
+        <!-- ══ FILTER BAR ══ -->
+        <div class="rv-toolbar">
+            <div class="rv-toolbar-left">
+                <span class="rv-filter-label">🗓️ Khoảng thời gian:</span>
+                <div class="rv-presets" id="presetBtns">
+                    <button class="rv-preset" onclick="applyPreset(7,0)">7 ngày</button>
+                    <button class="rv-preset active" onclick="applyPreset(30,1)">30 ngày</button>
+                    <button class="rv-preset" onclick="applyPreset(90,2)">3 tháng</button>
+                    <button class="rv-preset" onclick="applyPreset(180,3)">6 tháng</button>
+                    <button class="rv-preset" onclick="applyPreset(365,4)">1 năm</button>
+                </div>
+                <div class="rv-date-range">
+                    <input type="date" id="startDate" class="rv-date-input" />
+                    <span class="rv-date-sep">→</span>
+                    <input type="date" id="endDate" class="rv-date-input" />
+                </div>
+                <select id="period" class="rv-select" onchange="">
+                    <option value="day">Theo ngày</option>
+                    <option value="month" selected>Theo tháng</option>
+                    <option value="year">Theo năm</option>
+                </select>
             </div>
+            <button class="rv-btn-primary" id="btnRefresh" onclick="fetchAll()">🔄 Làm mới</button>
         </div>
-    </div>
 
-    <div class="row g-4 mb-4">
-        <!-- BAR CHART CHI NHÁNH -->
-        <div class="col-md-7">
-            <div class="card shadow-sm p-3">
-                <h6 class="fw-bold mb-3">🏢 Doanh thu theo chi nhánh</h6>
-                <canvas id="branchChart" height="140"></canvas>
-            </div>
+        <!-- ══ LOADING ══ -->
+        <div class="rv-loading" id="loadingWrap">
+            <div class="rv-spinner"></div>
+            <p>Đang tải dữ liệu thống kê...</p>
         </div>
-        <!-- DONUT LOẠI SÂN -->
-        <div class="col-md-5">
-            <div class="card shadow-sm p-3">
-                <h6 class="fw-bold mb-3">🎯 Tỉ trọng loại sân</h6>
-                <canvas id="donutChart" height="180"></canvas>
-            </div>
-        </div>
-    </div>
 
-    <!-- TOP COURTS TABLE -->
-    <div class="card shadow-sm">
-        <div class="card-header bg-white fw-bold">🏆 Top sân theo doanh thu</div>
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead style="background:#f8fafc">
-                    <tr>
-                        <th>#</th><th>Tên sân</th><th>Chi nhánh</th>
-                        <th>Loại sân</th><th>Booking</th>
-                        <th>Doanh thu</th><th>Tỉ lệ lấp đầy</th>
-                    </tr>
-                </thead>
-                <tbody id="topBody">
-                    <tr><td colspan="7" class="text-center p-4 text-muted">Đang tải...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+        <!-- ══ MAIN CONTENT (hidden while loading) ══ -->
+        <div id="mainContent" style="display:none; flex-direction:column; gap:20px;">
+
+            <!-- 4 SUMMARY CARDS -->
+            <div class="rv-summary-grid">
+                <div class="rv-card rv-card-revenue">
+                    <div class="rv-card-icon">💰</div>
+                    <div>
+                        <p class="rv-card-label">Tổng doanh thu</p>
+                        <p class="rv-card-value" id="sTotalRev">—</p>
+                        <span id="sGrowth"></span>
+                    </div>
+                </div>
+                <div class="rv-card rv-card-booking">
+                    <div class="rv-card-icon">🏸</div>
+                    <div>
+                        <p class="rv-card-label">Doanh thu Booking</p>
+                        <p class="rv-card-value" id="sBookingRev">—</p>
+                        <span class="rv-card-sub" id="sCompletedB"></span>
+                    </div>
+                </div>
+                <div class="rv-card rv-card-order">
+                    <div class="rv-card-icon">🛒</div>
+                    <div>
+                        <p class="rv-card-label">Doanh thu đơn hàng</p>
+                        <p class="rv-card-value" id="sOrderRev">—</p>
+                        <span class="rv-card-sub" id="sTotalOrders"></span>
+                    </div>
+                </div>
+                <div class="rv-card rv-card-avg">
+                    <div class="rv-card-icon">📈</div>
+                    <div>
+                        <p class="rv-card-label">Trung bình / ngày</p>
+                        <p class="rv-card-value" id="sAvgDay">—</p>
+                        <span class="rv-card-sub" id="sCancelled"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <div class="rv-tabs">
+                <button class="rv-tab active" onclick="switchTab('overview',this)">📊 Tổng quan</button>
+                <button class="rv-tab" onclick="switchTab('courts',this)">🏸 Top sân</button>
+                <button class="rv-tab" onclick="switchTab('bookings',this)">📋 Booking</button>
+            </div>
+
+            <!-- ══ TAB: TỔNG QUAN ══ -->
+            <div class="rv-tab-content visible" id="tab-overview">
+
+                <!-- [1] Area chart -->
+                <div class="rv-panel rv-panel-full">
+                    <div class="rv-panel-header">
+                        <h2 class="rv-panel-title">📈 Doanh thu theo kỳ</h2>
+                        <div class="rv-chart-legend">
+                            <span class="rv-dot-teal"></span>Booking
+                            <span class="rv-dot-amber"></span>Đơn hàng
+                        </div>
+                    </div>
+                    <canvas id="areaChart" height="100"></canvas>
+                </div>
+
+                <div class="rv-two-col">
+                    <!-- [2] Stacked bar -->
+                    <div class="rv-panel">
+                        <div class="rv-panel-header">
+                            <h2 class="rv-panel-title">🏢 Doanh thu theo chi nhánh</h2>
+                        </div>
+                        <canvas id="branchChart" height="140"></canvas>
+                    </div>
+                    <!-- [3] Donut court type -->
+                    <div class="rv-panel">
+                        <div class="rv-panel-header">
+                            <h2 class="rv-panel-title">🎯 Tỉ trọng theo loại sân</h2>
+                        </div>
+                        <div id="donutEmpty" class="rv-chart-empty" style="display:none">Chưa có dữ liệu</div>
+                        <canvas id="donutChart" height="140"></canvas>
+                    </div>
+                </div>
+
+                <!-- [4] Line chart -->
+                <div class="rv-panel rv-panel-full">
+                    <div class="rv-panel-header">
+                        <h2 class="rv-panel-title">📉 So sánh Booking vs Đơn hàng theo kỳ</h2>
+                    </div>
+                    <canvas id="lineChart" height="80"></canvas>
+                </div>
+            </div>
+
+            <!-- ══ TAB: TOP SÂN ══ -->
+            <div class="rv-tab-content" id="tab-courts">
+                <div class="rv-two-col">
+                    <!-- [5] Horizontal bar -->
+                    <div class="rv-panel">
+                        <div class="rv-panel-header">
+                            <h2 class="rv-panel-title">🏆 Top sân theo doanh thu</h2>
+                        </div>
+                        <div id="topBarEmpty" class="rv-chart-empty" style="display:none">Chưa có dữ liệu</div>
+                        <canvas id="topBarChart" height="200"></canvas>
+                    </div>
+                    <!-- [6] Pie occupancy -->
+                    <div class="rv-panel">
+                        <div class="rv-panel-header">
+                            <h2 class="rv-panel-title">⭕ Tỉ lệ lấp đầy Top 5</h2>
+                        </div>
+                        <div id="occEmpty" class="rv-chart-empty" style="display:none">Chưa có dữ liệu</div>
+                        <canvas id="occChart" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- Detail table -->
+                <div class="rv-panel" style="padding:0; overflow:hidden;">
+                    <div style="padding:16px 18px 0;">
+                        <h2 class="rv-panel-title">📋 Bảng chi tiết</h2>
+                    </div>
+                    <table class="rv-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Sân</th>
+                                <th>Chi nhánh</th>
+                                <th>Loại sân</th>
+                                <th>Booking</th>
+                                <th>Doanh thu</th>
+                                <th>Lấp đầy</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topBody">
+                            <tr><td colspan="7" class="rv-empty-td">Chưa có dữ liệu</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ══ TAB: BOOKING ══ -->
+            <div class="rv-tab-content" id="tab-bookings">
+
+                <!-- 4 mini cards -->
+                <div class="rv-summary-grid" id="bookingCards"></div>
+
+                <div class="rv-two-col">
+                    <!-- [7] Donut trạng thái -->
+                    <div class="rv-panel">
+                        <div class="rv-panel-header">
+                            <h2 class="rv-panel-title">🥧 Tỉ lệ trạng thái booking</h2>
+                        </div>
+                        <div id="statusDonutEmpty" class="rv-chart-empty" style="display:none">Chưa có dữ liệu</div>
+                        <canvas id="statusDonut" height="160"></canvas>
+                        <div class="rv-avg-row">
+                            <span class="rv-avg-label">TB / booking đã xác nhận:</span>
+                            <span class="rv-avg-value" id="avgBookingVal">—</span>
+                        </div>
+                    </div>
+                    <!-- [8] Peak hours bar -->
+                    <div class="rv-panel">
+                        <div class="rv-panel-header">
+                            <h2 class="rv-panel-title">🕐 Phân bổ booking theo giờ</h2>
+                        </div>
+                        <canvas id="peakChart" height="160"></canvas>
+                    </div>
+                </div>
+
+                <!-- [9] Xu hướng booking -->
+                <div class="rv-panel rv-panel-full">
+                    <div class="rv-panel-header">
+                        <h2 class="rv-panel-title">📊 Xu hướng số lượng booking theo kỳ</h2>
+                    </div>
+                    <canvas id="trendChart" height="80"></canvas>
+                </div>
+            </div>
+
+        </div><!-- /mainContent -->
+    </main>
 </div>
 
 @section Scripts {
-<script>
-const API   = 'http://localhost:5043/api';
-const token = '@Context.Session.GetString("AuthToken")';
-let lineChart = null, branchChart = null, donutChart = null;
+    <script>
+        // ══════════════════════════════════════════════════════
+        //  CONFIG
+        // ══════════════════════════════════════════════════════
+        const API_BASE = 'http://localhost:5043/api/admin/revenue';
+        const TOKEN    = '@Context.Session.GetString("AuthToken")';
+        const HEADERS  = { 'Authorization': 'Bearer ' + TOKEN };
 
-// Khởi tạo ngày mặc định 30 ngày
-const endD = new Date(), startD = new Date();
-startD.setDate(startD.getDate() - 30);
-document.getElementById('endDate').value   = endD.toISOString().split('T')[0];
-document.getElementById('startDate').value = startD.toISOString().split('T')[0];
+        const C = {
+            primary:'#0f766e', light:'#14b8a6', dark:'#0d5e58', tealXL:'#5eead4',
+            amber:'#f59e0b', blue:'#3b82f6', purple:'#8b5cf6',
+            green:'#10b981', red:'#ef4444', slate:'#94a3b8'
+        };
+        const PIE_COLORS = [C.primary, C.amber, C.blue, C.purple, '#ec4899', C.green];
 
-function preset(days) {
-    const e = new Date(), s = new Date();
-    s.setDate(s.getDate() - days);
-    document.getElementById('endDate').value   = e.toISOString().split('T')[0];
-    document.getElementById('startDate').value = s.toISOString().split('T')[0];
-    document.getElementById('period').value    = days <= 30 ? 'day' : 'month';
-    loadAll();
-}
+        // Chart instances
+        let chartArea=null, chartBranch=null, chartDonut=null, chartLine=null;
+        let chartTopBar=null, chartOcc=null, chartStatusDonut=null, chartPeak=null, chartTrend=null;
 
-function qs() {
-    return new URLSearchParams({
-        startDate: document.getElementById('startDate').value,
-        endDate:   document.getElementById('endDate').value,
-        period:    document.getElementById('period').value
-    }).toString();
-}
+        // ══════════════════════════════════════════════════════
+        //  INIT DATES
+        // ══════════════════════════════════════════════════════
+        (function initDates(){
+            const end   = new Date();
+            const start = new Date();
+            start.setDate(start.getDate() - 30);
+            document.getElementById('endDate').value   = toDateStr(end);
+            document.getElementById('startDate').value = toDateStr(start);
+        })();
 
-async function loadAll() {
-    const q = qs();
-    const [sumRes, branchRes, ctRes, periodRes, topRes] = await Promise.all([
-        fetch(`${API}/admin/revenue/summary?${q}`,      { headers:{ 'Authorization':'Bearer '+token } }),
-        fetch(`${API}/admin/revenue/by-branch?${q}`,    { headers:{ 'Authorization':'Bearer '+token } }),
-        fetch(`${API}/admin/revenue/by-court-type?${q}`,{ headers:{ 'Authorization':'Bearer '+token } }),
-        fetch(`${API}/admin/revenue/by-period?${q}`,    { headers:{ 'Authorization':'Bearer '+token } }),
-        fetch(`${API}/admin/revenue/top-courts?${q}&top=8`,{ headers:{ 'Authorization':'Bearer '+token } }),
-    ]);
+        function toDateStr(d){ return d.toISOString().slice(0,10); }
 
-    const [sum, branches, courtTypes, period, tops] = await Promise.all([
-        sumRes.json(), branchRes.json(), ctRes.json(), periodRes.json(), topRes.json()
-    ]);
+        function getQS(){
+            return new URLSearchParams({
+                startDate: document.getElementById('startDate').value,
+                endDate:   document.getElementById('endDate').value,
+                period:    document.getElementById('period').value
+            }).toString();
+        }
 
-    renderSummary(sum);
-    renderLineChart(period);
-    renderBranchChart(branches);
-    renderDonut(courtTypes);
-    renderTop(tops);
-}
+        // ══════════════════════════════════════════════════════
+        //  PRESET
+        // ══════════════════════════════════════════════════════
+        function applyPreset(days, idx){
+            const end = new Date(), start = new Date();
+            start.setDate(start.getDate() - days);
+            document.getElementById('endDate').value   = toDateStr(end);
+            document.getElementById('startDate').value = toDateStr(start);
+            document.getElementById('period').value    = days <= 30 ? 'day' : 'month';
+            document.querySelectorAll('.rv-preset').forEach((b,i) => b.classList.toggle('active', i===idx));
+            fetchAll();
+        }
 
-function renderSummary(s) {
-    document.getElementById('sTotalRev').textContent  = fmt(s.totalRevenue);
-    document.getElementById('sBookingRev').textContent= fmt(s.bookingRevenue);
-    document.getElementById('sOrderRev').textContent  = fmt(s.orderRevenue);
-    document.getElementById('sAvgDay').textContent    = fmt(s.avgRevenuePerDay);
-    document.getElementById('sCompletedB').textContent= `${s.completedBookings} đã xác nhận`;
-    document.getElementById('sTotalOrders').textContent=`${s.totalOrders} đơn hàng`;
-    document.getElementById('sTotalCus').textContent  = `${s.totalCustomers} khách hàng`;
-    const g = s.revenueGrowthRate;
-    document.getElementById('sGrowth').innerHTML =
-        `<span class="badge ${g>=0?'bg-success':'bg-danger'}">${g>=0?'▲':'▼'} ${Math.abs(g).toFixed(1)}%</span>`;
-}
+        // ══════════════════════════════════════════════════════
+        //  ERROR / LOADING
+        // ══════════════════════════════════════════════════════
+        function showError(msg){
+            document.getElementById('errorMsg').textContent = '⚠️ ' + msg;
+            document.getElementById('errorBanner').style.display = 'flex';
+        }
+        function hideError(){ document.getElementById('errorBanner').style.display = 'none'; }
+        function setLoading(on){
+            document.getElementById('loadingWrap').style.display = on ? 'flex' : 'none';
+            document.getElementById('mainContent').style.display = on ? 'none' : 'flex';
+        }
 
-function renderLineChart(data) {
-    if (lineChart) lineChart.destroy();
-    lineChart = new Chart(document.getElementById('lineChart'), {
-        type: 'line',
-        data: {
-            labels: data.map(d => d.label),
-            datasets: [
-                { label:'Booking', data: data.map(d=>d.bookingRevenue),
-                  borderColor:'#0f766e', backgroundColor:'rgba(15,118,110,.08)',
-                  fill:true, tension:.4, pointRadius:3 },
-                { label:'Đồ uống', data: data.map(d=>d.orderRevenue),
-                  borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.08)',
-                  fill:true, tension:.4, pointRadius:3, borderDash:[5,3] }
-            ]
-        },
-        options: {
-            responsive:true,
-            plugins:{ legend:{ position:'bottom' } },
-            scales:{
-                y:{ ticks:{ callback: v => fmtShort(v) } }
+        // ══════════════════════════════════════════════════════
+        //  FETCH ALL
+        // ══════════════════════════════════════════════════════
+        async function fetchAll(){
+            setLoading(true);
+            hideError();
+            const q = getQS();
+            try {
+                const [r1,r2,r3,r4,r5,r6] = await Promise.all([
+                    fetch(`${API_BASE}/summary?${q}`,       {headers:HEADERS}),
+                    fetch(`${API_BASE}/by-branch?${q}`,     {headers:HEADERS}),
+                    fetch(`${API_BASE}/by-court-type?${q}`, {headers:HEADERS}),
+                    fetch(`${API_BASE}/by-period?${q}`,     {headers:HEADERS}),
+                    fetch(`${API_BASE}/top-courts?${q}&top=8`,{headers:HEADERS}),
+                    fetch(`${API_BASE}/booking-stats?${q}`, {headers:HEADERS}),
+                ]);
+                if(!r1.ok) throw new Error(`Lỗi tải tổng quan (${r1.status})`);
+                const [sum,branches,courtTypes,periodData,topCourts,bookingStats] = await Promise.all([
+                    r1.json(),
+                    r2.ok ? r2.json() : [],
+                    r3.ok ? r3.json() : [],
+                    r4.ok ? r4.json() : [],
+                    r5.ok ? r5.json() : [],
+                    r6.ok ? r6.json() : null,
+                ]);
+                renderSummary(sum);
+                renderAreaChart(periodData);
+                renderBranchChart(branches);
+                renderDonutCourtType(courtTypes);
+                renderLineChart(periodData);
+                renderTopBar(topCourts);
+                renderOccupancy(topCourts);
+                renderTopTable(topCourts);
+                if(bookingStats){
+                    renderBookingCards(bookingStats);
+                    renderStatusDonut(bookingStats);
+                    renderPeakChart(bookingStats);
+                    renderTrendChart(periodData);
+                    document.getElementById('avgBookingVal').textContent = fmt(bookingStats.avgBookingValue);
+                }
+            } catch(e){
+                showError(e.message);
+            } finally {
+                setLoading(false);
             }
         }
-    });
-}
 
-function renderBranchChart(data) {
-    if (branchChart) branchChart.destroy();
-    branchChart = new Chart(document.getElementById('branchChart'), {
-        type: 'bar',
-        data: {
-            labels: data.map(d => d.branchName),
-            datasets: [
-                { label:'Sân', data: data.map(d=>d.bookingRevenue),
-                  backgroundColor:'#0f766e', stack:'a' },
-                { label:'Đồ uống', data: data.map(d=>d.orderRevenue),
-                  backgroundColor:'#f59e0b', stack:'a' }
-            ]
-        },
-        options: {
-            responsive:true,
-            plugins:{ legend:{ position:'bottom' } },
-            scales:{
-                y:{ ticks:{ callback: v => fmtShort(v) } }
-            }
+        // ══════════════════════════════════════════════════════
+        //  SUMMARY CARDS
+        // ══════════════════════════════════════════════════════
+        function renderSummary(s){
+            document.getElementById('sTotalRev').textContent  = fmt(s.totalRevenue);
+            document.getElementById('sBookingRev').textContent= fmt(s.bookingRevenue);
+            document.getElementById('sOrderRev').textContent  = fmt(s.orderRevenue);
+            document.getElementById('sAvgDay').textContent    = fmt(s.avgRevenuePerDay);
+            document.getElementById('sCompletedB').textContent= `${s.completedBookings} đã xác nhận`;
+            document.getElementById('sTotalOrders').textContent=`${s.totalOrders} đơn hàng`;
+            document.getElementById('sCancelled').textContent = `${s.cancelledBookings} booking hủy`;
+
+            const g = s.revenueGrowthRate;
+            document.getElementById('sGrowth').innerHTML =
+                `<span class="${g>=0?'rv-badge-pos':'rv-badge-neg'}">${g>=0?'▲':'▼'} ${Math.abs(g).toFixed(1)}%</span>`;
+
+            // header chips
+            document.getElementById('hTotalRev').textContent = fmtShort(s.totalRevenue);
+            document.getElementById('hBookings').textContent = s.totalBookings;
+            document.getElementById('hCustomers').textContent= s.totalCustomers;
+            document.getElementById('headerChips').style.display = 'flex';
         }
-    });
-}
 
-function renderDonut(data) {
-    if (donutChart) donutChart.destroy();
-    donutChart = new Chart(document.getElementById('donutChart'), {
-        type: 'doughnut',
-        data: {
-            labels: data.map(d => d.courtTypeName),
-            datasets: [{
-                data: data.map(d => d.totalRevenue),
-                backgroundColor: ['#0f766e','#f59e0b','#3b82f6','#8b5cf6','#ec4899']
-            }]
-        },
-        options: {
-            responsive:true,
-            plugins:{
-                legend:{ position:'bottom' },
-                tooltip:{ callbacks:{ label: ctx => ` ${fmtShort(ctx.raw)} (${data[ctx.dataIndex]?.percentage?.toFixed(1)}%)` } }
-            }
+        // ══════════════════════════════════════════════════════
+        //  CHART HELPERS
+        // ══════════════════════════════════════════════════════
+        function destroyAndCreate(existing, id, config){
+            if(existing) existing.destroy();
+            return new Chart(document.getElementById(id), config);
         }
-    });
-}
 
-function renderTop(tops) {
-    const medals = ['🥇','🥈','🥉'];
-    document.getElementById('topBody').innerHTML = tops.length
-        ? tops.map((c,i) => `
-            <tr>
-                <td class="fw-bold">${medals[i]||'#'+(i+1)}</td>
-                <td class="fw-bold">${c.courtName}</td>
-                <td class="text-muted small">${c.branchName}</td>
-                <td><span class="badge bg-light text-dark border">${c.courtTypeName}</span></td>
-                <td class="fw-bold">${c.totalBookings}</td>
-                <td class="fw-bold" style="color:#b45309">${fmt(c.totalRevenue)}</td>
-                <td>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="progress flex-grow-1" style="height:8px">
-                            <div class="progress-bar" style="width:${Math.min(c.occupancyRate,100)}%;background:#0f766e"></div>
-                        </div>
-                        <span class="small fw-bold" style="min-width:40px">${c.occupancyRate?.toFixed(1)}%</span>
+        const tickFont = { family:'Nunito', size:11 };
+        const axisStyle = { ticks:{ font:tickFont, color:C.slate }, grid:{ color:'#e2e8f0' }, border:{ display:false } };
+        const noGridX   = { ...axisStyle, grid:{ display:false } };
+
+        // [1] Area chart
+        function renderAreaChart(data){
+            chartArea = destroyAndCreate(chartArea, 'areaChart', {
+                type:'line',
+                data:{
+                    labels: data.map(d=>d.label),
+                    datasets:[
+                        { label:'Booking', data:data.map(d=>d.bookingRevenue),
+                          borderColor:C.primary, backgroundColor:'rgba(15,118,110,.12)',
+                          fill:true, tension:.4, pointRadius:0, borderWidth:2.5,
+                          pointHoverRadius:5 },
+                        { label:'Đơn hàng', data:data.map(d=>d.orderRevenue),
+                          borderColor:C.amber, backgroundColor:'rgba(245,158,11,.10)',
+                          fill:true, tension:.4, pointRadius:0, borderWidth:2.5,
+                          borderDash:[5,3], pointHoverRadius:5 }
+                    ]
+                },
+                options:{
+                    responsive:true, interaction:{ mode:'index', intersect:false },
+                    plugins:{ legend:{ position:'bottom', labels:{ font:{family:'Nunito',weight:'bold'}, boxWidth:12 } },
+                              tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${fmtShort(ctx.raw)}` } } },
+                    scales:{
+                        x:{ ...noGridX },
+                        y:{ ...axisStyle, ticks:{ ...axisStyle.ticks, callback:fmtShort } }
+                    }
+                }
+            });
+        }
+
+        // [2] Branch stacked bar
+        function renderBranchChart(data){
+            chartBranch = destroyAndCreate(chartBranch, 'branchChart', {
+                type:'bar',
+                data:{
+                    labels: data.map(d=>d.branchName),
+                    datasets:[
+                        { label:'Booking', data:data.map(d=>d.bookingRevenue), backgroundColor:C.primary, stack:'a', borderRadius:{topLeft:0,topRight:0} },
+                        { label:'Đơn hàng', data:data.map(d=>d.orderRevenue),  backgroundColor:C.amber,   stack:'a', borderRadius:{topLeft:6,topRight:6} }
+                    ]
+                },
+                options:{
+                    responsive:true,
+                    plugins:{ legend:{ position:'bottom', labels:{ font:{family:'Nunito',weight:'bold'}, boxWidth:12 } },
+                              tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${fmtShort(ctx.raw)}` } } },
+                    scales:{
+                        x:{ ...noGridX },
+                        y:{ ...axisStyle, ticks:{ ...axisStyle.ticks, callback:fmtShort } }
+                    }
+                }
+            });
+        }
+
+        // [3] Donut court type
+        function renderDonutCourtType(data){
+            const total = data.reduce((s,d)=>s+(d.totalRevenue||0),0);
+            if(!data.length || total===0){
+                document.getElementById('donutEmpty').style.display='block';
+                document.getElementById('donutChart').style.display='none'; return;
+            }
+            document.getElementById('donutEmpty').style.display='none';
+            document.getElementById('donutChart').style.display='block';
+            chartDonut = destroyAndCreate(chartDonut, 'donutChart', {
+                type:'doughnut',
+                data:{
+                    labels: data.map(d=>d.courtTypeName),
+                    datasets:[{ data:data.map(d=>d.totalRevenue), backgroundColor:PIE_COLORS, hoverOffset:8, borderWidth:3 }]
+                },
+                options:{
+                    responsive:true, cutout:'58%',
+                    plugins:{
+                        legend:{ position:'bottom', labels:{ font:{family:'Nunito',weight:'bold'}, boxWidth:12, padding:10 } },
+                        tooltip:{ callbacks:{
+                            label: ctx => {
+                                const pct = ((ctx.raw/total)*100).toFixed(1);
+                                return ` ${fmtShort(ctx.raw)} (${pct}%)`;
+                            }
+                        }}
+                    }
+                }
+            });
+        }
+
+        // [4] Line chart
+        function renderLineChart(data){
+            chartLine = destroyAndCreate(chartLine, 'lineChart', {
+                type:'line',
+                data:{
+                    labels: data.map(d=>d.label),
+                    datasets:[
+                        { label:'Booking', data:data.map(d=>d.bookingRevenue),
+                          borderColor:C.primary, backgroundColor:'transparent',
+                          tension:.4, pointRadius:3, borderWidth:2.5,
+                          pointBackgroundColor:C.primary },
+                        { label:'Đơn hàng', data:data.map(d=>d.orderRevenue),
+                          borderColor:C.amber, backgroundColor:'transparent',
+                          tension:.4, pointRadius:3, borderWidth:2.5,
+                          borderDash:[5,3], pointBackgroundColor:C.amber }
+                    ]
+                },
+                options:{
+                    responsive:true, interaction:{mode:'index',intersect:false},
+                    plugins:{ legend:{ position:'bottom', labels:{ font:{family:'Nunito',weight:'bold'}, boxWidth:12 } },
+                              tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${fmtShort(ctx.raw)}` } } },
+                    scales:{
+                        x:{ ...noGridX },
+                        y:{ ...axisStyle, ticks:{ ...axisStyle.ticks, callback:fmtShort } }
+                    }
+                }
+            });
+        }
+
+        // [5] Top courts horizontal bar
+        function renderTopBar(courts){
+            if(!courts.length){
+                document.getElementById('topBarEmpty').style.display='block';
+                document.getElementById('topBarChart').style.display='none'; return;
+            }
+            document.getElementById('topBarEmpty').style.display='none';
+            document.getElementById('topBarChart').style.display='block';
+            const reversed = [...courts].reverse();
+            const bgColors = reversed.map((_,i,arr)=>{
+                const pos = arr.length-1-i;
+                return pos===0?C.primary : pos===1?C.light : pos===2?C.tealXL : '#cbd5e1';
+            });
+            chartTopBar = destroyAndCreate(chartTopBar, 'topBarChart', {
+                type:'bar',
+                data:{
+                    labels: reversed.map(c=>c.courtName.length>14?c.courtName.slice(0,14)+'…':c.courtName),
+                    datasets:[{ label:'Doanh thu', data:reversed.map(c=>c.totalRevenue), backgroundColor:bgColors, borderRadius:6, borderSkipped:'left' }]
+                },
+                options:{
+                    indexAxis:'y', responsive:true,
+                    plugins:{ legend:{display:false},
+                              tooltip:{ callbacks:{ label: ctx => ` ${fmtShort(ctx.raw)}` } } },
+                    scales:{
+                        x:{ ...axisStyle, ticks:{ ...axisStyle.ticks, callback:fmtShort } },
+                        y:{ ...noGridX, ticks:{ font:{family:'Nunito',size:11,weight:'bold'}, color:'#334155' } }
+                    }
+                }
+            });
+        }
+
+        // [6] Occupancy polar / pie
+        function renderOccupancy(courts){
+            const top5 = courts.slice(0,5);
+            if(!top5.length){
+                document.getElementById('occEmpty').style.display='block';
+                document.getElementById('occChart').style.display='none'; return;
+            }
+            document.getElementById('occEmpty').style.display='none';
+            document.getElementById('occChart').style.display='block';
+            chartOcc = destroyAndCreate(chartOcc, 'occChart', {
+                type:'polarArea',
+                data:{
+                    labels: top5.map(c=>c.courtName),
+                    datasets:[{
+                        data: top5.map(c=>Math.min(c.occupancyRate||0,100)),
+                        backgroundColor:[C.primary,C.light,C.tealXL,C.amber,C.blue].map(c=>c+'cc'),
+                        borderColor:[C.primary,C.light,C.tealXL,C.amber,C.blue],
+                        borderWidth:2
+                    }]
+                },
+                options:{
+                    responsive:true,
+                    scales:{ r:{ ticks:{ display:false }, grid:{ color:'#e2e8f0' }, max:100 } },
+                    plugins:{
+                        legend:{ position:'bottom', labels:{ font:{family:'Nunito',weight:'bold'}, boxWidth:12 } },
+                        tooltip:{ callbacks:{ label: ctx => ` ${ctx.raw.toFixed(1)}% lấp đầy` } }
+                    }
+                }
+            });
+        }
+
+        // Top table
+        function renderTopTable(courts){
+            const medals = ['🥇','🥈','🥉'];
+            document.getElementById('topBody').innerHTML = courts.length
+                ? courts.map((c,i)=>`
+                    <tr style="animation-delay:${i*0.05}s">
+                        <td class="rv-td-id">${medals[i]||'#'+(i+1)}</td>
+                        <td><span class="rv-court-name">${c.courtName}</span></td>
+                        <td class="rv-muted">${c.branchName}</td>
+                        <td><span class="rv-type-badge">${c.courtTypeName}</span></td>
+                        <td style="font-weight:800">${c.totalBookings}</td>
+                        <td class="rv-td-rev">${fmt(c.totalRevenue)}</td>
+                        <td>
+                            <div class="rv-occ-wrap">
+                                <div class="rv-occ-track">
+                                    <div class="rv-occ-fill" style="width:${Math.min(c.occupancyRate||0,100)}%"></div>
+                                </div>
+                                <span class="rv-occ-pct">${(c.occupancyRate||0).toFixed(1)}%</span>
+                            </div>
+                        </td>
+                    </tr>`).join('')
+                : '<tr><td colspan="7" class="rv-empty-td">Chưa có dữ liệu</td></tr>';
+        }
+
+        // Booking tab cards
+        function renderBookingCards(bs){
+            const cards = [
+                { label:'Tổng booking',    value:bs.totalBookings,     color:C.primary, icon:'📊' },
+                { label:'Chờ xác nhận',    value:bs.pendingBookings,   color:C.amber,   icon:'⏳' },
+                { label:'Đã xác nhận',     value:bs.confirmedBookings, color:C.blue,    icon:'✅' },
+                { label:'Đã hủy',          value:bs.cancelledBookings, color:C.red,     icon:'🚫' },
+            ];
+            document.getElementById('bookingCards').innerHTML = cards.map((s,i)=>`
+                <div class="rv-card" style="border-left-color:${s.color};animation-delay:${i*0.07}s">
+                    <div class="rv-card-icon">${s.icon}</div>
+                    <div>
+                        <p class="rv-card-label">${s.label}</p>
+                        <p class="rv-card-value" style="color:${s.color}">${s.value}</p>
                     </div>
-                </td>
-            </tr>`).join('')
-        : '<tr><td colspan="7" class="text-center p-4 text-muted">Chưa có dữ liệu</td></tr>';
-}
+                </div>`).join('');
+        }
 
-async function exportCsv() {
-    const res  = await fetch(`${API}/admin/revenue/export?${qs()}`, { headers:{ 'Authorization':'Bearer '+token } });
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `revenue_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
+        // [7] Status donut
+        function renderStatusDonut(bs){
+            const data = [
+                { name:'Đã xác nhận', value:bs.confirmedBookings, color:C.blue },
+                { name:'Chờ xác nhận', value:bs.pendingBookings,  color:C.amber },
+                { name:'Đã hủy',       value:bs.cancelledBookings, color:C.red },
+            ].filter(d=>d.value>0);
+            if(!data.length){
+                document.getElementById('statusDonutEmpty').style.display='block';
+                document.getElementById('statusDonut').style.display='none'; return;
+            }
+            document.getElementById('statusDonutEmpty').style.display='none';
+            document.getElementById('statusDonut').style.display='block';
+            chartStatusDonut = destroyAndCreate(chartStatusDonut, 'statusDonut', {
+                type:'doughnut',
+                data:{
+                    labels: data.map(d=>d.name),
+                    datasets:[{ data:data.map(d=>d.value), backgroundColor:data.map(d=>d.color), hoverOffset:8, borderWidth:3 }]
+                },
+                options:{
+                    responsive:true, cutout:'52%',
+                    plugins:{
+                        legend:{ position:'bottom', labels:{ font:{family:'Nunito',weight:'bold'}, boxWidth:12 } },
+                        tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.raw}` } }
+                    }
+                }
+            });
+        }
 
-function fmt(n)      { return new Intl.NumberFormat('vi-VN').format(Math.round(n||0)) + 'đ'; }
-function fmtShort(n) {
-    if (n >= 1e9) return (n/1e9).toFixed(1) + ' tỷ';
-    if (n >= 1e6) return (n/1e6).toFixed(1) + ' tr';
-    if (n >= 1e3) return (n/1e3).toFixed(0) + 'k';
-    return String(n);
-}
+        // [8] Peak hours bar
+        function renderPeakChart(bs){
+            const peakMap = {};
+            (bs.peakHours||[]).forEach(h=>{ peakMap[h.hour]=h.totalBookings; });
+            const maxVal = Math.max(...Object.values(peakMap), 1);
+            const labels=[], values=[], colors=[];
+            for(let h=0;h<24;h++){
+                labels.push(String(h).padStart(2,'0')+'h');
+                const v = peakMap[h]||0;
+                values.push(v);
+                colors.push(v===0?'#e2e8f0': v>=maxVal*.75?C.primary: v>=maxVal*.4?C.light: '#5eead4');
+            }
+            chartPeak = destroyAndCreate(chartPeak, 'peakChart', {
+                type:'bar',
+                data:{ labels, datasets:[{ data:values, backgroundColor:colors, borderRadius:4, borderSkipped:'bottom' }] },
+                options:{
+                    responsive:true,
+                    plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>` ${ctx.raw} booking` } } },
+                    scales:{
+                        x:{ ...noGridX, ticks:{ font:{family:'Nunito',size:9}, color:C.slate } },
+                        y:{ ...axisStyle, ticks:{ ...axisStyle.ticks, stepSize:1 } }
+                    }
+                }
+            });
+        }
 
-loadAll();
-</script>
+        // [9] Trend bookings bar
+        function renderTrendChart(data){
+            chartTrend = destroyAndCreate(chartTrend, 'trendChart', {
+                type:'bar',
+                data:{
+                    labels: data.map(d=>d.label),
+                    datasets:[{ label:'Số booking', data:data.map(d=>d.totalBookings), backgroundColor:C.primary, borderRadius:4, borderSkipped:'bottom' }]
+                },
+                options:{
+                    responsive:true,
+                    plugins:{ legend:{ position:'bottom', labels:{ font:{family:'Nunito',weight:'bold'}, boxWidth:12 } },
+                              tooltip:{ callbacks:{ label:ctx=>` ${ctx.raw} booking` } } },
+                    scales:{
+                        x:{ ...noGridX },
+                        y:{ ...axisStyle, ticks:{ ...axisStyle.ticks, stepSize:1 } }
+                    }
+                }
+            });
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  TABS
+        // ══════════════════════════════════════════════════════
+        function switchTab(id, el){
+            document.querySelectorAll('.rv-tab').forEach(t=>t.classList.remove('active'));
+            document.querySelectorAll('.rv-tab-content').forEach(t=>t.classList.remove('visible'));
+            el.classList.add('active');
+            document.getElementById('tab-'+id).classList.add('visible');
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  EXPORT CSV
+        // ══════════════════════════════════════════════════════
+        async function handleExport(){
+            const btn = document.getElementById('btnExport');
+            btn.disabled=true;
+            btn.innerHTML='<span class="rv-spinner-sm"></span><span>Đang xuất...</span>';
+            try {
+                const res  = await fetch(`${API_BASE}/export?${getQS()}`, {headers:HEADERS});
+                if(!res.ok) throw new Error('Export thất bại');
+                const blob = await res.blob();
+                const url  = URL.createObjectURL(blob);
+                const a    = document.createElement('a');
+                a.href=url; a.download=`revenue_${document.getElementById('startDate').value}_${document.getElementById('endDate').value}.csv`;
+                a.click(); URL.revokeObjectURL(url);
+            } catch(e){ showError(e.message); }
+            finally {
+                btn.disabled=false;
+                btn.innerHTML='<span>⬇️</span><span>Xuất CSV</span>';
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  FORMAT HELPERS
+        // ══════════════════════════════════════════════════════
+        function fmt(n){ return new Intl.NumberFormat('vi-VN').format(Math.round(n||0))+'đ'; }
+        function fmtShort(n){
+            if(n==null) return '—';
+            if(n>=1e9) return (n/1e9).toFixed(1)+' tỷ';
+            if(n>=1e6) return (n/1e6).toFixed(1)+' tr';
+            if(n>=1e3) return (n/1e3).toFixed(0)+'k';
+            return String(n);
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  LOGOUT
+        // ══════════════════════════════════════════════════════
+        function handleLogout(){
+            if(confirm('Bạn có chắc chắn muốn đăng xuất?')){
+                window.location.href='/admin/login';
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  KICK OFF
+        // ══════════════════════════════════════════════════════
+        fetchAll();
+    </script>
 }

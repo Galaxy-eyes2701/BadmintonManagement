@@ -69,7 +69,7 @@ public class AuthController : ControllerBase
         if (user.Status != "active")
         {
             // Trả về mã lỗi 403 Forbidden thay vì 401
-            return StatusCode(403, new { message = "Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa. Vui lòng liên hệ Quản trị viên!" });
+            return StatusCode(403, new { message = "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên!" });
         }
 
         var token = _jwtService.GenerateToken(user);
