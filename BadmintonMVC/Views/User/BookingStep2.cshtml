@@ -225,7 +225,7 @@
         // Store in sessionStorage for step 3
         sessionStorage.setItem('bookingSlots', JSON.stringify(selectedSlots));
         sessionStorage.setItem('bookingSubtotal', subtotal);
-        sessionStorage.setItem('bookingDate', '@fmtDate');
+        sessionStorage.setItem('bookingDate', '@Html.Raw(fmtDate)');
 
         window.location.href = '/User/ConfirmBookingPage';
     }
