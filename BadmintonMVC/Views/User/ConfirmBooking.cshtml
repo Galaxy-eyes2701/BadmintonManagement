@@ -1,0 +1,222 @@
+@{
+    ViewData["Title"] = "Xác nhận đặt sân";
+    Layout = "_UserLayout";
+}
+
+@{
+    var bookingSlotsJson = Context.Session.GetString("BookingSlots") ?? "[]";
+    var bookingSubtotal = Context.Session.GetString("BookingSubtotal") ?? "0";
+    var bookingDate = Context.Session.GetString("BookingDate") ?? "";
+}
+
+<div class="booking-page">
+    <!-- Stepper -->
+    <div class="stepper">
+        <div class="step-item step-done">
+            <div class="step-circle">✓</div>
+            <span class="step-label">Chọn ngày & bộ lọc</span>
+            <div class="step-line"></div>
+        </div>
+        <div class="step-item step-done">
+            <div class="step-circle">✓</div>
+            <span class="step-label">Chọn sân & ca</span>
+            <div class="step-line"></div>
+        </div>
+        <div class="step-item step-current">
+            <div class="step-circle">3</div>
+            <span class="step-label">Xác nhận</span>
+        </div>
+    </div>
+
+    <!-- Step 3: Confirm -->
+    <section class="step3-section">
+        <div class="step3-layout">
+            <!-- Summary Card -->
+            <div class="summary-card">
+                <h2 class="card-title">📋 Thông tin đặt sân</h2>
+                
+                <div class="summary-section">
+                    <div class="summary-row">
+                        <span class="summary-label">📅 Ngày</span>
+                        <span id="displayDate">@bookingDate</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">🏸 Số ca</span>
+                        <span id="slotCount">0 ca</span>
+                    </div>
+                </div>
+
+                <div class="summary-section">
+                    <p class="section-sub-title">⏰ Ca đã chọn:</p>
+                    <div id="slotList"></div>
+                </div>
+
+                <!-- Voucher -->
+                <div class="voucher-section">
+                    <label class="form-label">🏷️ Mã giảm giá</label>
+                    <div class="voucher-row">
+                        <input type="text" id="voucherCode" class="voucher-input" placeholder="Nhập mã voucher..." />
+                        <button type="button" class="btn-apply-voucher" onclick="applyVoucher()">Áp dụng</button>
+                    </div>
+                    <p id="voucherMessage" class="voucher-message"></p>
+                </div>
+
+                <!-- Total -->
+                <div class="total-section">
+                    <div class="total-row">
+                        <span>Tạm tính</span>
+                        <span id="subtotalDisplay">0đ</span>
+                    </div>
+                    <div class="total-row discount-row" id="discountRow" style="display: none;">
+                        <span>Giảm voucher (<span id="voucherCodeDisplay"></span>)</span>
+                        <span id="discountDisplay">− 0đ</span>
+                    </div>
+                    <div class="total-row grand-total">
+                        <span>Tổng cộng</span>
+                        <strong id="totalDisplay">0đ</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Card -->
+            <div class="action-card">
+                <h2 class="card-title">💳 Xác nhận đặt sân</h2>
+                <p class="payment-note">
+                    💡 Trạng thái booking: <strong>pending</strong> → sẽ chuyển <strong>confirmed</strong> khi thanh toán tại quầy.
+                </p>
+                <div class="payment-amount-box">
+                    <span>Số tiền thanh toán tại sân</span>
+                    <strong class="payment-amount-num" id="finalAmountDisplay">0đ</strong>
+                </div>
+
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-danger">⚠️ @ViewBag.Error</div>
+                }
+
+                <button type="button" class="btn-confirm" id="confirmBtn" onclick="confirmBooking()">
+                    ✅ Xác nhận đặt sân
+                </button>
+                <a href="/User/Booking" class="btn-back-full">← Quay lại chọn giờ</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<form id="confirmForm" action="/User/ConfirmBooking" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="slotsJson" id="slotsJsonInput" />
+    <input type="hidden" name="voucherCode" id="voucherCodeInput" />
+</form>
+
+@section Scripts {
+<script>
+    let slots = [];
+    let subtotal = 0;
+    let discount = 0;
+    let appliedVoucher = null;
+
+    // Initialize from sessionStorage
+    function init() {
+        const slotsJson = sessionStorage.getItem('bookingSlots');
+        const subtotalVal = sessionStorage.getItem('bookingSubtotal');
+        const dateVal = sessionStorage.getItem('bookingDate');
+
+        if (slotsJson) {
+            slots = JSON.parse(slotsJson);
+            renderSlots();
+        }
+        if (subtotalVal) {
+            subtotal = parseFloat(subtotalVal);
+        }
+        if (dateVal) {
+            document.getElementById('displayDate').textContent = dateVal;
+        }
+
+        updateTotals();
+    }
+
+    function renderSlots() {
+        const container = document.getElementById('slotList');
+        container.innerHTML = slots.map(s => `
+            <div class="slot-row">
+                <span class="slot-row-left">
+                    <strong>${s.courtName}</strong>
+                    <small> ${s.startTime}–${s.endTime}</small>
+                </span>
+                <span class="slot-row-price">${formatCurrency(s.price)}</span>
+            </div>
+        `).join('');
+
+        document.getElementById('slotCount').textContent = slots.length + ' ca';
+    }
+
+    function updateTotals() {
+        const total = Math.max(0, subtotal - discount);
+        
+        document.getElementById('subtotalDisplay').textContent = formatCurrency(subtotal);
+        document.getElementById('totalDisplay').textContent = formatCurrency(total);
+        document.getElementById('finalAmountDisplay').textContent = formatCurrency(total);
+
+        if (discount > 0) {
+            document.getElementById('discountRow').style.display = 'flex';
+            document.getElementById('discountDisplay').textContent = '− ' + formatCurrency(discount);
+            document.getElementById('voucherCodeDisplay').textContent = appliedVoucher;
+        } else {
+            document.getElementById('discountRow').style.display = 'none';
+        }
+    }
+
+    async function applyVoucher() {
+        const code = document.getElementById('voucherCode').value.trim();
+        if (!code) return;
+
+        const msgEl = document.getElementById('voucherMessage');
+        msgEl.textContent = 'Đang kiểm tra...';
+        msgEl.className = 'voucher-message';
+
+        try {
+            const response = await fetch('/User/ValidateVoucher', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, totalAmount: subtotal })
+            });
+            const data = await response.json();
+
+            if (data.success && data.data?.isValid) {
+                discount = data.data.discountAmount || 0;
+                appliedVoucher = code;
+                msgEl.textContent = '✅ ' + (data.data.message || 'Áp dụng thành công');
+                msgEl.className = 'voucher-message voucher-success';
+                updateTotals();
+            } else {
+                discount = 0;
+                appliedVoucher = null;
+                msgEl.textContent = '❌ ' + (data.data?.message || data.message || 'Mã không hợp lệ');
+                msgEl.className = 'voucher-message voucher-error';
+                updateTotals();
+            }
+        } catch (err) {
+            msgEl.textContent = '❌ Lỗi: ' + err.message;
+            msgEl.className = 'voucher-message voucher-error';
+        }
+    }
+
+    function confirmBooking() {
+        if (slots.length === 0) {
+            alert('Không có ca nào được chọn');
+            return;
+        }
+
+        document.getElementById('slotsJsonInput').value = JSON.stringify(slots);
+        document.getElementById('voucherCodeInput').value = appliedVoucher || '';
+        document.getElementById('confirmForm').submit();
+    }
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    }
+
+    init();
+</script>
+}

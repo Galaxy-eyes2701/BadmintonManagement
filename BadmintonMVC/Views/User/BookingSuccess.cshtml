@@ -1,0 +1,138 @@
+@{
+    ViewData["Title"] = "Đặt sân thành công";
+    Layout = "_UserLayout";
+}
+
+@{
+    var successData = ViewBag.SuccessData;
+    var bookingId = 0;
+    var totalPrice = 0m;
+    var subTotal = 0m;
+    var discount = 0m;
+    var details = new List<JsonElement>();
+    
+    if (successData is JsonElement successEl && successEl.ValueKind != JsonValueKind.Undefined)
+    {
+        bookingId = successEl.GetProperty("bookingId").GetInt32();
+        totalPrice = successEl.GetProperty("totalPrice").GetDecimal();
+        subTotal = successEl.GetProperty("subTotal").GetDecimal();
+        if (successEl.TryGetProperty("discount", out JsonElement discountEl))
+        {
+            discount = discountEl.GetDecimal();
+        }
+        if (successEl.TryGetProperty("details", out JsonElement detailsEl))
+        {
+            details = detailsEl.EnumerateArray().ToList();
+        }
+    }
+    
+    var firstDetail = details.FirstOrDefault();
+    var depositAmount = Math.Ceiling(totalPrice / 2);
+    var remainingAmount = totalPrice - depositAmount;
+}
+
+<div class="success-wrap">
+    <div class="success-card">
+        <div class="success-anim">✅</div>
+        <h2 class="success-title">Đặt sân thành công!</h2>
+        <p class="success-desc">Mã booking #@bookingId đã được ghi nhận.</p>
+
+        <div class="success-info">
+            @if (firstDetail.ValueKind != JsonValueKind.Undefined)
+            {
+                <div class="success-row">
+                    <span>🏸 Sân</span>
+                    <strong>@firstDetail.GetProperty("courtName").GetString()</strong>
+                </div>
+                <div class="success-row">
+                    <span>📍 Chi nhánh</span>
+                    <strong>@firstDetail.GetProperty("branchName").GetString()</strong>
+                </div>
+                <div class="success-row">
+                    <span>📅 Ngày</span>
+                    <strong>@firstDetail.GetProperty("playDate").GetString()</strong>
+                </div>
+                <div class="success-row">
+                    <span>⏰ Ca chơi</span>
+                    <strong>@string.Join(", ", details.Select(d => d.GetProperty("timeSlot").GetString()))</strong>
+                </div>
+            }
+            <div class="success-row">
+                <span>💵 Tạm tính</span>
+                <strong>@subTotal.ToString("N0")đ</strong>
+            </div>
+            @if (discount > 0)
+            {
+                <div class="success-row">
+                    <span>🏷️ Giảm giá</span>
+                    <strong>− @discount.ToString("N0")đ</strong>
+                </div>
+            }
+            <div class="success-row">
+                <span>💰 Tổng tiền sân</span>
+                <strong>@totalPrice.ToString("N0")đ</strong>
+            </div>
+        </div>
+
+        <!-- Deposit Payment Section -->
+        <div class="deposit-section">
+            <h3 class="deposit-title">💳 Thanh toán đặt cọc</h3>
+            <div class="deposit-info">
+                <div class="deposit-row">
+                    <span>Số tiền đặt cọc (50%):</span>
+                    <strong class="deposit-amount">@depositAmount.ToString("N0")đ</strong>
+                </div>
+                <div class="deposit-row">
+                    <span>Số tiền còn lại (trả tại sân):</span>
+                    <span>@remainingAmount.ToString("N0")đ</span>
+                </div>
+                <p class="deposit-note">
+                    * Bạn cần đặt cọc 50% để xác nhận booking. Số tiền còn lại sẽ thanh toán tại sân.
+                </p>
+            </div>
+
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger">⚠️ @ViewBag.Error</div>
+            }
+
+            <button type="button" class="btn-deposit" id="depositBtn" onclick="payDeposit()">
+                💳 Thanh toán đặt cọc @depositAmount.ToString("N0")đ
+            </button>
+            <a href="/User/Booking" class="btn-outline-action">Đặt thêm sân</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    async function payDeposit() {
+        const btn = document.getElementById('depositBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Đang xử lý...';
+
+        try {
+            const formData = new FormData();
+            formData.append('bookingId', @bookingId);
+
+            const response = await fetch('/User/CreateDepositPayment', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success && data.paymentUrl) {
+                window.location.href = data.paymentUrl;
+            } else {
+                alert(data.message || 'Không thể tạo thanh toán');
+                btn.disabled = false;
+                btn.textContent = '💳 Thanh toán đặt cọc @depositAmount.ToString("N0")đ';
+            }
+        } catch (err) {
+            alert('Lỗi: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = '💳 Thanh toán đặt cọc @depositAmount.ToString("N0")đ';
+        }
+    }
+</script>
+}

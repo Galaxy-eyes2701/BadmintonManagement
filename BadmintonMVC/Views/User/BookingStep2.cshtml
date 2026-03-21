@@ -1,0 +1,233 @@
+@{
+    ViewData["Title"] = "Chọn sân & ca";
+    Layout = "_UserLayout";
+}
+
+@{
+    var selectedDate = ViewBag.SelectedDate ?? "";
+    var fmtDate = "";
+    if (!string.IsNullOrEmpty(selectedDate))
+    {
+        var dt = DateTime.Parse(selectedDate);
+        var culture = new System.Globalization.CultureInfo("vi-VN");
+        fmtDate = dt.ToString("dddd, d MMMM yyyy", culture);
+    }
+}
+
+<div class="booking-page">
+    <!-- Stepper -->
+    <div class="stepper">
+        <div class="step-item step-done">
+            <div class="step-circle">✓</div>
+            <span class="step-label">Chọn ngày & bộ lọc</span>
+            <div class="step-line"></div>
+        </div>
+        <div class="step-item step-current">
+            <div class="step-circle">2</div>
+            <span class="step-label">Chọn sân & ca</span>
+            <div class="step-line"></div>
+        </div>
+        <div class="step-item">
+            <div class="step-circle">3</div>
+            <span class="step-label">Xác nhận</span>
+        </div>
+    </div>
+
+    <!-- Step 2: Select Court & Slots -->
+    <section class="step2-section">
+        <div class="step2-header">
+            <div>
+                <h1 class="page-title">🏸 Chọn sân & ca chơi</h1>
+                <p class="page-desc">Ngày: <strong>@fmtDate</strong></p>
+            </div>
+            <a href="/User/Booking" class="btn-back">← Thay đổi ngày</a>
+        </div>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger">⚠️ @ViewBag.Error</div>
+        }
+
+        @if (!(ViewBag.Courts is JsonElement courtsEl && courtsEl.ValueKind == JsonValueKind.Array && courtsEl.EnumerateArray().Any()))
+        {
+            <div class="empty-state">
+                <span class="empty-icon">🏟️</span>
+                <p>Không có sân trống vào ngày này.</p>
+                <p class="empty-hint">Hãy thử chọn ngày khác!</p>
+            </div>
+        }
+        else
+        {
+            <div class="court-grid" id="courtGrid">
+                @foreach (var court in courtsEl.EnumerateArray())
+                {
+                    var courtId = court.GetProperty("courtId").GetInt32();
+                    var courtName = court.GetProperty("courtName").GetString();
+                    var courtType = court.GetProperty("courtType").GetString();
+                    var branchName = court.GetProperty("branchName").GetString();
+                    var slots = court.GetProperty("availableSlots").EnumerateArray();
+                    int availCount = 0;
+                    foreach (var s in slots)
+                    {
+                        if (s.GetProperty("isAvailable").GetBoolean())
+                        {
+                            availCount++;
+                        }
+                    }
+
+                    <div class="court-card" data-court-id="@courtId" onclick="toggleCourt(@courtId)">
+                        <div class="court-card-header">
+                            <div>
+                                <h3 class="court-name">@courtName</h3>
+                                <p class="court-meta">📍 @branchName</p>
+                                <span class="court-type-badge">@courtType</span>
+                            </div>
+                            <div class="court-meta2">
+                                @if (availCount > 0)
+                                {
+                                    <span class="slots-avail">@availCount ca trống</span>
+                                }
+                                else
+                                {
+                                    <span class="slots-full">Hết ca</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="slots-wrap" id="slots-@courtId" style="display: none;">
+                            <p class="slots-label">Chọn ca chơi (có thể chọn nhiều):</p>
+                            <div class="slots-grid">
+                                @foreach (var slot in court.GetProperty("availableSlots").EnumerateArray())
+                                {
+                                    var slotId = slot.GetProperty("timeSlotId").GetInt32();
+                                    var startTime = slot.GetProperty("startTime").GetString();
+                                    var endTime = slot.GetProperty("endTime").GetString();
+                                    var price = slot.GetProperty("price").GetDecimal();
+                                    var isAvailable = slot.GetProperty("isAvailable").GetBoolean();
+
+                                    <button type="button" class="slot-btn @(isAvailable ? "" : "slot-busy")"
+                                            data-slot-id="@slotId"
+                                            data-court-id="@courtId"
+                                            data-court-name="@courtName"
+                                            data-start="@startTime"
+                                            data-end="@endTime"
+                                            data-price="@price"
+                                            onclick="event.stopPropagation(); toggleSlot(this)"
+                                            @(!isAvailable ? "disabled" : "")>
+                                        <span class="slot-time">@startTime – @endTime</span>
+                                        <span class="slot-price">@(isAvailable ? price.ToString("N0") + "đ" : "Đã đặt")</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <!-- Sticky Bar -->
+    <div class="sticky-bar" id="stickyBar" style="display: none;">
+        <div class="sticky-info">
+            <div>
+                <strong id="selectedCourtNames"></strong>
+                <span class="sticky-meta" id="selectedSlotInfo"></span>
+            </div>
+            <span class="sticky-total" id="subtotalDisplay">0đ</span>
+        </div>
+        <button class="btn-primary" onclick="goToStep3()">Tiếp tục: Xác nhận →</button>
+    </div>
+</div>
+
+<!-- Hidden form for step 3 -->
+<form id="step3Form" action="/User/ConfirmBooking" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="slotsJson" id="slotsJson" />
+    <input type="hidden" name="voucherCode" id="voucherCode" />
+</form>
+
+@section Scripts {
+<script>
+    let selectedSlots = [];
+    let subtotal = 0;
+
+    function toggleCourt(courtId) {
+        const slotsWrap = document.getElementById('slots-' + courtId);
+        const allSlotsWraps = document.querySelectorAll('.slots-wrap');
+        
+        allSlotsWraps.forEach(wrap => {
+            if (wrap.id !== 'slots-' + courtId) {
+                wrap.style.display = 'none';
+            }
+        });
+        
+        slotsWrap.style.display = slotsWrap.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleSlot(btn) {
+        const slotId = btn.dataset.slotId;
+        const courtId = btn.dataset.courtId;
+        const key = courtId + '_' + slotId;
+
+        if (btn.classList.contains('slot-selected')) {
+            btn.classList.remove('slot-selected');
+            selectedSlots = selectedSlots.filter(s => s.key !== key);
+        } else {
+            btn.classList.add('slot-selected');
+            selectedSlots.push({
+                key: key,
+                courtId: parseInt(courtId),
+                timeSlotId: parseInt(slotId),
+                playDate: '@ViewBag.SelectedDate',
+                courtName: btn.dataset.courtName,
+                startTime: btn.dataset.start,
+                endTime: btn.dataset.end,
+                price: parseFloat(btn.dataset.price)
+            });
+        }
+
+        updateStickyBar();
+    }
+
+    function updateStickyBar() {
+        const stickyBar = document.getElementById('stickyBar');
+        if (selectedSlots.length === 0) {
+            stickyBar.style.display = 'none';
+            return;
+        }
+
+        stickyBar.style.display = 'flex';
+
+        // Court names
+        const courtNames = [...new Set(selectedSlots.map(s => s.courtName))];
+        document.getElementById('selectedCourtNames').textContent = courtNames.join(', ');
+
+        // Slot info
+        const slotCount = selectedSlots.length;
+        const times = selectedSlots.map(s => s.startTime + '–' + s.endTime).join(', ');
+        document.getElementById('selectedSlotInfo').textContent = ' · ' + slotCount + ' ca · ' + times;
+
+        // Total
+        subtotal = selectedSlots.reduce((sum, s) => sum + s.price, 0);
+        document.getElementById('subtotalDisplay').textContent = formatCurrency(subtotal);
+    }
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    }
+
+    function goToStep3() {
+        if (selectedSlots.length === 0) {
+            alert('Vui lòng chọn ít nhất một ca chơi');
+            return;
+        }
+
+        // Store in sessionStorage for step 3
+        sessionStorage.setItem('bookingSlots', JSON.stringify(selectedSlots));
+        sessionStorage.setItem('bookingSubtotal', subtotal);
+        sessionStorage.setItem('bookingDate', '@fmtDate');
+
+        window.location.href = '/User/ConfirmBookingPage';
+    }
+</script>
+}

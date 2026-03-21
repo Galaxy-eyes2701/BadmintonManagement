@@ -1,0 +1,339 @@
+@{
+    ViewData["Title"] = "Lịch sử hoạt động";
+    Layout = "_UserLayout";
+}
+
+@{
+    var tab = ViewBag.Tab ?? "bookings";
+    var currentPage = ViewBag.CurrentPage ?? 1;
+    var totalPages = ViewBag.TotalPages ?? 1;
+    var totalCount = ViewBag.TotalCount ?? 0;
+}
+
+<div class="history-page">
+    <div class="page-header">
+        <h1 class="page-title">📋 Lịch sử hoạt động</h1>
+    </div>
+
+    <div class="tab-bar">
+        <a href="/User/History?tab=bookings" class="tab-btn @(tab == "bookings" ? "tab-active" : "")">
+            🏸 Lịch sử đặt sân
+        </a>
+        <a href="/User/History?tab=orders" class="tab-btn @(tab == "orders" ? "tab-active" : "")">
+            🛍️ Lịch sử mua hàng
+        </a>
+    </div>
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="alert alert-danger">⚠️ @ViewBag.Error</div>
+    }
+
+    @if (tab == "bookings")
+    {
+        <div class="list-wrap">
+            @if (!(ViewBag.Bookings is JsonElement bookingsEl && bookingsEl.ValueKind == JsonValueKind.Array && bookingsEl.EnumerateArray().Any()))
+            {
+                <div class="empty-state">
+                    <span class="empty-icon">🏸</span>
+                    <p>Bạn chưa có lịch đặt sân nào.</p>
+                    <p class="empty-hint">Đặt ngay để bắt đầu!</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var b in bookingsEl.EnumerateArray())
+                {
+                    var bookingId = b.GetProperty("bookingId").GetInt32();
+                    var status = b.GetProperty("status").GetString();
+                    var paymentStatus = b.TryGetProperty("paymentStatus", out JsonElement psEl) ? psEl.GetString() : "none";
+                    var totalPrice = b.GetProperty("totalPrice").GetDecimal();
+                    var firstCourtName = b.GetProperty("firstCourtName").GetString();
+                    var firstBranchName = b.GetProperty("firstBranchName").GetString();
+                    var firstPlayDate = b.GetProperty("firstPlayDate").GetString();
+                    var slotCount = b.GetProperty("slotCount").GetInt32();
+                    var createdAt = b.GetProperty("createdAt").GetDateTime();
+
+                    var statusLabel = status switch
+                    {
+                        "pending" => ("Chờ xác nhận", "🕐", "status-pending"),
+                        "confirmed" => ("Đã xác nhận", "✅", "status-confirmed"),
+                        "completed" => ("Hoàn thành", "🏆", "status-completed"),
+                        "cancelled" => ("Đã hủy", "❌", "status-cancelled"),
+                        _ => (status, "❓", "status-pending")
+                    };
+
+                    var payLabel = paymentStatus switch
+                    {
+                        "pending" => "Chưa thanh toán",
+                        "success" => "Đã thanh toán",
+                        "cancelled" => "Đã hủy TT",
+                        _ => "—"
+                    };
+
+                    <div class="booking-card" data-booking-id="@bookingId">
+                        <div class="booking-card-left">
+                            <div class="booking-id">#@bookingId</div>
+                            <div class="booking-info">
+                                <h3 class="booking-court">@firstCourtName</h3>
+                                <p class="booking-meta">📍 @firstBranchName</p>
+                                <p class="booking-meta">📅 @firstPlayDate @(slotCount > 1 ? $"· +{slotCount - 1} ca khác" : "")</p>
+                                <p class="booking-meta">🕐 @createdAt.ToString("dd/MM/yyyy HH:mm")</p>
+                            </div>
+                        </div>
+                        <div class="booking-card-right">
+                            <span class="status-badge @statusLabel.Item3">@statusLabel.Item2 @statusLabel.Item1</span>
+                            <span class="pay-badge">💳 @payLabel</span>
+                            <div class="booking-price">@totalPrice.ToString("N0")đ</div>
+                            <div class="booking-actions">
+                                @if (status == "pending" && paymentStatus != "success")
+                                {
+                                    <button class="btn-pay" onclick="payDeposit(@bookingId, @totalPrice)">💳 Đặt cọc</button>
+                                }
+                                <button class="btn-detail" onclick="viewDetail(@bookingId)">Chi tiết</button>
+                                @if ((status == "pending" || status == "confirmed") && paymentStatus != "success")
+                                {
+                                    <button class="btn-cancel" onclick="cancelBooking(@bookingId)">Hủy</button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+                
+                <!-- Pagination -->
+                @if (totalPages > 1)
+                {
+                    <div class="pagination">
+                        <span class="pagination-info">Hiển thị @((currentPage - 1) * 5 + 1)-@Math.Min(currentPage * 5, totalCount) của @totalCount kết quả</span>
+                        <div class="pagination-controls">
+                            @if (currentPage > 1)
+                            {
+                                <a href="/User/History?tab=bookings&page=@(currentPage - 1)" class="pagination-btn">← Trước</a>
+                            }
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                if (i == currentPage)
+                                {
+                                    <span class="pagination-btn pagination-active">@i</span>
+                                }
+                                else if (i == 1 || i == totalPages || (i >= currentPage - 1 && i <= currentPage + 1))
+                                {
+                                    <a href="/User/History?tab=bookings&page=@i" class="pagination-btn">@i</a>
+                                }
+                                else if (i == currentPage - 2 || i == currentPage + 2)
+                                {
+                                    <span class="pagination-dots">...</span>
+                                }
+                            }
+                            @if (currentPage < totalPages)
+                            {
+                                <a href="/User/History?tab=bookings&page=@(currentPage + 1)" class="pagination-btn">Sau →</a>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="list-wrap">
+            @if (!(ViewBag.Orders is JsonElement ordersEl && ordersEl.ValueKind == JsonValueKind.Array && ordersEl.EnumerateArray().Any()))
+            {
+                <div class="empty-state">
+                    <span class="empty-icon">🛍️</span>
+                    <p>Chưa có đơn hàng nào.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var o in ordersEl.EnumerateArray())
+                {
+                    var orderId = o.GetProperty("orderId").GetInt32();
+                    var orderTotal = o.GetProperty("totalAmount").GetDecimal();
+                    var orderDate = o.GetProperty("createdAt").GetDateTime();
+                    var orderBookingId = o.TryGetProperty("bookingId", out JsonElement obEl) ? obEl.GetInt32() : 0;
+                    var items = o.TryGetProperty("items", out JsonElement itemsEl) ? itemsEl.EnumerateArray().ToList() : new List<JsonElement>();
+
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div>
+                                <span class="order-id">Đơn #@orderId</span>
+                                @if (orderBookingId > 0)
+                                {
+                                    <span class="order-booking-ref">· Sân #@orderBookingId</span>
+                                }
+                            </div>
+                            <span class="order-date">@orderDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        <div class="order-items">
+                            @foreach (var item in items)
+                            {
+                                <div class="order-item">
+                                    <div class="order-item-info">
+                                        <span class="order-item-name">@item.GetProperty("productName").GetString()</span>
+                                        <span class="order-item-cat">@item.GetProperty("category").GetString()</span>
+                                    </div>
+                                    <span class="order-item-qty">×@item.GetProperty("quantity").GetInt32()</span>
+                                    <span class="order-item-price">@item.GetProperty("subTotal").GetDecimal().ToString("N0")đ</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="order-footer">
+                            <span class="order-total">Tổng: <strong>@orderTotal.ToString("N0")đ</strong></span>
+                            <span class="status-badge status-completed">✅ Đã mua</span>
+                        </div>
+                    </div>
+                }
+                
+                <!-- Pagination -->
+                @if (totalPages > 1)
+                {
+                    <div class="pagination">
+                        <span class="pagination-info">Hiển thị @((currentPage - 1) * 5 + 1)-@Math.Min(currentPage * 5, totalCount) của @totalCount kết quả</span>
+                        <div class="pagination-controls">
+                            @if (currentPage > 1)
+                            {
+                                <a href="/User/History?tab=orders&page=@(currentPage - 1)" class="pagination-btn">← Trước</a>
+                            }
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                if (i == currentPage)
+                                {
+                                    <span class="pagination-btn pagination-active">@i</span>
+                                }
+                                else if (i == 1 || i == totalPages || (i >= currentPage - 1 && i <= currentPage + 1))
+                                {
+                                    <a href="/User/History?tab=orders&page=@i" class="pagination-btn">@i</a>
+                                }
+                                else if (i == currentPage - 2 || i == currentPage + 2)
+                                {
+                                    <span class="pagination-dots">...</span>
+                                }
+                            }
+                            @if (currentPage < totalPages)
+                            {
+                                <a href="/User/History?tab=orders&page=@(currentPage + 1)" class="pagination-btn">Sau →</a>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    }
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal" style="display: none;">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3 class="modal-title">📋 Booking #<span id="modalBookingId"></span></h3>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Content loaded dynamically -->
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    async function viewDetail(bookingId) {
+        try {
+            const response = await fetch('/User/BookingDetail/' + bookingId);
+            const data = await response.json();
+
+            if (data.success) {
+                const d = data.data;
+                document.getElementById('modalBookingId').textContent = d.bookingId;
+
+                let html = `
+                    <div class="detail-row">
+                        <span class="detail-label">📊 Trạng thái</span>
+                        <span class="detail-value">${d.status}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">🕐 Thời gian đặt</span>
+                        <span class="detail-value">${new Date(d.createdAt).toLocaleString('vi-VN')}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">💰 Tổng tiền sân</span>
+                        <span class="detail-value">${d.totalPrice?.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                `;
+
+                if (d.details && d.details.length > 0) {
+                    html += '<div class="detail-section"><p class="detail-section-title">⏰ Chi tiết ca chơi:</p>';
+                    d.details.forEach(slot => {
+                        html += `
+                            <div class="detail-slot-row">
+                                <div><strong>${slot.courtName}</strong><small> · ${slot.branchName} · ${slot.courtType}</small></div>
+                                <div class="detail-slot-right">
+                                    <span>${slot.playDate} · ${slot.timeSlot}</span>
+                                    <span class="detail-slot-price">${slot.price?.toLocaleString('vi-VN')}đ</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+
+                if (d.canCancel) {
+                    html += `<button class="btn-cancel-modal" onclick="cancelBooking(${d.bookingId})">🗑️ Hủy booking này</button>`;
+                }
+
+                document.getElementById('modalBody').innerHTML = html;
+                document.getElementById('detailModal').style.display = 'flex';
+            }
+        } catch (err) {
+            alert('Lỗi: ' + err.message);
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('detailModal').style.display = 'none';
+    }
+
+    async function payDeposit(bookingId, totalPrice) {
+        if (!confirm('Bạn có muốn thanh toán đặt cọc 50% cho booking #' + bookingId + '?')) return;
+
+        try {
+            const formData = new FormData();
+            formData.append('bookingId', bookingId);
+
+            const response = await fetch('/User/CreateDepositPayment', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success && data.paymentUrl) {
+                window.location.href = data.paymentUrl;
+            } else {
+                alert(data.message || 'Không thể tạo thanh toán');
+            }
+        } catch (err) {
+            alert('Lỗi: ' + err.message);
+        }
+    }
+
+    async function cancelBooking(bookingId) {
+        if (!confirm('Bạn có chắc muốn hủy lịch đặt sân này không?')) return;
+
+        try {
+            const response = await fetch('/User/CancelBooking/' + bookingId, { method: 'POST' });
+            const data = await response.json();
+
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Hủy thất bại');
+            }
+        } catch (err) {
+            alert('Lỗi: ' + err.message);
+        }
+    }
+
+    document.getElementById('detailModal').addEventListener('click', closeModal);
+</script>
+}
