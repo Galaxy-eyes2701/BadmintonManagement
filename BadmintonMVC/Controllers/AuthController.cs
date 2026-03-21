@@ -22,9 +22,15 @@ public class AuthController : Controller
         var content = new StringContent(body, Encoding.UTF8, "application/json");
         var res = await _http.PostAsync($"{_api}/Auth/login", content);
 
+        if (res.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            ViewBag.Error = "Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa. Vui lòng liên hệ Quản trị viên!";
+            return View();
+        }
+
         if (!res.IsSuccessStatusCode)
         {
-            ViewBag.Error = "Sai so dien thoai hoac mat khau!";
+            ViewBag.Error = "Số điện thoại hoặc mật khẩu không chính xác!";
             return View();
         }
 
@@ -75,7 +81,7 @@ public class AuthController : Controller
     {
         if (password != confirmPassword)
         {
-            ViewBag.Error = "Mat khau xac nhan khong khop!";
+            ViewBag.Error = "Mật khẩu xác nhận không khớp!";
             return View();
         }
 
@@ -89,16 +95,16 @@ public class AuthController : Controller
             try
             {
                 var errorData = JsonSerializer.Deserialize<JsonElement>(errorJson);
-                ViewBag.Error = errorData.GetProperty("message").GetString() ?? "Dang ky that bai!";
+                ViewBag.Error = errorData.GetProperty("message").GetString() ?? "Đăng ký thất bại!";
             }
             catch
             {
-                ViewBag.Error = "Dang ky that bai. Vui long thu lai!";
+                ViewBag.Error = "Đăng ký thất bại. Vui lòng thử lại!";
             }
             return View();
         }
 
-        ViewBag.Success = "Dang ky thanh cong! Ban co the dang nhap ngay bay gio.";
+        ViewBag.Success = "Đăng ký thành công! Bạn có thể đăng nhập ngay bây giờ.";
         return View();
     }
 
@@ -110,7 +116,7 @@ public class AuthController : Controller
     {
         if (string.IsNullOrEmpty(phone))
         {
-            ViewBag.Error = "Vui long nhap so dien thoai!";
+            ViewBag.Error = "Vui lòng nhập số điện thoại!";
             return View();
         }
 
@@ -119,7 +125,7 @@ public class AuthController : Controller
         var res = await _http.PostAsync($"{_api}/Auth/forgot-password", content);
 
         // Always show success message for security (don't reveal if phone exists)
-        ViewBag.Success = "Neu so dien thoai ton tai trong he thong, huong dan dat lai mat khau se duoc gui cho ban.";
+        ViewBag.Success = "Nếu số điện thoại tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu sẽ được gửi cho bạn.";
         return View();
     }
 
