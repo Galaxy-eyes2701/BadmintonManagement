@@ -1,176 +1,816 @@
+@using System.Security.Claims
 @{
-    ViewData["Title"] = "Lịch Sân Hôm Nay";
-    ViewData["Page"]  = "schedule";
+    ViewData["Title"] = "Lịch Sân";
+    ViewData["Page"] = "schedule";
     Layout = "_StaffLayout";
-}
 
-<div class="p-4">
-    <!-- FILTER NGÀY -->
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <input type="date" id="selectedDate" class="form-control" style="width:200px"/>
-        <button class="btn btn-dark btn-sm" onclick="scrollToNow()">📍 Về giờ hiện tại</button>
-        <span class="text-muted small" id="loadingText"></span>
+
+    // ĐÃ FIX: Bỏ dấu @{ } dư thừa ở đây
+    var jwtToken = User.FindFirst("Token")?.Value
+                   ?? Context.Session.GetString("JwtToken")
+                   ?? "";
+}
+<style>
+    /* ── LAYOUT ─────────────────────────────────────────────── */
+    .sch-wrap {
+        padding: 16px;
+    }
+
+    .sch-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+
+    /* ── OVERTIME BANNER ─────────────────────────────────────── */
+    .ot-banner {
+        display: none;
+        background: #fef2f2;
+        border: 1.5px solid #fca5a5;
+        border-radius: 10px;
+        padding: 10px 16px;
+        margin-bottom: 12px;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .ot-banner.show {
+        display: flex;
+    }
+
+    /* ── GRID ────────────────────────────────────────────────── */
+    .grid-card {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, .07);
+    }
+
+    .grid-scroll {
+        overflow: auto;
+        max-height: calc(100vh - 220px);
+    }
+
+    table.sched {
+        border-collapse: collapse;
+        min-width: 100%;
+    }
+
+    table.sched thead {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+    }
+
+    table.sched th {
+        background: #0f172a;
+        color: white;
+        padding: 11px 16px;
+        text-align: center;
+        white-space: nowrap;
+        font-size: 13px;
+        border-right: 1px solid rgba(255, 255, 255, .08);
+    }
+
+    table.sched th:last-child {
+        border-right: none;
+    }
+
+    table.sched tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    table.sched tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    table.sched td {
+        vertical-align: middle;
+    }
+
+    /* ── TIME CELL ───────────────────────────────────────────── */
+    .tc {
+        min-width: 82px;
+        padding: 8px 10px;
+        text-align: center;
+        background: #f8fafc;
+        border-right: 1px solid #e2e8f0;
+    }
+
+    .tc-start {
+        font-size: 14px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .tc-end {
+        font-size: 11px;
+        color: #94a3b8;
+    }
+
+    .tc-now {
+        font-size: 9px;
+        font-weight: 800;
+        color: #f97316;
+        background: #fff7ed;
+        border-radius: 4px;
+        padding: 1px 5px;
+        margin-bottom: 2px;
+    }
+
+    /* ── SLOT CELLS ──────────────────────────────────────────── */
+    .slot {
+        min-width: 155px;
+        height: 72px;
+        padding: 0;
+        transition: filter .15s;
+    }
+
+    /* empty / maintenance */
+    .s-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fafafa;
+        color: #cbd5e1;
+        font-size: 12px;
+        height: 100%;
+    }
+
+    .s-maint {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fef9c3;
+        color: #92400e;
+        font-size: 12px;
+        height: 100%;
+    }
+
+    /* booked base */
+    .s-book {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 8px 12px;
+        height: 100%;
+        cursor: pointer;
+        border-left: 4px solid transparent;
+    }
+
+    .s-book:hover {
+        filter: brightness(.94);
+    }
+
+    /* states */
+    .s-waiting {
+        background: #eff6ff;
+        border-left-color: #3b82f6;
+    }
+
+    .s-active {
+        background: linear-gradient(135deg, #fff7ed, #fed7aa);
+        border-left-color: #f97316;
+        box-shadow: 0 0 0 2px rgba(249, 115, 22, .15);
+    }
+
+    .s-overtime {
+        background: linear-gradient(135deg, #fff1f2, #fecdd3);
+        border-left-color: #ef4444;
+        animation: pulse-ot 1.8s infinite;
+    }
+
+    .s-done {
+        background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+        border-left-color: #22c55e;
+        opacity: .75;
+        cursor: default;
+    }
+
+    @@keyframes pulse-ot {
+
+        0%,
+        100% {
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        }
+
+        50% {
+            box-shadow: 0 0 0 5px rgba(239, 68, 68, .22);
+        }
+    }
+
+    /* row highlight */
+    .row-now {
+        background: #fffbeb !important;
+    }
+
+    .row-now td {
+        background: #fffbeb !important;
+    }
+
+    /* slot info */
+    .s-name {
+        font-size: 12px;
+        font-weight: 800;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .s-phone {
+        font-size: 10px;
+        color: #64748b;
+        margin: 1px 0 3px;
+    }
+
+    .s-badge {
+        font-size: 10px;
+        font-weight: 700;
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 20px;
+        display: inline-block;
+    }
+
+    .b-waiting {
+        background: #3b82f6;
+    }
+
+    .b-active {
+        background: #f97316;
+    }
+
+    .b-overtime {
+        background: #ef4444;
+        animation: blink-it 1s infinite;
+    }
+
+    .b-done {
+        background: #22c55e;
+    }
+
+    .b-pending {
+        background: #f59e0b;
+        color: #1c1c1c;
+    }
+
+    @@keyframes blink-it {
+
+        0%,
+        100% {
+            opacity: 1
+        }
+
+        50% {
+            opacity: .5
+        }
+    }
+
+    /* legend */
+    .legend {
+        display: flex;
+        gap: 16px;
+        font-size: 11px;
+        color: #64748b;
+        flex-wrap: wrap;
+        margin-left: auto;
+    }
+
+    .legend span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        display: inline-block;
+        flex-shrink: 0;
+    }
+
+    /* ── MODAL ───────────────────────────────────────────────── */
+    .bill-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 14px;
+    }
+
+    .bill-total {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        font-size: 17px;
+        font-weight: 900;
+        border-top: 2px dashed #e2e8f0;
+        margin-top: 4px;
+    }
+
+    /* ── PRINT ───────────────────────────────────────────────── */
+    @@media screen {
+        #print-sec {
+            display: none !important;
+        }
+    }
+
+    @@media print {
+        @@page {
+            margin: 0;
+            size: 80mm auto;
+        }
+
+        body * {
+            visibility: hidden !important;
+        }
+
+        #print-sec,
+        #print-sec * {
+            visibility: visible !important;
+        }
+
+        header,
+        nav,
+        aside,
+        .sidebar {
+            display: none !important;
+        }
+
+        #print-sec {
+            display: block !important;
+            position: absolute !important;
+            left: 0;
+            top: 0;
+            width: 80mm !important;
+            padding: 6mm !important;
+            font-family: 'Courier New', monospace !important;
+            font-size: 12px !important;
+        }
+    }
+</style>
+
+<div class="sch-wrap">
+
+    <!-- TOOLBAR -->
+    <div class="sch-toolbar">
+        <input type="date" id="datePick" class="form-control form-control-sm" style="width:175px" />
+        <button class="btn btn-sm btn-outline-secondary" onclick="goToday()">📌 Hôm nay</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="scrollNow()">🎯 Hiện tại</button>
+        <span class="text-muted small" id="statusTxt"></span>
+
+        <div class="legend">
+            <span><span class="dot" style="background:#3b82f6"></span>Đã đặt</span>
+            <span><span class="dot" style="background:#f97316"></span>Đang đánh</span>
+            <span><span class="dot" style="background:#ef4444"></span>Quá giờ 🚨</span>
+            <span><span class="dot" style="background:#22c55e"></span>Hoàn tất</span>
+        </div>
     </div>
 
-    <!-- BẢNG LỊCH SÂN -->
-    <div class="card shadow-sm">
-        <div class="table-responsive" style="max-height:75vh;overflow-y:auto" id="scheduleContainer">
-            <table class="table table-bordered mb-0" id="scheduleTable">
-                <thead id="scheduleHead" class="sticky-top" style="background:#f8fafc"></thead>
-                <tbody id="scheduleBody"></tbody>
+    <!-- OVERTIME BANNER -->
+    <div class="ot-banner" id="otBanner">
+        <span style="font-size:26px">🚨</span>
+        <div>
+            <strong class="text-danger">Cảnh báo: Khách đang quá giờ!</strong>
+            <div class="small text-muted" id="otNames"></div>
+        </div>
+    </div>
+
+    <!-- GRID -->
+    <div class="grid-card">
+        <div class="grid-scroll" id="gridScroll">
+            <div id="loadBox" class="text-center p-5 text-muted">
+                <div class="spinner-border text-secondary mb-2"></div>
+                <div>Đang tải lịch sân...</div>
+            </div>
+            <table class="sched" id="schedTbl" style="display:none">
+                <thead>
+                    <tr id="schedHead"></tr>
+                </thead>
+                <tbody id="schedBody"></tbody>
             </table>
         </div>
     </div>
 </div>
 
-<!-- MODAL THANH TOÁN -->
-<div class="modal fade" id="checkoutModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">💰 Tất toán hóa đơn</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- ══ MODAL BILL ══ -->
+<div class="modal fade" id="billModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:460px">
+        <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+
+            <!-- Header -->
+            <div class="modal-header"
+                 style="background:linear-gradient(135deg,#0f766e,#14b8a6);color:white;border-radius:14px 14px 0 0">
+                <h5 class="modal-title fw-bold" id="billTitle">💰 Tất toán hóa đơn</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="checkoutBody">Đang tải...</div>
-            <div class="modal-footer">
-                <button class="btn btn-dark" onclick="checkout('CASH')">💵 Tiền mặt</button>
-                <button class="btn btn-primary" onclick="checkout('VNPAY')">📱 Chuyển khoản</button>
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+
+            <!-- Body -->
+            <div class="modal-body p-4" id="billBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-success"></div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer border-0 pt-0" id="billFoot" style="display:none">
+                <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="doPrint()">🖨️ In hóa đơn</button>
+                <button class="btn btn-warning btn-sm fw-bold" onclick="openExtend()">⏰ Gia hạn ca</button>
+                <button class="btn btn-success btn-sm fw-bold" onclick="doCheckout('Chuyển khoản')">📱 QR / CK</button>
+                <button class="btn btn-dark btn-sm fw-bold" onclick="doCheckout('Tiền mặt')">💵 Tiền mặt</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- ══ MODAL GIA HẠN ══ -->
+<div class="modal fade" id="extModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="border-radius:14px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">⏰ Gia hạn thêm ca</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Khách: <strong id="extCustName"></strong></p>
+                <p class="text-muted small mb-3">Sân: <strong id="extCourtName"></strong></p>
+                <div id="extSlotList">
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm text-secondary"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="print-sec"></div>
+
 @section Scripts {
-<script>
-const API = 'http://localhost:5043/api';
-const token = '@Context.Session.GetString("AuthToken")';
-let currentBookingId = null;
-let billData = null;
+    <script>
+                        const API = 'http://localhost:5043/api';
+                        const TOKEN = '@jwtToken';
+                        const H = { 'Authorization': 'Bearer ' + TOKEN };
+                        const HJ = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };
 
-// Set ngày hôm nay
-const dateInput = document.getElementById('selectedDate');
-dateInput.value = new Date().toISOString().split('T')[0];
-dateInput.addEventListener('change', loadSchedule);
+                        let schedData = [];
+                        let curBid = null, curBill = null, curCourtId = null, curCourtName = '', curSlotEnd = '', curCustName = '';
+                        let isToday = false;
 
-// Gọi API lấy lịch sân
-async function loadSchedule() {
-    document.getElementById('loadingText').textContent = 'Đang tải...';
-    const date = dateInput.value;
-    const res = await fetch(`${API}/staff/daily-schedule?date=${date}`, {
-        headers: { 'Authorization': 'Bearer ' + token }
-    });
-    const data = await res.json();
-    renderSchedule(data);
-    document.getElementById('loadingText').textContent = '';
-}
+                        // ── INIT ──────────────────────────────────────────────────
+                        const dp = document.getElementById('datePick');
+                        dp.value = todayStr();
+                        dp.addEventListener('change', loadSched);
+                        loadSched();
 
-function renderSchedule(courts) {
-    if (!courts.length) {
-        document.getElementById('scheduleBody').innerHTML =
-            '<tr><td colspan="20" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>';
-        return;
-    }
-    const slots = courts[0].schedule;
+                        function todayStr() { return new Date().toISOString().split('T')[0]; }
+                        function goToday() { dp.value = todayStr(); loadSched(); }
 
-    // Header: cột giờ + tên sân
-    let head = '<tr><th style="min-width:90px;background:#f8fafc">Giờ</th>';
-    courts.forEach(c => {
-        const color = c.status === 'maintenance' ? '#fef2f2' : '#f0fdf9';
-        head += `<th style="min-width:160px;background:${color};text-align:center">
-                    ${c.courtName}
-                    ${c.status==='maintenance'?'<br><small class="text-danger">Bảo trì</small>':''}
-                 </th>`;
-    });
-    head += '</tr>';
-    document.getElementById('scheduleHead').innerHTML = head;
+                        // ── LOAD ──────────────────────────────────────────────────
+                        async function loadSched() {
+                            document.getElementById('loadBox').style.display = '';
+                            document.getElementById('schedTbl').style.display = 'none';
+                            document.getElementById('statusTxt').textContent = 'Đang tải...';
+                            document.getElementById('otBanner').classList.remove('show');
 
-    // Body: từng khung giờ
-    let body = '';
-    slots.forEach((slot, idx) => {
-        const hour = parseInt(slot.time.split(':')[0]);
-        body += `<tr id="time-row-${hour}">
-                    <td class="text-center fw-bold" style="background:#f8fafc;font-size:13px">
-                        ${slot.time.split(' - ')[0]}
-                    </td>`;
-        courts.forEach(c => {
-            const s = c.schedule[idx];
-            if (s.isBooked) {
-                const isDone = s.bookingInfo.paymentStatus === 'completed';
-                const isPending = s.bookingInfo.paymentStatus === 'pending';
-                body += `<td style="background:${isDone?'#f1f5f9':'#eff6ff'};cursor:pointer;padding:8px"
-                             onclick="openCheckout(${s.bookingInfo.bookingId})">
-                            <div class="fw-bold" style="font-size:13px;${isDone?'text-decoration:line-through;color:#94a3b8':''}">${s.bookingInfo.customerName}</div>
-                            ${isDone ? '<small class="text-success">✅ Hoàn tất</small>' : ''}
-                            ${isPending ? '<small class="text-warning">⏳ Chờ duyệt</small>' : ''}
-                         </td>`;
-            } else {
-                const maint = c.status === 'maintenance';
-                body += `<td style="background:${maint?'#fef2f2':'white'};text-align:center;color:#94a3b8;font-size:12px">
-                            ${maint ? 'Bảo trì' : 'Trống'}
-                         </td>`;
-            }
-        });
-        body += '</tr>';
-    });
-    document.getElementById('scheduleBody').innerHTML = body;
-}
+                            isToday = (dp.value === todayStr());
 
-async function openCheckout(bookingId) {
-    currentBookingId = bookingId;
-    document.getElementById('checkoutBody').innerHTML = 'Đang tải...';
-    const modal = new bootstrap.Modal(document.getElementById('checkoutModal'));
-    modal.show();
+                            try {
+                                const res = await fetch(API + '/staff/daily-schedule?date=' + dp.value, { headers: H });
+                                schedData = await res.json();
+                                renderGrid();
+                                document.getElementById('statusTxt').textContent = '';
+                                if (isToday) { setTimeout(scrollNow, 400); checkOtBanner(); }
+                                if (isToday) setTimeout(() => location.reload(), 60000);
+                            } catch (e) {
+                                document.getElementById('loadBox').innerHTML = '<div class="text-danger fw-bold">❌ Không tải được dữ liệu</div>';
+                            }
+                        }
 
-    const res = await fetch(`${API}/staff/booking-bill/${bookingId}`, {
-        headers: { 'Authorization': 'Bearer ' + token }
-    });
-    billData = await res.json();
+                        // ── RENDER ────────────────────────────────────────────────
+                        function renderGrid() {
+                            if (!schedData.length) {
+                                document.getElementById('loadBox').innerHTML =
+                                    '<div style="font-size:56px;opacity:.1">🏸</div><p class="mt-3 text-muted">Không có sân nào cho ngày này.</p>';
+                                return;
+                            }
 
-    document.getElementById('checkoutBody').innerHTML = `
-        <div class="d-flex justify-content-between mb-2">
-            <span>Khách hàng</span><strong>${billData.customerName}</strong>
-        </div>
-        <div class="d-flex justify-content-between mb-2">
-            <span>Tiền sân</span><strong>${fmt(billData.courtTotal)}</strong>
-        </div>
-        <div class="d-flex justify-content-between mb-2">
-            <span>Dịch vụ</span><strong>${fmt(billData.posTotal)}</strong>
-        </div>
-        <div class="d-flex justify-content-between mb-2 text-success">
-            <span>Đã đặt cọc</span><strong>- ${fmt(billData.alreadyPaid)}</strong>
-        </div>
-        <hr/>
-        <div class="d-flex justify-content-between">
-            <span class="fw-bold">CẦN THU</span>
-            <strong class="text-danger fs-5">${fmt(billData.remainingAmount)}</strong>
-        </div>
-    `;
-}
+                            const now = new Date();
+                            const nowMin = now.getHours() * 60 + now.getMinutes();
+                            const slots = schedData[0].schedule;
 
-async function checkout(method) {
-    if (!currentBookingId) return;
-    const res = await fetch(`${API}/staff/checkout/${currentBookingId}`, {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentMethod: method })
-    });
-    const data = await res.json();
-    alert(data.message || 'Thanh toán thành công!');
-    bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
-    loadSchedule();
-}
+                            // HEADER
+                            let head = '<th class="tc" style="background:#0f172a;color:rgba(255,255,255,.5);font-size:11px">CA / SÂN</th>';
+                            schedData.forEach(function (c) {
+                                head += '<th>' + c.courtName +
+                                    (c.status === 'maintenance' ? '<div style="font-size:10px;color:#fbbf24;font-weight:500">⚠️ Bảo trì</div>' : '') +
+                                    '</th>';
+                            });
+                            document.getElementById('schedHead').innerHTML = head;
 
-function scrollToNow() {
-    const h = new Date().getHours();
-    const el = document.getElementById(`time-row-${h}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
+                            // BODY
+                            var bodyRows = '';
+                            slots.forEach(function (slot, si) {
+                                var parts = slot.time.split(' - ');
+                                var tStart = (parts[0] || '').trim();
+                                var tEnd = (parts[1] || '').trim();
+                                var sp = tStart.split(':');
+                                var ep = tEnd.split(':');
+                                var startMin = parseInt(sp[0] || 0) * 60 + parseInt(sp[1] || 0);
+                                var endMin = parseInt(ep[0] || 0) * 60 + parseInt(ep[1] || 0);
 
-function fmt(n) {
-    return new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ';
-}
+                                var rowActive = isToday && nowMin >= startMin && nowMin < endMin;
+                                var rowOvertime = isToday && endMin > 0 && nowMin >= endMin;
 
-loadSchedule();
-</script>
+                                bodyRows += '<tr id="row-' + si + '"' + (rowActive ? ' class="row-now"' : '') + '>';
+
+                                // time cell
+                                bodyRows += '<td class="tc">';
+                                if (rowActive) bodyRows += '<div class="tc-now">▶ ĐANG ĐÁ</div>';
+                                bodyRows += '<div class="tc-start">' + tStart + '</div>';
+                                bodyRows += '<div class="tc-end">' + tEnd + '</div>';
+                                bodyRows += '</td>';
+
+                                // court cells
+                                schedData.forEach(function (court) {
+                                    var s = (si < court.schedule.length) ? court.schedule[si] : null;
+
+                                    if (!s || !s.isBooked || !s.bookingInfo) {
+                                        var maint = court.status === 'maintenance';
+                                        bodyRows += '<td class="slot"><div class="' + (maint ? 's-maint' : 's-empty') + '">' +
+                                            (maint ? '🔧 Bảo trì' : '<span style="font-size:20px;opacity:.2">+</span>') +
+                                            '</div></td>';
+                                    } else {
+                                        var b = s.bookingInfo;
+                                        var isDone = (b.paymentStatus === 'completed');
+
+                                        var stateClass, badgeClass, badgeText, onclick;
+
+                                        if (isDone) {
+                                            stateClass = 's-done'; badgeClass = 'b-done';
+                                            badgeText = '✅ Hoàn tất'; onclick = '';
+                                        } else if (rowOvertime) {
+                                            stateClass = 's-overtime'; badgeClass = 'b-overtime';
+                                            badgeText = '🚨 Quá giờ!';
+                                            onclick = 'openBill(' + b.bookingId + ',' + court.courtId + ",'" + tEnd + "','" + escQ(court.courtName) + "','" + escQ(b.customerName) + "')";
+                                        } else if (rowActive) {
+                                            stateClass = 's-active'; badgeClass = 'b-active';
+                                            badgeText = '▶ Đang đánh';
+                                            onclick = 'openBill(' + b.bookingId + ',' + court.courtId + ",'" + tEnd + "','" + escQ(court.courtName) + "','" + escQ(b.customerName) + "')";
+                                        } else if (b.paymentStatus === 'pending') {
+                                            stateClass = 's-waiting'; badgeClass = 'b-pending';
+                                            badgeText = '⏳ Chờ duyệt';
+                                            onclick = 'openBill(' + b.bookingId + ',' + court.courtId + ",'" + tEnd + "','" + escQ(court.courtName) + "','" + escQ(b.customerName) + "')";
+                                        } else {
+                                            stateClass = 's-waiting'; badgeClass = 'b-waiting';
+                                            badgeText = '🎯 Đã đặt';
+                                            onclick = 'openBill(' + b.bookingId + ',' + court.courtId + ",'" + tEnd + "','" + escQ(court.courtName) + "','" + escQ(b.customerName) + "')";
+                                        }
+
+                                        bodyRows += '<td class="slot" data-bid="' + b.bookingId +
+                                            '" data-overtime="' + (rowOvertime && !isDone) +
+                                            '" data-cust="' + escA(b.customerName) +
+                                            '" data-end="' + tEnd + '">' +
+                                            '<div class="s-book ' + stateClass + '" onclick="' + onclick + '">' +
+                                            '<div class="s-name">' + b.customerName + '</div>' +
+                                            '<div class="s-phone">📞 ' + b.phone + '</div>' +
+                                            '<span class="s-badge ' + badgeClass + '">' + badgeText + '</span>' +
+                                            '</div></td>';
+                                    }
+                                });
+
+                                bodyRows += '</tr>';
+                            });
+
+                            document.getElementById('schedBody').innerHTML = bodyRows;
+                            document.getElementById('loadBox').style.display = 'none';
+                            document.getElementById('schedTbl').style.display = '';
+                        }
+
+                        function escQ(s) { return (s || '').replace(/'/g, "\\'"); }
+                        function escA(s) { return (s || '').replace(/"/g, '&quot;'); }
+
+                        function scrollNow() {
+                            var row = document.querySelector('.row-now');
+                            if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+
+                        function checkOtBanner() {
+                            var ots = document.querySelectorAll('[data-overtime="true"]');
+                            if (!ots.length) return;
+                            document.getElementById('otBanner').classList.add('show');
+                            document.getElementById('otNames').textContent =
+                                Array.from(ots).map(function (el) {
+                                    return el.dataset.cust + ' (ca đến ' + el.dataset.end + ')';
+                                }).join(' · ');
+                        }
+
+                        // ── BILL MODAL ────────────────────────────────────────────
+                        async function openBill(bid, cid, slotEnd, cname, custName) {
+                            curBid = bid; curCourtId = cid; curSlotEnd = slotEnd;
+                            curCourtName = cname; curCustName = custName;
+
+                            var now = new Date();
+                            var ep = slotEnd.split(':');
+                            var endMin = parseInt(ep[0] || 0) * 60 + parseInt(ep[1] || 0);
+                            var isOT = isToday && (now.getHours() * 60 + now.getMinutes()) > endMin;
+
+                            document.getElementById('billTitle').textContent = '💰 Tất toán — ' + cname;
+                            document.getElementById('billBody').innerHTML = '<div class="text-center py-4"><div class="spinner-border text-success"></div></div>';
+                            document.getElementById('billFoot').style.display = 'none';
+                            new bootstrap.Modal(document.getElementById('billModal')).show();
+
+                            try {
+                                var r = await fetch(API + '/staff/booking-bill/' + bid, { headers: H });
+                                curBill = await r.json();
+                                renderBill(curBill, isOT, slotEnd);
+                                document.getElementById('billFoot').style.display = '';
+                            } catch {
+                                document.getElementById('billBody').innerHTML = '<div class="alert alert-danger">Không tải được hóa đơn!</div>';
+                            }
+                        }
+
+                        function renderBill(b, isOT, slotEnd) {
+                            var fmt = function (n) { return new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ'; };
+                            var vOpts = (b.availableVouchers || []).map(function (v) {
+                                return '<option value="' + v.code + '">' + v.label + '</option>';
+                            }).join('');
+
+                            var html = '';
+
+                            if (isOT) {
+                                html += '<div class="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3" style="border-radius:10px">' +
+                                    '<span style="font-size:20px">🚨</span>' +
+                                    '<div><strong>Khách đã quá giờ!</strong><div class="small">Ca kết thúc lúc ' + slotEnd + ' — cần tất toán ngay</div></div>' +
+                                    '</div>';
+                            }
+
+                            html += '<div class="bill-row"><span class="text-muted">👤 Khách</span><strong>' + b.customerName + '</strong></div>';
+                            html += '<div class="bill-row"><span class="text-muted">🏟️ Tiền sân</span><strong class="text-primary">' + fmt(b.courtTotal) + '</strong></div>';
+
+                            if (b.posTotal > 0)
+                                html += '<div class="bill-row"><span class="text-muted">🧃 Đồ uống đã gọi</span><strong>' + fmt(b.posTotal) + '</strong></div>';
+
+                            if (b.alreadyPaid > 0)
+                                html += '<div class="bill-row text-success"><span>💰 Đã đặt cọc</span><strong>− ' + fmt(b.alreadyPaid) + '</strong></div>';
+
+                            html += '<div class="my-3">' +
+                                '<label class="form-label fw-semibold small mb-1">🎫 Mã giảm giá</label>' +
+                                '<select id="vcSel" class="form-select form-select-sm" onchange="recalc()">' +
+                                '<option value="">-- Không dùng voucher --</option>' + vOpts +
+                                '</select>' +
+                                '<div id="vcLine" class="text-success small mt-1 fw-bold" style="display:none"></div>' +
+                                '</div>';
+
+                            html += '<div class="bill-total"><span>CẦN THU:</span><span class="text-danger" id="finalAmt">' + fmt(b.remainingAmount) + '</span></div>';
+
+                            if (b.loyaltyPoints !== undefined)
+                                html += '<div class="text-muted small mt-2">⭐ Điểm hiện có: <strong>' + b.loyaltyPoints + '</strong></div>';
+
+                            document.getElementById('billBody').innerHTML = html;
+                        }
+
+                        function recalc() {
+                            if (!curBill) return;
+                            var fmt = function (n) { return new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ'; };
+                            var code = document.getElementById('vcSel').value;
+                            var vc = (curBill.availableVouchers || []).find(function (v) { return v.code === code; });
+                            var disc = vc ? vc.discountAmount : 0;
+                            document.getElementById('finalAmt').textContent = fmt(Math.max(0, curBill.remainingAmount - disc));
+                            var vl = document.getElementById('vcLine');
+                            vl.style.display = disc > 0 ? '' : 'none';
+                            if (disc > 0) vl.textContent = '✅ Giảm: − ' + fmt(disc);
+                        }
+
+                        // ── CHECKOUT ──────────────────────────────────────────────
+                        async function doCheckout(method) {
+                            var vc = (document.getElementById('vcSel') || {}).value || '';
+                            try {
+                                var r = await fetch(API + '/staff/checkout/' + curBid, {
+                                    method: 'POST', headers: HJ,
+                                    body: JSON.stringify({ PaymentMethod: method, VoucherCode: vc })
+                                });
+                                var d = await r.json();
+                                buildPrint(method, vc);
+                                bootstrap.Modal.getInstance(document.getElementById('billModal')).hide();
+                                showToast('✅ ' + (d.message || 'Thanh toán thành công!'), 'success');
+                                setTimeout(loadSched, 1500);
+                            } catch { showToast('❌ Lỗi kết nối!', 'danger'); }
+                        }
+
+                        // ── GIA HẠN ───────────────────────────────────────────────
+                        function openExtend() {
+                            document.getElementById('extCustName').textContent = curCustName;
+                            document.getElementById('extCourtName').textContent = curCourtName;
+                            document.getElementById('extSlotList').innerHTML =
+                                '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-secondary"></div></div>';
+                            bootstrap.Modal.getInstance(document.getElementById('billModal')).hide();
+                            new bootstrap.Modal(document.getElementById('extModal')).show();
+                            buildExtendSlots();
+                        }
+
+                        function buildExtendSlots() {
+                            var courtIdx = schedData.findIndex(function (c) { return c.courtId === curCourtId; });
+                            if (courtIdx < 0) { noSlots(); return; }
+
+                            var schedule = schedData[courtIdx].schedule;
+                            var curSlotIdx = -1;
+                            schedule.forEach(function (s, i) {
+                                if (s.bookingInfo && s.bookingInfo.bookingId === curBid) curSlotIdx = i;
+                            });
+
+                            var nextSlots = [];
+                            for (var i = curSlotIdx + 1; i < schedule.length && nextSlots.length < 4; i++) {
+                                var s = schedule[i];
+                                if (!s.isBooked || !s.bookingInfo) {
+                                    nextSlots.push({ timeSlotId: s.timeSlotId, time: s.time });
+                                }
+                            }
+
+                            if (!nextSlots.length) { noSlots(); return; }
+
+                            var html = nextSlots.map(function (ns) {
+                                return '<div class="d-flex justify-content-between align-items-center p-3 mb-2 rounded-3" style="background:#f8fafc;border:1.5px solid #e2e8f0">' +
+                                    '<div><div class="fw-bold" style="font-size:14px">🕐 ' + ns.time + '</div>' +
+                                    '<div class="text-muted small">Ca trống</div></div>' +
+                                    '<button class="btn btn-primary btn-sm fw-bold px-3" onclick="doExtend(' + ns.timeSlotId + ')">+ Gia hạn</button>' +
+                                    '</div>';
+                            }).join('');
+
+                            document.getElementById('extSlotList').innerHTML = html;
+                        }
+
+                        function noSlots() {
+                            document.getElementById('extSlotList').innerHTML =
+                                '<div class="alert alert-warning small">Không có ca trống tiếp theo cho sân <strong>' + curCourtName + '</strong></div>';
+                        }
+
+                        async function doExtend(nextSlotId) {
+                            try {
+                                var r = await fetch(API + '/staff/extend-booking/' + curBid + '?courtId=' + curCourtId + '&nextSlotId=' + nextSlotId, {
+                                    method: 'POST', headers: HJ
+                                });
+                                var d = await r.json();
+                                bootstrap.Modal.getInstance(document.getElementById('extModal')).hide();
+                                showToast('✅ ' + (d.message || 'Gia hạn thành công!'), 'success');
+                                setTimeout(loadSched, 1500);
+                            } catch { showToast('❌ Lỗi gia hạn!', 'danger'); }
+                        }
+
+                        // ── IN ────────────────────────────────────────────────────
+                        function doPrint() {
+                            var vc = (document.getElementById('vcSel') || {}).value || '';
+                            buildPrint('—', vc);
+                        }
+
+                        function buildPrint(method, vcCode) {
+                            if (!curBill) return;
+                            var fmt = function (n) { return new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ'; };
+                            var vc = (curBill.availableVouchers || []).find(function (v) { return v.code === vcCode; });
+                            var disc = vc ? vc.discountAmount : 0;
+                            var fin = Math.max(0, curBill.remainingAmount - disc);
+                            var now = new Date().toLocaleString('vi-VN');
+
+                            document.getElementById('print-sec').innerHTML =
+                                '<div style="font-family:\'Courier New\',monospace;font-size:12px;width:80mm">' +
+                                '<div style="text-align:center;margin-bottom:8px">' +
+                                    '<div style="font-size:17px;font-weight:900">🏸 SÂN CẦU LÔNG FPT</div>' +
+                                    '<div style="font-size:10px">Khu Công Nghệ Cao Hòa Lạc — ĐT: 0123 456 789</div>' +
+                                '</div>' +
+                                '<div style="border-top:1px dashed #000;border-bottom:1px dashed #000;padding:4px 0;margin-bottom:6px;text-align:center">' +
+                                    '<div style="font-size:14px;font-weight:900">HÓA ĐƠN TẤT TOÁN SÂN</div>' +
+                                    '<div style="font-size:10px">Ngày: ' + now + '<br>Khách: ' + curBill.customerName + '<br>Sân: ' + curCourtName + '</div>' +
+                                '</div>' +
+                                '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>🏟️ Tiền sân</span><strong>' + fmt(curBill.courtTotal) + '</strong></div>' +
+                                (curBill.posTotal > 0 ? '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>🧃 Đồ uống</span><strong>' + fmt(curBill.posTotal) + '</strong></div>' : '') +
+                                (curBill.alreadyPaid > 0 ? '<div style="display:flex;justify-content:space-between;padding:3px 0;color:#555"><span>💰 Đã cọc</span><span>− ' + fmt(curBill.alreadyPaid) + '</span></div>' : '') +
+                                (disc > 0 ? '<div style="display:flex;justify-content:space-between;padding:3px 0;color:#0f766e"><span>🎫 Voucher (' + vcCode + ')</span><span>− ' + fmt(disc) + '</span></div>' : '') +
+                                '<div style="border-top:1px dashed #000;margin-top:6px;padding-top:6px">' +
+                                    '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900"><span>TỔNG PHẢI THU:</span><span>' + fmt(fin) + '</span></div>' +
+                                    '<div style="display:flex;justify-content:space-between;font-size:11px;color:#555"><span>Thanh toán:</span><span>' + method + '</span></div>' +
+                                '</div>' +
+                                '<div style="text-align:center;margin-top:10px;padding-top:8px;border-top:1px dashed #000;font-size:10px;color:#555">Cảm ơn quý khách! Hẹn gặp lại 🏸</div>' +
+                                '</div>';
+                            window.print();
+                        }
+
+                        // ── TOAST ─────────────────────────────────────────────────
+                        function showToast(msg, type) {
+                            var t = document.createElement('div');
+                            t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;font-weight:600;font-size:14px;color:white;background:' +
+                                (type === 'success' ? '#0f766e' : '#dc2626') + ';box-shadow:0 4px 16px rgba(0,0,0,.2);transform:translateY(20px);opacity:0;transition:all .3s';
+                            t.textContent = msg;
+                            document.body.appendChild(t);
+                            requestAnimationFrame(function () { t.style.transform = 'translateY(0)'; t.style.opacity = '1'; });
+                            setTimeout(function () {
+                                t.style.transform = 'translateY(20px)'; t.style.opacity = '0';
+                                setTimeout(function () { t.remove(); }, 300);
+                            }, 3000);
+                        }
+    </script>
 }

@@ -2,12 +2,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 
-// THÊM ĐÚNG CHỖ NÀY — trước builder.Build()
-builder.Services.AddSession(o =>
+builder.Services.AddSession(options =>
 {
-    o.IdleTimeout = TimeSpan.FromHours(8);
-    o.Cookie.HttpOnly = true;
-    o.Cookie.IsEssential = true;
+    options.IdleTimeout = TimeSpan.FromHours(8);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.Name = ".BadmintonMVC.Session";
+    options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
 var app = builder.Build();
@@ -15,17 +16,15 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseSession();
 app.UseRouting();
-app.UseSession();       // ← phải sau AddSession ở trên
 app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=User}/{action=Index}/{id?}");
+    pattern: "{controller=Auth}/{action=Login}/{id?}");
 
 app.Run();

@@ -252,6 +252,23 @@
                                 <div class="fw-bold text-success" id="ckNewDrink">0đ</div>
                             </div>
 
+                            <!-- Tổng tạm tính -->
+                            <div id="subtotalRow" class="d-flex justify-content-between mb-2 pb-2"
+                                 style="display:none!important;border-bottom:2px solid #cbd5e0">
+                                <span class="fw-semibold text-muted small">Tổng tạm tính</span>
+                                <span class="fw-bold" id="ckSubtotal">0đ</span>
+                            </div>
+
+                            <!-- Đã cọc / đã trả trước -->
+                            <div id="alreadyPaidRow" class="d-flex justify-content-between mb-2 pb-2"
+                                 style="display:none!important;border-bottom:1px solid #e2e8f0">
+                                <div>
+                                    <div class="fw-semibold" style="color:#d97706">💰 Đã cọc / trả trước</div>
+                                    <div class="text-muted small">Khấu trừ vào tổng bill</div>
+                                </div>
+                                <div class="fw-bold" style="color:#d97706" id="ckAlreadyPaid">- 0đ</div>
+                            </div>
+
                             <!-- Voucher -->
                             <div class="mb-2 pb-2" style="border-bottom:1px solid #e2e8f0">
                                 <div class="fw-semibold mb-1">🎫 Voucher giảm giá</div>
@@ -753,20 +770,25 @@ async function openCheckoutModal() {
 
     const newDrinkTotal = cart.reduce((s,i) => s+i.price*i.qty, 0);
 
-    // remainingAmount từ backend đã tính: courtTotal + posTotal - alreadyPaid
-    // Thêm nước mới vào
+    // Tính subtotal = courtTotal + posTotal + newDrink
+    const subtotal = (billData.courtTotal || 0) + (billData.posTotal || 0) + newDrinkTotal;
+    const alreadyPaid = billData.alreadyPaid || 0;
+
+    // remainingAmount từ backend = courtTotal + posTotal - alreadyPaid
+    // Cộng thêm nước mới
     remainingAmount = (billData.remainingAmount || 0) + newDrinkTotal;
+
+    const flexRow = 'display:flex!important;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e2e8f0';
 
     // Fill UI
     document.getElementById('ckCustomerInfo').textContent =
         `${billData.customerName} · ⭐${billData.loyaltyPoints} điểm`;
-
     document.getElementById('ckCourtTotal').textContent = fmt(billData.courtTotal);
 
     // Nước đã gọi trước (posTotal)
     if (billData.posTotal > 0) {
-        document.getElementById('prevDrinkRow').style.cssText = 'display:flex!important;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e2e8f0';
-        document.getElementById('ckPosTotal').textContent  = fmt(billData.posTotal);
+        document.getElementById('prevDrinkRow').style.cssText = flexRow;
+        document.getElementById('ckPosTotal').textContent = fmt(billData.posTotal);
         document.getElementById('prevDrinkDetail').textContent = 'Đã order trong buổi';
     } else {
         document.getElementById('prevDrinkRow').style.cssText = 'display:none!important';
@@ -774,19 +796,31 @@ async function openCheckoutModal() {
 
     // Nước thêm lúc này
     if (newDrinkTotal > 0) {
-        document.getElementById('newDrinkRow').style.cssText = 'display:flex!important;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e2e8f0';
-        document.getElementById('ckNewDrink').textContent   = fmt(newDrinkTotal);
+        document.getElementById('newDrinkRow').style.cssText = flexRow;
+        document.getElementById('ckNewDrink').textContent = fmt(newDrinkTotal);
         document.getElementById('newDrinkDetail').textContent =
             cart.map(i=>`${i.name} x${i.qty}`).join(', ');
     } else {
         document.getElementById('newDrinkRow').style.cssText = 'display:none!important';
     }
 
-    // Loyalty points info
+    // Dòng tổng tạm tính (chỉ hiện nếu có cọc)
+    if (alreadyPaid > 0) {
+        document.getElementById('subtotalRow').style.cssText = flexRow;
+        document.getElementById('ckSubtotal').textContent = fmt(subtotal);
+        // Dòng đã cọc
+        document.getElementById('alreadyPaidRow').style.cssText = flexRow;
+        document.getElementById('ckAlreadyPaid').textContent = '- ' + fmt(alreadyPaid);
+    } else {
+        document.getElementById('subtotalRow').style.cssText = 'display:none!important';
+        document.getElementById('alreadyPaidRow').style.cssText = 'display:none!important';
+    }
+
+    // Loyalty points
     if (billData.loyaltyPoints > 0) {
         document.getElementById('loyaltyRow').style.cssText = 'display:block!important;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e2e8f0';
         document.getElementById('loyaltyInfo').textContent =
-            `Sau thanh toán sẽ được cộng ~${Math.floor(remainingAmount/10000)} điểm`;
+            `Sau thanh toán được cộng ~${Math.floor(remainingAmount/10000)} điểm`;
     } else {
         document.getElementById('loyaltyRow').style.cssText = 'display:none!important';
     }
@@ -1096,6 +1130,17 @@ function printCheckoutBill(method, voucherCode, pointsAdded) {
             <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px">
                 <span>🧃 Nước đã gọi</span>
                 <span style="font-weight:700">${fmt(billData.posTotal)}</span>
+            </div>`:''}
+            ${(billData.alreadyPaid||0)>0?`
+            <div style="border-top:1px dotted #ccc;margin-top:4px;padding-top:4px">
+                <div style="display:flex;justify-content:space-between;font-size:12px">
+                    <span>Tổng tạm tính</span>
+                    <span style="font-weight:700">${fmt((billData.courtTotal||0)+(billData.posTotal||0)+newDrink)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:#d97706">
+                    <span>💰 Đã cọc/trả trước</span>
+                    <span style="font-weight:700">- ${fmt(billData.alreadyPaid)}</span>
+                </div>
             </div>`:''}
             ${newDrink>0?`
             <div style="border-top:1px dotted #ccc;margin-top:4px;padding-top:4px">

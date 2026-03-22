@@ -1,39 +1,82 @@
+using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+
+namespace BadmintonMVC.Controllers;
 
 public class StaffController : Controller
 {
     private readonly string _api;
-    private readonly HttpClient _http;
+    private readonly HttpClient _http = new();
 
     public StaffController(IConfiguration config)
     {
         _api = config["BackendApi"] + "/api";
-        _http = new HttpClient();
     }
 
-    // Thêm token vào mỗi request
-    private void SetToken()
+    // ── AUTH GUARD ────────────────────────────────────────────
+    // Dùng Session như AuthController — không cần Cookie Auth
+    private IActionResult? CheckStaff()
     {
-        var token = HttpContext.Session.GetString("AuthToken");
-        _http.DefaultRequestHeaders.Authorization = null;
-        if (!string.IsNullOrEmpty(token))
-            _http.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        var role = HttpContext.Session.GetString("UserRole");
+        if (string.IsNullOrEmpty(role))
+            return RedirectToAction("Login", "Auth");
+        if (role != "Staff" && role != "Admin")
+            return RedirectToAction("Login", "Auth");
+        return null;
     }
 
-    // GET /Staff/Schedule
-    public IActionResult Schedule() => View();
+    private string Token => HttpContext.Session.GetString("AuthToken") ?? "";
 
-    // GET /Staff/Bookings
-    public IActionResult Bookings() => View();
+    private HttpClient GetHttp()
+    {
+        _http.DefaultRequestHeaders.Authorization = null;
+        if (!string.IsNullOrEmpty(Token))
+            _http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
+        return _http;
+    }
 
-    // GET /Staff/FixedSchedule
-    public IActionResult FixedSchedule() => View();
+    // ── SCHEDULE ──────────────────────────────────────────────
+    public IActionResult Schedule()
+    {
+        var guard = CheckStaff();
+        if (guard != null) return guard;
+        return View();
+    }
 
-    // GET /Staff/Pos
-    public IActionResult Pos() => View();
+    public IActionResult Bookings()
+    {
+        var guard = CheckStaff();
+        if (guard != null) return guard;
+        return View();
+    }
 
-    public IActionResult Products() => View();
-    public IActionResult PaymentResult() => View();  // ← THÊM DÒNG NÀY
+    public IActionResult FixedSchedule()
+    {
+        var guard = CheckStaff();
+        if (guard != null) return guard;
+        return View();
+    }
 
+    public IActionResult Pos()
+    {
+        var guard = CheckStaff();
+        if (guard != null) return guard;
+        return View();
+    }
+
+    public IActionResult Products()
+    {
+        var guard = CheckStaff();
+        if (guard != null) return guard;
+        return View();
+    }
+
+    public IActionResult PaymentResult()
+    {
+        var guard = CheckStaff();
+        if (guard != null) return guard;
+        return View();
+    }
 }
