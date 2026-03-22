@@ -29,4 +29,10 @@ public class AdminController : Controller
         ViewBag.Error = "Sai tài khoản hoặc mật khẩu!";
         return View();
     }
+
+    public IActionResult Logout()
+    {
+        HttpContext.Session.Clear();
+        return Redirect("/admin/login");
+    }
 }

@@ -330,7 +330,7 @@
         function onSearch(inp) { document.getElementById('searchClear').style.display = inp.value?'block':'none'; page=1; fetchData(); }
         function clearSearch() { document.getElementById('searchInput').value=''; document.getElementById('searchClear').style.display='none'; page=1; fetchData(); }
         function onFilterChange() { page=1; fetchData(); }
-        function handleLogout() { if (confirm('Bạn có chắc chắn muốn đăng xuất?')) window.location.href='/admin/login'; }
+        function handleLogout() { if (confirm('Bạn có chắc chắn muốn đăng xuất?')) window.location.href='/Admin/Logout'; }
 
         fetchData();
     </script>

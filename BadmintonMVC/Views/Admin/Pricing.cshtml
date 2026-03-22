@@ -733,7 +733,7 @@
         function closeEditModalDirect()   { hideModal('editModalOverlay'); editDayVal=''; }
         function closeDeleteModal(e) { if(e.target.id==='deleteModalOverlay') closeDeleteModalDirect(); }
         function closeDeleteModalDirect() { hideModal('deleteModalOverlay'); pendingDeleteId=null; }
-        function handleLogout()    { if(confirm('Bạn có chắc chắn muốn đăng xuất?')) window.location.href='/admin/login'; }
+        function handleLogout()    { if(confirm('Bạn có chắc chắn muốn đăng xuất?')) window.location.href='/Admin/Logout'; }
 
         init();
     </script>
