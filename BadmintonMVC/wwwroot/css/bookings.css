@@ -1033,3 +1033,28 @@
         flex-wrap: wrap;
     }
 }
+
+/* Sort headers */
+.bk-th-sort {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+    .bk-th-sort:hover {
+        background: rgba(255,255,255,0.12);
+    }
+
+    .bk-th-sort .sort-icon {
+        font-size: 12px;
+        opacity: 0.6;
+        color: rgba(255,255,255,0.85);
+        margin-left: 2px;
+    }
+
+    .bk-th-sort.sorted-asc .sort-icon,
+    .bk-th-sort.sorted-desc .sort-icon {
+        opacity: 1;
+        color: #fcd34d;
+    }

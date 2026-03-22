@@ -15,7 +15,7 @@
         <div class="bk-header-left">
             <span class="bk-header-icon">🏸</span>
             <div>
-                <h1 class="bk-header-title">Quản lý Booking</h1>
+                <h1 class="bk-header-title">Quản lý đặt sân</h1>
                 <p class="bk-header-sub">Admin · Duyệt &amp; hủy lịch đặt sân</p>
             </div>
         </div>
@@ -92,13 +92,13 @@
                 <table class="bk-table">
                     <thead>
                         <tr>
-                            <th>#ID</th>
-                            <th>Khách hàng</th>
-                            <th>SĐT</th>
-                            <th>Ngày tạo</th>
-                            <th>Số sân</th>
-                            <th>Tổng tiền</th>
-                            <th>Trạng thái</th>
+                            <th class="bk-th-sort" onclick="handleSort('id')">#ID <span class="sort-icon">⇅</span></th>
+                            <th class="bk-th-sort" onclick="handleSort('customerName')">Khách hàng <span class="sort-icon">⇅</span></th>
+                            <th class="bk-th-sort" onclick="handleSort('customerPhone')">SĐT <span class="sort-icon">⇅</span></th>
+                            <th class="bk-th-sort" onclick="handleSort('createdAt')">Ngày tạo <span class="sort-icon">⇅</span></th>
+                            <th class="bk-th-sort" onclick="handleSort('totalDetails')">Số sân <span class="sort-icon">⇅</span></th>
+                            <th class="bk-th-sort" onclick="handleSort('totalPrice')">Tổng tiền <span class="sort-icon">⇅</span></th>
+                            <th class="bk-th-sort" onclick="handleSort('status')">Trạng thái <span class="sort-icon">⇅</span></th>
                             <th>Thao tác</th>
                         </tr>
                     </thead>
@@ -161,45 +161,74 @@
         const API   = 'http://localhost:5043/api';
         const TOKEN = '@Context.Session.GetString("AuthToken")';
         const H     = { 'Authorization': 'Bearer ' + TOKEN };
-        let page = 1, pageSize = 10, totalItems = 0, pendingAction = null;
 
+        let allBookings = [];
+        let sortField = 'id', sortDir = 'desc';
+        let page = 1, pageSize = 10;
+        let pendingAction = null;
+
+        // ── INIT: load toàn bộ data 1 lần ─────────────────────
         async function fetchData() {
             setLoading(true); hideError();
             try {
-                const qs  = buildQS();
-                const res = await fetch(`${API}/admin/bookings?${qs}`, { headers: H });
+                const res = await fetch(`${API}/admin/bookings?page=1&pageSize=9999`, { headers: H });
                 if (!res.ok) throw new Error(`Lỗi tải danh sách (${res.status})`);
                 const data = await res.json();
-                totalItems = data.totalItems ?? 0;
-                renderStats(data.items ?? []);
-                renderTable(data.items ?? []);
-                renderPagination();
+                allBookings = data.items ?? [];
+                renderAll();
             } catch(e) { showError(e.message); }
             finally    { setLoading(false); }
         }
 
-        function buildQS() {
-            const p = new URLSearchParams({ page, pageSize });
-            const s = document.getElementById('searchInput').value;
-            const st= document.getElementById('statusFilter').value;
-            const fd= document.getElementById('fromDate').value;
-            const td= document.getElementById('toDate').value;
-            if (s)  p.set('search',   s);
-            if (st) p.set('status',   st);
-            if (fd) p.set('fromDate', fd);
-            if (td) p.set('toDate',   td);
-            return p.toString();
+        // ── FILTER + SORT ──────────────────────────────────────
+        function getFiltered() {
+            const q  = document.getElementById('searchInput').value.toLowerCase();
+            const st = document.getElementById('statusFilter').value;
+            const fd = document.getElementById('fromDate').value;
+            const td = document.getElementById('toDate').value;
+
+            let list = allBookings.filter(b => {
+                const ms = !q || b.customerName?.toLowerCase().includes(q) || b.customerPhone?.includes(q);
+                const mst = !st || b.status?.toLowerCase() === st;
+                const mfd = !fd || new Date(b.createdAt) >= new Date(fd);
+                const mtd = !td || new Date(b.createdAt) <= new Date(td + 'T23:59:59');
+                return ms && mst && mfd && mtd;
+            });
+
+            list.sort((a, b) => {
+                let vA = a[sortField] ?? '', vB = b[sortField] ?? '';
+                if (typeof vA === 'string') { vA = vA.toLowerCase(); vB = vB.toLowerCase(); }
+                return vA < vB ? (sortDir === 'asc' ? -1 : 1) : vA > vB ? (sortDir === 'asc' ? 1 : -1) : 0;
+            });
+
+            return list;
         }
 
-        function renderStats(items) {
-            document.getElementById('hTotal').textContent     = totalItems;
-            document.getElementById('hPending').textContent   = items.filter(b => b.status?.toLowerCase() === 'pending').length;
-            document.getElementById('hConfirmed').textContent = items.filter(b => b.status?.toLowerCase() === 'confirmed').length;
-            document.getElementById('hCancelled').textContent = items.filter(b => b.status?.toLowerCase() === 'cancelled').length;
+        // ── RENDER ─────────────────────────────────────────────
+        function renderAll() {
+            const filtered = getFiltered();
+            const total = filtered.length;
+            const tp = Math.max(1, Math.ceil(total / pageSize));
+            if (page > tp) page = tp;
+            const items = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+            renderStats(filtered);
+            renderTable(items);
+            renderPagination(total, tp);
+        }
+
+        function renderStats(filtered) {
+            document.getElementById('hTotal').textContent     = allBookings.length;
+            document.getElementById('hPending').textContent   = filtered.filter(b => b.status?.toLowerCase() === 'pending').length;
+            document.getElementById('hConfirmed').textContent = filtered.filter(b => b.status?.toLowerCase() === 'confirmed').length;
+            document.getElementById('hCancelled').textContent = filtered.filter(b => b.status?.toLowerCase() === 'cancelled').length;
         }
 
         function renderTable(items) {
-            if (!items.length) { document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="bk-empty-td">Không có booking nào</td></tr>'; return; }
+            if (!items.length) {
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="bk-empty-td">Không có booking nào</td></tr>';
+                return;
+            }
             document.getElementById('tableBody').innerHTML = items.map((b, i) => {
                 const st = b.status?.toLowerCase();
                 return `<tr style="animation-delay:${i * 0.04}s">
@@ -212,18 +241,16 @@
                     <td>${statusBadge(b.status)}</td>
                     <td><div class="bk-action-btns">
                         <button class="bk-btn-view" onclick="openDetail(${b.id})">👁️ Chi tiết</button>
-                        ${st === 'pending'    ? `<button class="bk-btn-confirm" onclick="askAction(${b.id},'confirm')">✅ Duyệt</button>` : ''}
+                        ${st === 'pending'   ? `<button class="bk-btn-confirm" onclick="askAction(${b.id},'confirm')">✅ Duyệt</button>` : ''}
                         ${st !== 'cancelled' ? `<button class="bk-btn-cancel"  onclick="askAction(${b.id},'cancel')">🚫 Hủy</button>`   : ''}
                     </div></td>
                 </tr>`;
             }).join('');
         }
 
-        function renderPagination() {
-            const tp = Math.max(1, Math.ceil(totalItems / pageSize));
-            if (page > tp) page = tp;
-            const s = (page-1)*pageSize+1, e = Math.min(page*pageSize, totalItems);
-            document.getElementById('pageInfo').textContent = totalItems ? `Hiển thị ${s}–${e} / ${totalItems}` : 'Không có dữ liệu';
+        function renderPagination(total, tp) {
+            const s = (page-1)*pageSize+1, e = Math.min(page*pageSize, total);
+            document.getElementById('pageInfo').textContent = total ? `Hiển thị ${s}–${e} / ${total}` : 'Không có dữ liệu';
             let btns = `<button class="bk-page-btn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>‹</button>`;
             for (let p=1; p<=tp; p++) {
                 if (tp<=7 || p===1 || p===tp || Math.abs(p-page)<=1)
@@ -234,9 +261,33 @@
             btns += `<button class="bk-page-btn" onclick="goPage(${page+1})" ${page>=tp?'disabled':''}>›</button>`;
             document.getElementById('pageBtns').innerHTML = btns;
         }
-        function goPage(p) { page = p; fetchData(); }
-        function onPerPageChange(s) { pageSize = parseInt(s.value); page = 1; fetchData(); }
 
+        function goPage(p) { page = p; renderAll(); }
+        function onPerPageChange(s) { pageSize = parseInt(s.value); page = 1; renderAll(); }
+
+        function handleSort(field) {
+            if (sortField === field) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            else { sortField = field; sortDir = 'asc'; }
+            page = 1;
+            document.querySelectorAll('.bk-th-sort').forEach(th => {
+                const f = th.getAttribute('onclick').match(/'(.+)'/)[1];
+                const icon = th.querySelector('.sort-icon');
+                th.classList.remove('sorted-asc', 'sorted-desc');
+                if (f === sortField) {
+                    th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+                    icon.textContent = sortDir === 'asc' ? '↑' : '↓';
+                } else {
+                    icon.textContent = '⇅';
+                }
+            });
+            renderAll();
+        }
+
+        function onSearch(inp) { document.getElementById('searchClear').style.display = inp.value?'block':'none'; page=1; renderAll(); }
+        function clearSearch() { document.getElementById('searchInput').value=''; document.getElementById('searchClear').style.display='none'; page=1; renderAll(); }
+        function onFilterChange() { page=1; renderAll(); }
+
+        // ── DETAIL MODAL ───────────────────────────────────────
         async function openDetail(id) {
             document.getElementById('detailTitle').textContent = `Chi tiết Booking #${id}`;
             document.getElementById('detailBody').innerHTML    = '<div class="bk-loading"><div class="bk-spinner"></div><p>Đang tải...</p></div>';
@@ -280,6 +331,7 @@
             return `<div class="bk-detail-item"><span class="bk-detail-label">${label}</span><span class="bk-detail-value ${extra}">${val}</span></div>`;
         }
 
+        // ── ACTIONS ────────────────────────────────────────────
         function askAction(id, action) {
             pendingAction = { id, action };
             const ok = action === 'confirm';
@@ -309,6 +361,7 @@
             finally    { setSaving(false); btn.disabled = btnC.disabled = false; }
         }
 
+        // ── HELPERS ────────────────────────────────────────────
         function statusBadge(s) {
             const m = { pending:'<span class="bk-status bk-status-pending">⏳ Chờ xác nhận</span>', confirmed:'<span class="bk-status bk-status-confirmed">✅ Đã xác nhận</span>', cancelled:'<span class="bk-status bk-status-cancelled">🚫 Đã hủy</span>' };
             return m[s?.toLowerCase()] || `<span class="bk-status bk-status-pending">${s}</span>`;
@@ -327,11 +380,9 @@
         function closeDetailModalDirect()  { hideModal('detailModalOverlay'); }
         function closeConfirmModal(e)      { if (e.target.id==='confirmModalOverlay') closeConfirmModalDirect(); }
         function closeConfirmModalDirect() { hideModal('confirmModalOverlay'); pendingAction = null; }
-        function onSearch(inp) { document.getElementById('searchClear').style.display = inp.value?'block':'none'; page=1; fetchData(); }
-        function clearSearch() { document.getElementById('searchInput').value=''; document.getElementById('searchClear').style.display='none'; page=1; fetchData(); }
-        function onFilterChange() { page=1; fetchData(); }
         function handleLogout() { if (confirm('Bạn có chắc chắn muốn đăng xuất?')) window.location.href='/Admin/Logout'; }
 
         fetchData();
+        
     </script>
 }
