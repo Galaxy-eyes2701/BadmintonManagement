@@ -117,17 +117,14 @@ namespace backend.Controllers
             // - Chỉ lấy Voucher chung (Mã không chứa "-U") 
             // - HOẶC Voucher riêng của đúng vị khách đang thanh toán (Mã chứa "-U{booking.UserId}-")
             var availableVouchers = allActiveVouchers
-                .Where(v => !v.Code.Contains("-U") || v.Code.Contains($"-U{booking.UserId}-"))
-                .Select(v => new
-                {
-                    code = v.Code,
-                    discountAmount = v.DiscountAmount,
-                    // Đổi tên nhãn hiển thị trong Dropdown cho Lễ tân dễ phân biệt
-                    label = v.Code.Contains("-U")
-                            ? $"🎁 Quà của khách ({v.Code}) - Giảm {v.DiscountAmount:N0}đ"
-                            : $"🌟 Mã quán chung ({v.Code}) - Giảm {v.DiscountAmount:N0}đ"
-                })
-                .ToList();
+    .Where(v => v.Code.Contains($"-U{booking.UserId}-")) // Chỉ giữ lại đúng điều kiện này
+    .Select(v => new
+    {
+        code = v.Code,
+        discountAmount = v.DiscountAmount,
+        label = $"🎁 Quà của khách ({v.Code}) - Giảm {v.DiscountAmount:N0}đ"
+    })
+    .ToList();
 
             return Ok(new
             {
