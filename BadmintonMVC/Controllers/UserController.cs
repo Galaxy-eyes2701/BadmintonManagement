@@ -19,7 +19,14 @@ public class UserController : Controller
     {
         return !string.IsNullOrEmpty(HttpContext.Session.GetString("AuthToken"));
     }
+    public IActionResult Voucher()
+    {
+        // Kiểm tra đăng nhập
+        var role = HttpContext.Session.GetString("UserRole");
+        if (role != "Customer") return RedirectToAction("Login", "Auth");
 
+        return View();
+    }
     // Get display name for header
     private string GetDisplayName()
     {
@@ -108,7 +115,7 @@ public class UserController : Controller
         {
             var branchesJson = await _http.GetStringAsync($"{_api}/branches");
             var courtTypesJson = await _http.GetStringAsync($"{_api}/courttypes");
-            
+
             ViewBag.Branches = JsonSerializer.Deserialize<JsonElement>(branchesJson);
             ViewBag.CourtTypes = JsonSerializer.Deserialize<JsonElement>(courtTypesJson);
         }
@@ -320,13 +327,13 @@ public class UserController : Controller
                 var response = await client.GetAsync($"{_api}/bookings/my");
                 var json = await response.Content.ReadAsStringAsync();
                 var data = JsonSerializer.Deserialize<JsonElement>(json);
-                
+
                 // Get all bookings and paginate
                 var allBookings = data.GetProperty("data");
                 var bookingsList = allBookings.EnumerateArray().ToList();
                 var totalCount = bookingsList.Count;
                 var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-                
+
                 ViewBag.TotalCount = totalCount;
                 ViewBag.TotalPages = totalPages;
                 ViewBag.Bookings = JsonSerializer.SerializeToElement(bookingsList.Skip((page - 1) * pageSize).Take(pageSize));
@@ -336,13 +343,13 @@ public class UserController : Controller
                 var response = await client.GetAsync($"{_api}/bookings/my/orders");
                 var json = await response.Content.ReadAsStringAsync();
                 var data = JsonSerializer.Deserialize<JsonElement>(json);
-                
+
                 // Get all orders and paginate
                 var allOrders = data.GetProperty("data");
                 var ordersList = allOrders.EnumerateArray().ToList();
                 var totalCount = ordersList.Count;
                 var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-                
+
                 ViewBag.TotalCount = totalCount;
                 ViewBag.TotalPages = totalPages;
                 ViewBag.Orders = JsonSerializer.SerializeToElement(ordersList.Skip((page - 1) * pageSize).Take(pageSize));
@@ -564,7 +571,7 @@ public class UserController : Controller
                     bookingId = bookingIdEl.GetInt32();
                 else if (data.TryGetProperty("BookingId", out bookingIdEl))
                     bookingId = bookingIdEl.GetInt32();
-                
+
                 ViewBag.BookingId = bookingId;
                 ViewBag.Amount = int.Parse(Request.Query["vnp_Amount"]) / 100;
                 ViewBag.BankCode = Request.Query["vnp_BankCode"].ToString();

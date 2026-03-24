@@ -108,10 +108,26 @@ namespace backend.Controllers
                 if (remainingAmount < 0) remainingAmount = 0;
             }
 
-            var availableVouchers = await _context.Vouchers
+            // 1. Lấy tất cả voucher đang còn hiệu lực
+            var allActiveVouchers = await _context.Vouchers
                 .Where(v => v.UsageLimit > 0 && v.ExpiryDate >= DateOnly.FromDateTime(DateTime.Now))
-                .Select(v => new { code = v.Code, discountAmount = v.DiscountAmount, label = $"{v.Code} (Giảm {v.DiscountAmount:N0}đ)" })
                 .ToListAsync();
+
+            // 2. LỌC THÔNG MINH: 
+            // - Chỉ lấy Voucher chung (Mã không chứa "-U") 
+            // - HOẶC Voucher riêng của đúng vị khách đang thanh toán (Mã chứa "-U{booking.UserId}-")
+            var availableVouchers = allActiveVouchers
+                .Where(v => !v.Code.Contains("-U") || v.Code.Contains($"-U{booking.UserId}-"))
+                .Select(v => new
+                {
+                    code = v.Code,
+                    discountAmount = v.DiscountAmount,
+                    // Đổi tên nhãn hiển thị trong Dropdown cho Lễ tân dễ phân biệt
+                    label = v.Code.Contains("-U")
+                            ? $"🎁 Quà của khách ({v.Code}) - Giảm {v.DiscountAmount:N0}đ"
+                            : $"🌟 Mã quán chung ({v.Code}) - Giảm {v.DiscountAmount:N0}đ"
+                })
+                .ToList();
 
             return Ok(new
             {
@@ -122,10 +138,9 @@ namespace backend.Controllers
                 posTotal,
                 alreadyPaid,
                 remainingAmount,
-                availableVouchers
+                availableVouchers // Trả về danh sách voucher đã được lọc sạch sẽ
             });
         }
-
         // =======================================================
         // 2. THANH TOÁN (CHECKOUT) & TRỪ VOUCHER
         // =======================================================
@@ -190,19 +205,46 @@ namespace backend.Controllers
         }
 
         // =======================================================
-        // 3. GIA HẠN CA SAU
+        // 3. GIA HẠN CA SAU (ĐÃ FIX LỖI NHẢY CÓC TỪ BACKEND)
         // =======================================================
         [HttpPost("extend-booking/{bookingId}")]
         public async Task<IActionResult> ExtendBooking(int bookingId, [FromQuery] int courtId, [FromQuery] int nextSlotId)
         {
-            var booking = await _context.Bookings.FindAsync(bookingId);
-            if (booking == null) return NotFound("Không tìm thấy đơn.");
-            if (booking.Status == "completed") return BadRequest("Đơn đã thanh toán, không thể gia hạn.");
+            // BỔ SUNG: Bắt buộc Include BookingDetails và TimeSlot để check giờ
+            var booking = await _context.Bookings
+                .Include(b => b.BookingDetails)
+                    .ThenInclude(bd => bd.TimeSlot)
+                .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+            if (booking == null) return NotFound(new { message = "Không tìm thấy đơn đặt sân." });
+            if (booking.Status == "completed") return BadRequest(new { message = "Đơn đã thanh toán, không thể gia hạn." });
 
             var today = DateOnly.FromDateTime(DateTime.Now);
-            var isBooked = await _context.BookingDetails.AnyAsync(bd => bd.CourtId == courtId && bd.TimeSlotId == nextSlotId && bd.PlayDate == today && bd.Booking.Status != "cancelled");
-            if (isBooked) return BadRequest("Ca tiếp theo đã có người khác đặt mất rồi!");
 
+            // 🛑 CHỐT CHẶN 1: Ca muốn gia hạn đã có người khác đặt chưa?
+            var isBooked = await _context.BookingDetails.AnyAsync(bd => bd.CourtId == courtId && bd.TimeSlotId == nextSlotId && bd.PlayDate == today && bd.Booking.Status != "cancelled");
+            if (isBooked) return BadRequest(new { message = "Ca tiếp theo đã có người khác đặt mất rồi!" });
+
+            // 🛑 CHỐT CHẶN 2 (QUAN TRỌNG): CẤM NHẢY CÓC!
+            // Lấy ca cuối cùng mà khách đang đánh trên sân này
+            var currentLastDetail = booking.BookingDetails
+                .Where(bd => bd.CourtId == courtId && bd.PlayDate == today)
+                .OrderByDescending(bd => bd.TimeSlot.EndTime)
+                .FirstOrDefault();
+
+            if (currentLastDetail != null)
+            {
+                var nextSlotObj = await _context.TimeSlots.FindAsync(nextSlotId);
+                if (nextSlotObj == null) return NotFound(new { message = "Ca gia hạn không tồn tại." });
+
+                // So sánh: Giờ bắt đầu của ca mới PHẢI BẰNG giờ kết thúc của ca cũ
+                if (nextSlotObj.StartTime != currentLastDetail.TimeSlot.EndTime)
+                {
+                    return BadRequest(new { message = "Lỗi: Ca gia hạn bắt buộc phải nối tiếp liền kề với ca hiện tại! Không được nhảy cóc." });
+                }
+            }
+
+            // 3. Hợp lệ -> Tiến hành tính tiền và lưu
             var court = await _context.Courts.FindAsync(courtId);
             int csharpDow = (int)today.DayOfWeek;
             int vnDow = csharpDow == 0 ? 8 : csharpDow + 1;

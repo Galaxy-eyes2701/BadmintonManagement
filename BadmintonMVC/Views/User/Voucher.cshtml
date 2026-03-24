@@ -1,0 +1,241 @@
+@{
+    ViewData["Title"] = "Cửa hàng đổi điểm";
+    Layout = "_UserLayout";
+
+    var jwtToken = Context.Session.GetString("AuthToken") ?? "";
+}
+
+<style>
+    .exchange-page {
+        padding: 30px;
+        max-width: 1000px;
+        margin: 0 auto;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .ep-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(135deg, #1e293b, #0f172a);
+        padding: 24px 32px;
+        border-radius: 20px;
+        color: white;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+    }
+
+    .ep-title { font-size: 26px; font-weight: 800; margin: 0; color: #f8fafc; }
+    .ep-subtitle { font-size: 14px; color: #94a3b8; margin-top: 6px; }
+
+    .ep-points-box {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        padding: 12px 24px;
+        border-radius: 14px;
+        text-align: right;
+        backdrop-filter: blur(10px);
+    }
+    .ep-points-box span { font-size: 12px; color: #cbd5e1; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
+    .ep-points-box strong { display: block; font-size: 28px; font-weight: 900; color: #fbbf24; line-height: 1.2; }
+
+    /* Lưới các gói đổi điểm */
+    .pack-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+    }
+
+    .pack-card {
+        background: white;
+        border-radius: 20px;
+        padding: 24px;
+        border: 2px solid #e2e8f0;
+        text-align: center;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .pack-card:hover {
+        transform: translateY(-5px);
+        border-color: #14b8a6;
+        box-shadow: 0 15px 35px rgba(20, 184, 166, 0.1);
+    }
+
+    .pack-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+        display: inline-block;
+        background: #f0fdfa;
+        width: 80px; height: 80px;
+        line-height: 80px;
+        border-radius: 50%;
+    }
+
+    .pack-title { font-size: 22px; font-weight: 900; color: #0f172a; margin-bottom: 4px; }
+    .pack-desc { font-size: 14px; color: #64748b; margin-bottom: 20px; }
+
+    .pack-cost {
+        display: inline-block;
+        background: #fef3c7;
+        color: #b45309;
+        font-weight: 800;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 15px;
+        margin-bottom: 20px;
+    }
+
+    .btn-exchange {
+        width: 100%;
+        background: linear-gradient(135deg, #0d5e58, #14b8a6);
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-exchange:hover { filter: brightness(1.1); transform: scale(1.02); }
+    .btn-exchange:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; transform: none; }
+
+    /* Modal kết quả đổi mã */
+    .result-code-box {
+        background: #f8fafc; border: 2px dashed #14b8a6; padding: 20px;
+        border-radius: 16px; font-size: 28px; font-weight: 900; color: #0f766e;
+        letter-spacing: 2px; text-align: center; margin: 20px 0;
+    }
+</style>
+
+<div class="exchange-page">
+    <div class="ep-header">
+        <div>
+            <h1 class="ep-title">🎁 Cửa Hàng Đổi Điểm</h1>
+            <p class="ep-subtitle">Sử dụng điểm tích lũy (Loyalty Points) của bạn để đổi lấy mã giảm giá khi thanh toán tiền sân.</p>
+        </div>
+        <div class="ep-points-box">
+            <span>Điểm hiện tại</span>
+            <strong id="currentPoints">--</strong>
+        </div>
+    </div>
+
+    <div class="pack-grid">
+        
+        <div class="pack-card">
+            <div class="pack-icon">🥉</div>
+            <div class="pack-title">Giảm 20.000đ</div>
+            <div class="pack-desc">Sử dụng để giảm giá trực tiếp vào tổng tiền thanh toán hóa đơn sân.</div>
+            <div class="pack-cost">💎 Cần: 20 điểm</div>
+            <button class="btn-exchange" onclick="exchangePoints(20)">Đổi ngay</button>
+        </div>
+
+        <div class="pack-card">
+            <div class="pack-icon">🥈</div>
+            <div class="pack-title">Giảm 50.000đ</div>
+            <div class="pack-desc">Sử dụng để giảm giá trực tiếp vào tổng tiền thanh toán hóa đơn sân.</div>
+            <div class="pack-cost">💎 Cần: 50 điểm</div>
+            <button class="btn-exchange" onclick="exchangePoints(50)">Đổi ngay</button>
+        </div>
+
+        <div class="pack-card">
+            <div class="pack-icon" style="background:#fffbeb">🥇</div>
+            <div class="pack-title">Giảm 100.000đ</div>
+            <div class="pack-desc">Sử dụng để giảm giá trực tiếp vào tổng tiền thanh toán hóa đơn sân.</div>
+            <div class="pack-cost">💎 Cần: 100 điểm</div>
+            <button class="btn-exchange" onclick="exchangePoints(100)">Đổi ngay</button>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px; border:none;">
+            <div class="modal-body p-4 text-center">
+                <div style="font-size:60px; margin-bottom:10px">🎉</div>
+                <h4 class="fw-bold text-success mb-2">Đổi điểm thành công!</h4>
+                <p class="text-muted">Đây là mã giảm giá dành riêng cho bạn. Hãy đưa mã này cho Lễ tân khi thanh toán nhé:</p>
+                
+                <div class="result-code-box" id="generatedCode">FPT-XXXXXX</div>
+                
+                <button class="btn btn-primary fw-bold px-4 py-2" style="border-radius:12px; background:#14b8a6; border:none" onclick="copyResultCode()">
+                    📋 Copy Mã
+                </button>
+                <button class="btn btn-light fw-bold px-4 py-2" style="border-radius:12px;" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API_URL = 'http://localhost:5043/api';
+        const TOKEN = '@jwtToken';
+        const HEADERS = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };
+
+        let userPoints = 0;
+
+        // 1. Tải điểm của User khi mở trang
+        async function loadPoints() {
+            try {
+                const res = await fetch(API_URL + '/users/profile', { headers: HEADERS });
+                const data = await res.json();
+                if (data && data.loyaltyPoints !== undefined) {
+                    userPoints = data.loyaltyPoints;
+                    document.getElementById('currentPoints').textContent = userPoints + ' ⭐';
+                }
+            } catch (error) {
+                console.error("Lỗi khi lấy điểm", error);
+            }
+        }
+
+        // 2. Gửi yêu cầu đổi điểm
+        async function exchangePoints(pointsNeeded) {
+            // Kiểm tra điểm ở giao diện trước
+            if (userPoints < pointsNeeded) {
+                alert(`❌ Bạn chỉ có ${userPoints} điểm. Không đủ để đổi gói ${pointsNeeded} điểm này!`);
+                return;
+            }
+
+            if (!confirm(`Bạn có chắc chắn muốn dùng ${pointsNeeded} điểm để đổi mã giảm giá không?`)) return;
+
+            try {
+                const res = await fetch(API_URL + '/users/exchange-voucher', {
+                    method: 'POST',
+                    headers: HEADERS,
+                    body: JSON.stringify({ points: pointsNeeded })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Update lại điểm trên màn hình
+                    userPoints = data.remainingPoints;
+                    document.getElementById('currentPoints').textContent = userPoints + ' ⭐';
+
+                    // Hiện Modal khoe mã
+                    document.getElementById('generatedCode').textContent = data.code;
+                    new bootstrap.Modal(document.getElementById('resultModal')).show();
+                } else {
+                    alert('❌ Lỗi: ' + (data.message || 'Không thể đổi điểm'));
+                }
+            } catch (error) {
+                alert('❌ Lỗi kết nối tới máy chủ!');
+            }
+        }
+
+        // 3. Nút copy mã trong Modal
+        function copyResultCode() {
+            const code = document.getElementById('generatedCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('✅ Đã copy mã: ' + code);
+            });
+        }
+
+        // Khởi chạy
+        loadPoints();
+    </script>
+}
