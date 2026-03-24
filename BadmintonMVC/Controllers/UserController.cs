@@ -55,13 +55,11 @@ public class UserController : Controller
 
         var (client, token) = GetAuthClient();
 
-        // Populate from session first (fast path / fallback)
         ViewBag.DisplayName = GetDisplayName();
         ViewBag.LoyaltyPoints = HttpContext.Session.GetString("LoyaltyPoints") ?? "0";
         ViewBag.UserPhone = HttpContext.Session.GetString("UserPhone") ?? "";
         ViewBag.UserEmail = HttpContext.Session.GetString("UserEmail") ?? "";
 
-        // Default stats — will be overwritten if API succeeds
         ViewBag.TotalBookings = 0;
         ViewBag.CompletedBookings = 0;
         ViewBag.CancelledBookings = 0;
@@ -90,7 +88,7 @@ public class UserController : Controller
                     ViewBag.DisplayName = fnEl.GetString() ?? ViewBag.DisplayName;
             }
 
-            // ── 2. Compute booking statistics from /api/bookings/my ───────────
+            // ── 2. Booking statistics ─────────────────────────────────────────
             var bookingsResponse = await client.GetAsync($"{_api}/bookings/my");
             if (bookingsResponse.IsSuccessStatusCode)
             {
@@ -104,8 +102,7 @@ public class UserController : Controller
 
                     string GetStatus(JsonElement b)
                     {
-                        if (b.TryGetProperty("status", out var sv))
-                            return sv.GetString() ?? "";
+                        if (b.TryGetProperty("status", out var sv)) return sv.GetString() ?? "";
                         return "";
                     }
 
@@ -117,11 +114,7 @@ public class UserController : Controller
                     }
 
                     int total = bookings.Count;
-                    int completed = bookings.Count(b =>
-                    {
-                        var s = GetStatus(b);
-                        return s == "confirmed" || s == "completed";
-                    });
+                    int completed = bookings.Count(b => { var s = GetStatus(b); return s == "confirmed" || s == "completed"; });
                     int cancelled = bookings.Count(b => GetStatus(b) == "cancelled");
                     decimal courtSpent = bookings
                         .Where(b => { var s = GetStatus(b); return s == "confirmed" || s == "completed"; })
@@ -653,7 +646,7 @@ public class UserController : Controller
             {
                 ViewBag.Status = "error";
                 var errorMsg = data.TryGetProperty("message", out var msgEl) ? msgEl.GetString() :
-                                  data.TryGetProperty("Message", out msgEl) ? msgEl.GetString() : "Giao dịch thất bại";
+                               data.TryGetProperty("Message", out msgEl) ? msgEl.GetString() : "Giao dịch thất bại";
                 ViewBag.Message = errorMsg;
             }
         }
