@@ -358,6 +358,28 @@ namespace backend.Services
                 .Where(b => b.UserId == userId)
                 .ToListAsync();
 
+            // Debug logging for troubleshooting
+            System.Diagnostics.Debug.WriteLine($"[GetUserProfile] UserId: {userId}, Total bookings: {bookings.Count}");
+            foreach (var booking in bookings)
+            {
+                System.Diagnostics.Debug.WriteLine($"  - BookingId: {booking.Id}, Status: '{booking.Status}', TotalPrice: {booking.TotalPrice}");
+            }
+
+            // Count bookings by status with detailed logging
+            var totalBookings = bookings.Count;
+            var checkedInBookings = bookings.Count(b => b.Status == "completed");
+            var cancelledBookings = bookings.Count(b => b.Status == "cancelled");
+            var confirmedBookings = bookings.Count(b => b.Status == "confirmed");
+            var pendingBookings = bookings.Count(b => b.Status == "pending");
+            
+            System.Diagnostics.Debug.WriteLine($"  Status breakdown - Total: {totalBookings}, Completed: {checkedInBookings}, Cancelled: {cancelledBookings}, Confirmed: {confirmedBookings}, Pending: {pendingBookings}");
+
+            var totalSpent = bookings
+                .Where(b => b.Status == "confirmed" || b.Status == "completed")
+                .Sum(b => b.TotalPrice ?? 0);
+                
+            System.Diagnostics.Debug.WriteLine($"  TotalSpent calculated: {totalSpent}");
+
             return new UserProfileDto
             {
                 UserId = user.Id,
@@ -367,12 +389,10 @@ namespace backend.Services
                 LoyaltyPoints = user.LoyaltyPoints ?? 0,
                 Status = user.Status,
                 Role = user.Role,
-                TotalBookings = bookings.Count,
-                CompletedBookings = bookings.Count(b => b.Status == "confirmed" || b.Status == "completed"),
-                CancelledBookings = bookings.Count(b => b.Status == "cancelled"),
-                TotalSpent = bookings
-                    .Where(b => b.Status == "confirmed" || b.Status == "completed")
-                    .Sum(b => b.TotalPrice ?? 0)
+                TotalBookings = totalBookings,
+                CheckedInBookings = checkedInBookings,
+                CancelledBookings = cancelledBookings,
+                TotalSpent = totalSpent
             };
         }
 

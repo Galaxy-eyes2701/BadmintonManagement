@@ -249,6 +249,8 @@ namespace backend.Controllers
                             _context.Bookings.Add(booking);
                             await _context.SaveChangesAsync();
 
+                            System.Diagnostics.Debug.WriteLine($"[Seed] Created booking {booking.Id} for user {customer.Id} ({customer.FullName}), Status: {status}, Price: {price}");
+
                             _context.BookingDetails.Add(new BookingDetail
                             {
                                 BookingId = booking.Id,

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import useAuth from "../../../hooks/useAuth.jsx";
 import styles from "./UserProfilePage.module.css";
 
@@ -11,13 +12,16 @@ const getLevelInfo = (pts) => {
   return               { label: "🥉 Đồng",          color: "#b45309", next: 500,  progress: (pts / 500) * 100 };
 };
 
+const fmt = (n) =>
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n || 0);
+
 const UserProfilePage = () => {
   const authCtx = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
 
-  // Đọc token 1 lần duy nhất — không dùng làm dependency của useEffect
   const getToken = () => {
     try {
       const s = localStorage.getItem("authState");
@@ -31,13 +35,11 @@ const UserProfilePage = () => {
 
   const fetchProfile = useCallback(async () => {
     const token = getToken();
-
     if (!token) {
       setError("Không tìm thấy token. Vui lòng đăng nhập lại.");
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
@@ -52,17 +54,15 @@ const UserProfilePage = () => {
     } finally {
       setLoading(false);
     }
-  }, []); // KHÔNG có dependency — chỉ chạy khi được gọi thủ công
+  }, []);
 
-  // Chạy đúng 1 lần sau khi component mount
-  useEffect(() => {
-    fetchProfile();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-
+  useEffect(() => { fetchProfile(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return (
-    <div className={styles.loadingWrap}><div className={styles.spinner} /><p>Đang tải hồ sơ...</p></div>
+    <div className={styles.loadingWrap}>
+      <div className={styles.spinner} />
+      <p>Đang tải hồ sơ...</p>
+    </div>
   );
   if (error) return (
     <div className={styles.errorWrap}>
@@ -72,26 +72,37 @@ const UserProfilePage = () => {
     </div>
   );
 
-  const fullName  = profile?.fullName  || authCtx?.user?.fullName || "Người dùng";
-  const phone     = profile?.phone     || authCtx?.user?.phone    || "—";
-  const email     = profile?.email     || "—";
-  const role      = profile?.role      || authCtx?.role           || "Customer";
-  const points    = profile?.loyaltyPoints ?? authCtx?.user?.loyaltyPoints ?? 0;
-  const status    = profile?.status    || "active";
+  const fullName        = profile?.fullName        || authCtx?.user?.fullName || "Người dùng";
+  const phone           = profile?.phone           || authCtx?.user?.phone    || "—";
+  const email           = profile?.email           || "—";
+  const role            = profile?.role            || authCtx?.role           || "Customer";
+  const points          = profile?.loyaltyPoints   ?? authCtx?.user?.loyaltyPoints ?? 0;
+  const status          = profile?.status          || "active";
+  const totalBookings   = profile?.totalBookings   ?? 0;
+  const checkedIn       = profile?.checkedInBookings ?? 0;
+  const cancelled       = profile?.cancelledBookings ?? 0;
+  const totalSpent      = profile?.totalSpent      ?? 0;
+  const level           = getLevelInfo(points);
 
-  const totalBookings     = profile?.totalBookings     ?? 0;
-  const completedBookings = profile?.completedBookings ?? 0;
-  const cancelledBookings = profile?.cancelledBookings ?? 0;
-  const totalSpent        = profile?.totalSpent        ?? 0;
-  const level = getLevelInfo(points);
+  const initials = fullName.split(" ").map(w => w[0]).slice(-2).join("").toUpperCase();
+
+  const stats = [
+    { icon: "🏸", num: totalBookings, lbl: "Tổng đặt sân",  color: "#0f766e", bg: "rgba(15,118,110,0.08)" },
+    { icon: "✅", num: checkedIn,     lbl: "Đã check-in",   color: "#10b981", bg: "rgba(16,185,129,0.08)" },
+    { icon: "❌", num: cancelled,     lbl: "Đã hủy",        color: "#ef4444", bg: "rgba(239,68,68,0.08)"  },
+    { icon: "💰", num: fmt(totalSpent), lbl: "Tổng chi tiêu", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", small: true },
+  ];
 
   return (
     <div className={styles.page}>
+      {/* ── HERO ── */}
       <div className={styles.heroCard}>
         <div className={styles.heroBg} />
+        <div className={styles.heroDecor1} />
+        <div className={styles.heroDecor2} />
         <div className={styles.heroContent}>
           <div className={styles.avatarRing}>
-            <div className={styles.avatarLarge}>{fullName.charAt(0).toUpperCase()}</div>
+            <div className={styles.avatarLarge}>{initials}</div>
           </div>
           <div className={styles.heroInfo}>
             <h1 className={styles.heroName}>{fullName}</h1>
@@ -106,38 +117,65 @@ const UserProfilePage = () => {
               </span>
             </div>
           </div>
+          <button className={styles.historyBtn} onClick={() => navigate("/booking-history")}>
+            📋 Lịch sử đặt sân
+          </button>
+        </div>
+
+        {/* Quick stats inside hero */}
+        <div className={styles.heroStats}>
+          {stats.map((s, i) => (
+            <div key={i} className={styles.heroStatItem}>
+              <span className={styles.heroStatNum} style={{ color: s.small ? s.color : s.color }}>
+                {s.icon} {s.num}
+              </span>
+              <span className={styles.heroStatLbl}>{s.lbl}</span>
+            </div>
+          ))}
         </div>
       </div>
 
+      {/* ── GRID ── */}
       <div className={styles.grid}>
+        {/* Thông tin cá nhân */}
         <section className={styles.card}>
           <div className={styles.cardHeader}>
-            <span className={styles.cardIcon}>👤</span>
+            <div className={styles.cardIconWrap} style={{ background: "rgba(15,118,110,0.1)" }}>
+              <span className={styles.cardIcon}>👤</span>
+            </div>
             <h2 className={styles.cardTitle}>Thông tin cá nhân</h2>
           </div>
           <div className={styles.infoList}>
             {[
-              ["Họ & Tên",      fullName],
-              ["Số điện thoại", phone],
-              ["Email",         email],
-              ["Vai trò",       role],
-            ].map(([label, value]) => (
+              { label: "Họ & Tên",      value: fullName, icon: "🪪" },
+              { label: "Số điện thoại", value: phone,    icon: "📱" },
+              { label: "Email",         value: email,    icon: "📧" },
+              { label: "Vai trò",       value: role,     icon: "🎭" },
+            ].map(({ label, value, icon }) => (
               <div key={label} className={styles.infoRow}>
-                <span className={styles.infoLabel}>{label}</span>
+                <span className={styles.infoLabel}>
+                  <span className={styles.infoIcon}>{icon}</span>
+                  {label}
+                </span>
                 <span className={styles.infoValue}>{value || "—"}</span>
               </div>
             ))}
           </div>
         </section>
 
+        {/* Điểm tích lũy */}
         <section className={styles.card}>
           <div className={styles.cardHeader}>
-            <span className={styles.cardIcon}>⭐</span>
+            <div className={styles.cardIconWrap} style={{ background: "rgba(245,158,11,0.1)" }}>
+              <span className={styles.cardIcon}>⭐</span>
+            </div>
             <h2 className={styles.cardTitle}>Điểm tích lũy</h2>
           </div>
           <div className={styles.pointsDisplay}>
-            <div className={styles.pointsBig}>{points.toLocaleString("vi-VN")}</div>
-            <div className={styles.pointsLabel}>điểm tích lũy</div>
+            <div className={styles.pointsCircle} style={{ borderColor: level.color + "44" }}>
+              <div className={styles.pointsBig} style={{ color: level.color }}>{points.toLocaleString("vi-VN")}</div>
+              <div className={styles.pointsLabel}>điểm</div>
+            </div>
             <div className={styles.pointsHint}>Mỗi 100.000đ chi tiêu = 1 điểm</div>
           </div>
           <div className={styles.levelSection}>
@@ -147,7 +185,7 @@ const UserProfilePage = () => {
             </div>
             <div className={styles.progressBar}>
               <div className={styles.progressFill}
-                style={{ width: `${Math.min(level.progress, 100)}%`, background: level.color }} />
+                style={{ width: `${Math.min(level.progress, 100)}%`, background: `linear-gradient(90deg, ${level.color}99, ${level.color})` }} />
             </div>
             {level.next
               ? <p className={styles.progressNote}>Còn <strong>{(level.next - points).toLocaleString()}</strong> điểm để lên hạng</p>
@@ -166,26 +204,22 @@ const UserProfilePage = () => {
           </div>
         </section>
 
+        {/* Thống kê */}
         <section className={`${styles.card} ${styles.cardWide}`}>
           <div className={styles.cardHeader}>
-            <span className={styles.cardIcon}>📊</span>
+            <div className={styles.cardIconWrap} style={{ background: "rgba(99,102,241,0.1)" }}>
+              <span className={styles.cardIcon}>📊</span>
+            </div>
             <h2 className={styles.cardTitle}>Thống kê của bạn</h2>
           </div>
           <div className={styles.statsGrid}>
-            {[
-              { num: totalBookings,     lbl: "Lần đặt sân",  color: "#0f766e" },
-              { num: completedBookings, lbl: "Đã check-in",  color: "#10b981" },
-              { num: cancelledBookings, lbl: "Đã hủy",       color: "#ef4444" },
-              {
-                num: totalSpent > 0
-                  ? new Intl.NumberFormat("vi-VN", { notation: "compact" }).format(totalSpent) + "đ"
-                  : "0đ",
-                lbl: "Tổng chi tiêu", color: "#f59e0b",
-              },
-            ].map((stat, i) => (
-              <div key={i} className={styles.statBox}>
-                <div className={styles.statNum} style={{ color: stat.color }}>{stat.num}</div>
-                <div className={styles.statLbl}>{stat.lbl}</div>
+            {stats.map((s, i) => (
+              <div key={i} className={styles.statBox} style={{ "--stat-color": s.color, "--stat-bg": s.bg }}>
+                <div className={styles.statIconWrap}>{s.icon}</div>
+                <div className={styles.statNum} style={{ color: s.color, fontSize: s.small ? "1.4rem" : undefined }}>
+                  {s.num}
+                </div>
+                <div className={styles.statLbl}>{s.lbl}</div>
               </div>
             ))}
           </div>

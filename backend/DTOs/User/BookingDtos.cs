@@ -108,7 +108,7 @@ namespace backend.DTOs
         public string Status { get; set; } = "";
         public string Role { get; set; } = "";
         public int TotalBookings { get; set; }
-        public int CompletedBookings { get; set; }
+        public int CheckedInBookings { get; set; }
         public int CancelledBookings { get; set; }
         public decimal TotalSpent { get; set; }
     }
@@ -142,11 +142,11 @@ namespace backend.DTOs
     }
 
     // ── Update Profile ───────────────────────────────────────────────────────
-    public class UpdateProfileDto
-    {
-        public string? FullName { get; set; }
-        public string? Email { get; set; }
-    }
+    //public class UpdateProfileDto
+    //{
+    //    public string? FullName { get; set; }
+    //    public string? Email { get; set; }
+    //}
 
     // ── Purchase Products with Booking ───────────────────────────────────────
     public class PurchaseProductDto
