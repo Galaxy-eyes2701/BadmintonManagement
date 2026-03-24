@@ -23,6 +23,7 @@
         .btn-primary:hover { background: linear-gradient(135deg, #0d5e58, #0f766e); transform: translateY(-1px); }
         .form-control:focus { border-color: #14b8a6; box-shadow: 0 0 0 3px rgba(20,184,166,.15); }
         .password-wrapper { position: relative; }
+        .password-wrapper .form-control { padding-right: 44px; background-image: none !important; }
         .password-toggle {
             position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
             background: none; border: none; color: #64748b; cursor: pointer;
@@ -52,10 +53,11 @@
             <div class="alert alert-danger py-2 small">⚠️ @ViewBag.Error</div>
         }
 
-        <form method="post" action="/Auth/Login">
+        <form method="post" action="/Auth/Login" id="loginForm" novalidate>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Số điện thoại</label>
-                <input type="text" name="phone" class="form-control" required autofocus />
+                <input type="text" name="phone" id="phone" class="form-control" required autofocus />
+                <div class="invalid-feedback" id="phoneError"></div>
             </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Mật khẩu</label>
@@ -73,6 +75,7 @@
                         </svg>
                     </button>
                 </div>
+                <div class="invalid-feedback" id="passwordError"></div>
             </div>
             <button type="submit" class="btn btn-primary w-100 py-2">Đăng nhập</button>
         </form>
@@ -98,6 +101,53 @@
                 eyeOffIcon.style.display = 'none';
             }
         }
+
+        function showError(inputId, errorId, msg) {
+            const input = document.getElementById(inputId);
+            const err = document.getElementById(errorId);
+            input.classList.add('is-invalid');
+            err.textContent = msg;
+            err.style.display = 'block';
+        }
+
+        function clearError(inputId, errorId) {
+            const input = document.getElementById(inputId);
+            const err = document.getElementById(errorId);
+            input.classList.remove('is-invalid');
+            err.textContent = '';
+            err.style.display = 'none';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            let valid = true;
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value;
+
+            clearError('phone', 'phoneError');
+            clearError('password', 'passwordError');
+
+            if (!phone) {
+                showError('phone', 'phoneError', 'Vui lòng nhập số điện thoại.');
+                valid = false;
+            } else if (!/^0\d{9}$/.test(phone)) {
+                showError('phone', 'phoneError', 'Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số.');
+                valid = false;
+            }
+
+            if (!password) {
+                showError('password', 'passwordError', 'Vui lòng nhập mật khẩu.');
+                valid = false;
+            } else if (password.length < 6) {
+                showError('password', 'passwordError', 'Mật khẩu phải có ít nhất 6 ký tự.');
+                valid = false;
+            }
+
+            if (!valid) e.preventDefault();
+        });
+
+        // Xóa lỗi khi người dùng bắt đầu nhập lại
+        document.getElementById('phone').addEventListener('input', () => clearError('phone', 'phoneError'));
+        document.getElementById('password').addEventListener('input', () => clearError('password', 'passwordError'));
     </script>
 </body>
 </html>

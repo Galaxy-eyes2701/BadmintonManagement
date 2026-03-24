@@ -45,6 +45,11 @@
             position: relative;
         }
 
+        .password-wrapper .form-control {
+            padding-right: 44px;
+            background-image: none !important;
+        }
+
         .password-toggle {
             position: absolute;
             right: 12px;
@@ -87,18 +92,21 @@
             <div class="alert alert-success py-2 small">✅ @ViewBag.Success</div>
         }
 
-        <form method="post">
+        <form method="post" id="registerForm" novalidate>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Họ và tên</label>
-                <input type="text" name="fullName" class="form-control" required />
+                <input type="text" name="fullName" id="fullName" class="form-control" required />
+                <div class="invalid-feedback" id="fullNameError"></div>
             </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Số điện thoại</label>
-                <input type="text" name="phone" class="form-control" required />
+                <input type="text" name="phone" id="phone" class="form-control" required />
+                <div class="invalid-feedback" id="phoneError"></div>
             </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Email</label>
-                <input type="email" name="email" class="form-control" />
+                <input type="email" name="email" id="email" class="form-control" />
+                <div class="invalid-feedback" id="emailError"></div>
             </div>
             <div class="row">
                 <div class="col-6 mb-3">
@@ -117,6 +125,7 @@
                             </svg>
                         </button>
                     </div>
+                    <div class="invalid-feedback" id="passwordError"></div>
                 </div>
                 <div class="col-6 mb-3">
                     <label class="form-label fw-semibold">Nhập lại mật khẩu</label>
@@ -134,6 +143,7 @@
                             </svg>
                         </button>
                     </div>
+                    <div class="invalid-feedback" id="confirmPasswordError"></div>
                 </div>
             </div>
             <button type="submit" class="btn btn-primary w-100 py-2">Đăng ký</button>
@@ -160,6 +170,80 @@
                 eyeOff.style.display = 'none';
             }
         }
+
+        function showError(inputId, errorId, msg) {
+            const input = document.getElementById(inputId);
+            const err = document.getElementById(errorId);
+            input.classList.add('is-invalid');
+            err.textContent = msg;
+            err.style.display = 'block';
+        }
+
+        function clearError(inputId, errorId) {
+            const input = document.getElementById(inputId);
+            const err = document.getElementById(errorId);
+            input.classList.remove('is-invalid');
+            err.textContent = '';
+            err.style.display = 'none';
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', function (e) {
+            let valid = true;
+
+            const fullName = document.getElementById('fullName').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            ['fullName','phone','email','password','confirmPassword'].forEach(id => {
+                clearError(id, id + 'Error');
+            });
+
+            if (!fullName) {
+                showError('fullName', 'fullNameError', 'Vui lòng nhập họ và tên.');
+                valid = false;
+            } else if (fullName.length < 2) {
+                showError('fullName', 'fullNameError', 'Họ và tên phải có ít nhất 2 ký tự.');
+                valid = false;
+            }
+
+            if (!phone) {
+                showError('phone', 'phoneError', 'Vui lòng nhập số điện thoại.');
+                valid = false;
+            } else if (!/^0\d{9}$/.test(phone)) {
+                showError('phone', 'phoneError', 'Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số.');
+                valid = false;
+            }
+
+            if (email && !/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email)) {
+                showError('email', 'emailError', 'Email không hợp lệ.');
+                valid = false;
+            }
+
+            if (!password) {
+                showError('password', 'passwordError', 'Vui lòng nhập mật khẩu.');
+                valid = false;
+            } else if (password.length < 6) {
+                showError('password', 'passwordError', 'Mật khẩu phải có ít nhất 6 ký tự.');
+                valid = false;
+            }
+
+            if (!confirmPassword) {
+                showError('confirmPassword', 'confirmPasswordError', 'Vui lòng nhập lại mật khẩu.');
+                valid = false;
+            } else if (password && confirmPassword !== password) {
+                showError('confirmPassword', 'confirmPasswordError', 'Mật khẩu xác nhận không khớp.');
+                valid = false;
+            }
+
+            if (!valid) e.preventDefault();
+        });
+
+        // Xóa lỗi khi nhập lại
+        ['fullName','phone','email','password','confirmPassword'].forEach(id => {
+            document.getElementById(id)?.addEventListener('input', () => clearError(id, id + 'Error'));
+        });
     </script>
 </body>
 
