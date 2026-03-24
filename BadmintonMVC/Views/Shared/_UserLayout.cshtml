@@ -37,6 +37,11 @@
                         <span class="nav-icon">📋</span>
                         Lịch sử
                     </a>
+                    <a href="/User/Purchase"
+                           class="nav-link @(Context.Request.Path.Value?.Contains("Purchase") == true ? "nav-active" : "")">
+                        <span class="nav-icon">🛍️</span>
+                        Mua hàng
+                    </a>
                     <a href="/User/Voucher"
                            class="nav-link @(Context.Request.Path.Value?.Contains("Voucher") == true ? "nav-active" : "")">
                         <span class="nav-icon">🎟️</span>
@@ -47,7 +52,6 @@
                         <span class="nav-icon">👤</span>
                         Hồ sơ
                     </a>
-                    
                 </nav>
 
                 <div class="user-area">

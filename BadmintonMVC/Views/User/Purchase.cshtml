@@ -60,7 +60,6 @@
                          data-court-name="@firstCourtName" data-total-price="@totalPrice"
                          onclick="selectBooking(this)">
                         <div class="booking-header">
-                            <span class="booking-id">#@bookingId</span>
                             <span class="booking-status">@status</span>
                         </div>
                         <h3 class="court-name">@firstCourtName</h3>
@@ -85,8 +84,8 @@
     <section class="section" id="step2Section" style="display: none;">
         <div class="selected-booking-bar">
             <div>
-                <strong>🏸 Booking #<span id="selectedBookingId"></span></strong>
-                <span class="selected-booking-meta"> - <span id="selectedCourtName"></span> - <span id="selectedTotalPrice"></span></span>
+                <strong>🏸 <span id="selectedCourtName"></span></strong>
+                <span class="selected-booking-meta"> - <span id="selectedTotalPrice"></span></span>
             </div>
             <button class="btn-text" onclick="goToStep1()">Đổi booking</button>
         </div>
@@ -164,10 +163,6 @@
                 <h2 class="success-title">Mua hàng thành công!</h2>
                 <div class="success-details">
                     <div class="success-row">
-                        <span>🏸 Booking:</span>
-                        <strong id="successBookingId"></strong>
-                    </div>
-                    <div class="success-row">
                         <span>🛒 Sản phẩm đã mua:</span>
                         <strong id="successItemCount"></strong>
                     </div>
@@ -239,7 +234,6 @@
         document.getElementById('step1Indicator').classList.add('step-done');
         document.getElementById('step2Indicator').classList.add('step-current');
 
-        document.getElementById('selectedBookingId').textContent = selectedBooking.bookingId;
         document.getElementById('selectedCourtName').textContent = selectedBooking.courtName;
         document.getElementById('selectedTotalPrice').textContent = formatCurrency(selectedBooking.totalPrice);
         document.getElementById('bookingCourtPrice').textContent = formatCurrency(selectedBooking.totalPrice);
@@ -374,7 +368,6 @@
         document.getElementById('step2Indicator').classList.add('step-done');
         document.getElementById('step3Indicator').classList.add('step-current');
 
-        document.getElementById('successBookingId').textContent = '#' + successData.bookingId;
         document.getElementById('successItemCount').textContent = successData.items?.length + ' loại';
         document.getElementById('successOrderTotal').textContent = formatCurrency(successData.orderTotal);
     }
