@@ -573,7 +573,7 @@ namespace backend.Services
                     .ThenInclude(bd => bd.TimeSlot)
                 .Include(b => b.Payments)
                 .Where(b => b.UserId == userId)
-                .Where(b => b.Status != "cancelled")
+                .Where(b => b.Status == "confirmed")
                 .OrderByDescending(b => b.CreatedAt)
                 .ToListAsync();
 
