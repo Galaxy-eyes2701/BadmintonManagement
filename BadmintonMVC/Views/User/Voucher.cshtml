@@ -122,32 +122,8 @@
         </div>
     </div>
 
-    <div class="pack-grid">
-        
-        <div class="pack-card">
-            <div class="pack-icon">🥉</div>
-            <div class="pack-title">Giảm 20.000đ</div>
-            <div class="pack-desc">Sử dụng để giảm giá trực tiếp vào tổng tiền thanh toán hóa đơn sân.</div>
-            <div class="pack-cost">💎 Cần: 20 điểm</div>
-            <button class="btn-exchange" onclick="exchangePoints(20)">Đổi ngay</button>
-        </div>
-
-        <div class="pack-card">
-            <div class="pack-icon">🥈</div>
-            <div class="pack-title">Giảm 50.000đ</div>
-            <div class="pack-desc">Sử dụng để giảm giá trực tiếp vào tổng tiền thanh toán hóa đơn sân.</div>
-            <div class="pack-cost">💎 Cần: 50 điểm</div>
-            <button class="btn-exchange" onclick="exchangePoints(50)">Đổi ngay</button>
-        </div>
-
-        <div class="pack-card">
-            <div class="pack-icon" style="background:#fffbeb">🥇</div>
-            <div class="pack-title">Giảm 100.000đ</div>
-            <div class="pack-desc">Sử dụng để giảm giá trực tiếp vào tổng tiền thanh toán hóa đơn sân.</div>
-            <div class="pack-cost">💎 Cần: 100 điểm</div>
-            <button class="btn-exchange" onclick="exchangePoints(100)">Đổi ngay</button>
-        </div>
-
+    <div class="pack-grid" id="voucherGrid">
+        <p class="text-muted text-center w-100">Đang tải danh sách mã giảm giá...</p>
     </div>
 </div>
 
@@ -170,50 +146,102 @@
     </div>
 </div>
 
-@section Scripts {
+   @section Scripts {
     <script>
         const API_URL = 'http://localhost:5043/api';
         const TOKEN = '@jwtToken';
+        // MỚI: Lấy thẳng UserId từ Session của MVC truyền xuống JS
+        const USER_ID = '@Context.Session.GetString("UserId")'; 
         const HEADERS = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };
 
         let userPoints = 0;
 
-        // 1. Tải điểm của User khi mở trang
-        async function loadPoints() {
+        // 1. Tải cả Điểm User và Danh sách Voucher khi vừa vào trang
+        async function loadData() {
+            // Lấy điểm: Gọi thẳng vào bảng Users bằng ID cho chắc chắn 100%
             try {
-                const res = await fetch(API_URL + '/users/profile', { headers: HEADERS });
-                const data = await res.json();
-                if (data && data.loyaltyPoints !== undefined) {
-                    userPoints = data.loyaltyPoints;
+                const res = await fetch(`${API_URL}/users/${USER_ID}`, { headers: HEADERS });
+                if (res.ok) {
+                    const data = await res.json();
+                    // Dữ liệu trả về là object User có chứa loyaltyPoints
+                    userPoints = data.loyaltyPoints || 0;
                     document.getElementById('currentPoints').textContent = userPoints + ' ⭐';
+                } else {
+                    console.error("Không lấy được điểm từ máy chủ.");
                 }
             } catch (error) {
                 console.error("Lỗi khi lấy điểm", error);
             }
+
+            // Lấy danh sách Voucher từ DB
+            try {
+                const vRes = await fetch(API_URL + '/vouchers', { headers: HEADERS });
+                if (vRes.ok) {
+                    const allVouchers = await vRes.json();
+                    renderVouchers(allVouchers);
+                }
+            } catch (error) {
+                console.error("Lỗi khi lấy voucher", error);
+            }
         }
 
-        // 2. Gửi yêu cầu đổi điểm
-        async function exchangePoints(pointsNeeded) {
-            // Kiểm tra điểm ở giao diện trước
+        // 2. Tự động vẽ các Ô Mã giảm giá
+        function renderVouchers(vouchers) {
+            const grid = document.getElementById('voucherGrid');
+            grid.innerHTML = '';
+
+            // Chỉ lấy các mã dùng chung (Mã riêng của khách chứa chữ "-U" thì ẩn đi không cho đổi)
+            const publicVouchers = vouchers.filter(v => !v.code.includes('-U'));
+
+            if (publicVouchers.length === 0) {
+                grid.innerHTML = '<p class="text-muted text-center w-100">Hiện tại chưa có mã giảm giá nào để đổi.</p>';
+                return;
+            }
+
+            publicVouchers.forEach(v => {
+                // Tự động tính toán số điểm cần (Cứ 1.000đ = 1 điểm)
+                const pointsNeeded = Math.floor(v.discountAmount / 1000);
+                
+                // Gắn icon vui nhộn tùy theo giá trị mã
+                let icon = '🎁';
+                if (pointsNeeded >= 100) icon = '🥇';
+                else if (pointsNeeded >= 50) icon = '🥈';
+                else if (pointsNeeded >= 20) icon = '🥉';
+
+                const cardHtml = `
+                    <div class="pack-card">
+                        <div class="pack-icon">${icon}</div>
+                        <div class="pack-title">Giảm ${v.discountAmount.toLocaleString('vi-VN')}đ</div>
+                        <div class="pack-desc">Đổi mã <strong>${v.code}</strong>. Sử dụng để giảm giá trực tiếp vào hóa đơn sân.</div>
+                        <div class="pack-cost">💎 Cần: ${pointsNeeded} điểm</div>
+                        <button class="btn-exchange" onclick="exchangePoints('${v.code}', ${pointsNeeded})">Đổi mã ngay</button>
+                    </div>
+                `;
+                grid.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+
+        // 3. Gửi yêu cầu đổi điểm (Gửi voucherCode lên thay vì gửi points)
+        async function exchangePoints(voucherCode, pointsNeeded) {
             if (userPoints < pointsNeeded) {
                 alert(`❌ Bạn chỉ có ${userPoints} điểm. Không đủ để đổi gói ${pointsNeeded} điểm này!`);
                 return;
             }
 
-            if (!confirm(`Bạn có chắc chắn muốn dùng ${pointsNeeded} điểm để đổi mã giảm giá không?`)) return;
+            if (!confirm(`Bạn có chắc chắn muốn dùng ${pointsNeeded} điểm để đổi mã ${voucherCode} không?`)) return;
 
             try {
                 const res = await fetch(API_URL + '/users/exchange-voucher', {
                     method: 'POST',
                     headers: HEADERS,
-                    body: JSON.stringify({ points: pointsNeeded })
+                    body: JSON.stringify({ voucherCode: voucherCode }) 
                 });
 
                 const data = await res.json();
 
                 if (res.ok) {
-                    // Update lại điểm trên màn hình
-                    userPoints = data.remainingPoints;
+                    // Update lại điểm trên màn hình ngay lập tức
+                    userPoints = data.remainingPoints || 0;
                     document.getElementById('currentPoints').textContent = userPoints + ' ⭐';
 
                     // Hiện Modal khoe mã
@@ -227,7 +255,7 @@
             }
         }
 
-        // 3. Nút copy mã trong Modal
+        // 4. Nút copy mã trong Modal
         function copyResultCode() {
             const code = document.getElementById('generatedCode').textContent;
             navigator.clipboard.writeText(code).then(() => {
@@ -235,7 +263,7 @@
             });
         }
 
-        // Khởi chạy
-        loadPoints();
+        // Khởi chạy khi tải xong trang
+        loadData();
     </script>
 }

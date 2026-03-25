@@ -51,6 +51,7 @@ namespace backend.Controllers
             catch { }
             return null;
         }
+
         // =======================================================
         // TÍNH TOÁN TRƯỚC SỐ BUỔI VÀ TỔNG TIỀN (PREVIEW)
         // =======================================================
@@ -85,6 +86,7 @@ namespace backend.Controllers
             // 3. Trả kết quả về cho React
             return Ok(new { playDays = playDays, unitPrice = unitPrice, totalPrice = playDays * unitPrice });
         }
+
         // =======================================================
         // 1. LẤY CHI TIẾT HÓA ĐƠN TRƯỚC KHI TẤT TOÁN 
         // =======================================================
@@ -113,9 +115,7 @@ namespace backend.Controllers
                 .Where(v => v.UsageLimit > 0 && v.ExpiryDate >= DateOnly.FromDateTime(DateTime.Now))
                 .ToListAsync();
 
-            // 2. LỌC THÔNG MINH: 
-            // - Chỉ lấy Voucher chung (Mã không chứa "-U") 
-            // - HOẶC Voucher riêng của đúng vị khách đang thanh toán (Mã chứa "-U{booking.UserId}-")
+            // 2. LỌC THÔNG MINH: Lấy mã chung (không có -U) HOẶC mã riêng của đúng khách
             var availableVouchers = allActiveVouchers
     .Where(v => v.Code.Contains($"-U{booking.UserId}-")) // Chỉ giữ lại đúng điều kiện này
     .Select(v => new
@@ -125,12 +125,15 @@ namespace backend.Controllers
         label = $"🎁 Quà của khách ({v.Code}) - Giảm {v.DiscountAmount:N0}đ"
     })
     .ToList();
+            // Tính nháp số điểm khách chuẩn bị được cộng từ hóa đơn này
+            int estimatedPoints = (int)(remainingAmount / 10000);
 
             return Ok(new
             {
                 bookingId = booking.Id,
                 customerName = booking.User?.FullName ?? "Khách vãng lai",
                 loyaltyPoints = booking.User?.LoyaltyPoints ?? 0,
+                estimatedPoints = estimatedPoints, // Trả thêm điểm dự kiến cộng thêm
                 courtTotal,
                 posTotal,
                 alreadyPaid,
@@ -138,6 +141,7 @@ namespace backend.Controllers
                 availableVouchers // Trả về danh sách voucher đã được lọc sạch sẽ
             });
         }
+
         // =======================================================
         // 2. THANH TOÁN (CHECKOUT) & TRỪ VOUCHER
         // =======================================================
@@ -465,6 +469,7 @@ namespace backend.Controllers
 
             return Ok(new { message = "Tạo Hợp đồng thành công!", autoBookings = playDates.Count });
         }
+
         [HttpPut("fixed-schedules/{id}/cancel")]
         public async Task<IActionResult> CancelFixedSchedule(int id)
         {
