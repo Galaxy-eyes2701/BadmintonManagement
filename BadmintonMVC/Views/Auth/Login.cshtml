@@ -3,124 +3,151 @@
 }
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Đăng nhập - Badminton Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap"
-          rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
     <style>
-            body {
-                font-family: 'Nunito', sans-serif;
-                background: linear-gradient(135deg, #0d5e58, #0f766e, #14b8a6);
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin: 0;
-            }
-
-            .card {
-                border-radius: 16px;
-                border: none;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, .2);
-                background: white;
-            }
-
-            .btn-primary {
-                background: linear-gradient(135deg, #0f766e, #14b8a6);
-                border: none;
-                font-weight: 700;
-            }
-
-            .btn-primary:hover {
-                background: linear-gradient(135deg, #0d5e58, #0f766e);
-                transform: translateY(-1px);
-            }
-
-            .form-control:focus {
-                border-color: #14b8a6;
-                box-shadow: 0 0 0 3px rgba(20, 184, 166, .15);
-            }
-
-            .password-wrapper {
-                position: relative;
-            }
-
-            .password-toggle {
-                position: absolute;
-                right: 12px;
-                top: 50%;
-                transform: translateY(-50%);
-                background: none;
-                border: none;
-                color: #64748b;
-                cursor: pointer;
-                font-size: 1.1rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10;
-            }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #0d5e58, #0f766e, #14b8a6);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card { border-radius: 16px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+        .btn-primary { background: linear-gradient(135deg, #0f766e, #14b8a6); border: none; font-weight: 700; }
+        .btn-primary:hover { background: linear-gradient(135deg, #0d5e58, #0f766e); transform: translateY(-1px); }
+        .form-control:focus { border-color: #14b8a6; box-shadow: 0 0 0 3px rgba(20,184,166,.15); }
+        .password-wrapper { position: relative; }
+        .password-wrapper .form-control { padding-right: 44px; background-image: none !important; }
+        .password-toggle {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: #64748b; cursor: pointer;
+            font-size: 1.1rem; padding: 0; width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .password-toggle:hover { color: #0f766e; }
+        .auth-links { display: flex; justify-content: space-between; font-size: .85rem; margin-top: 14px; }
+        .auth-links a { color: #0f766e; text-decoration: none; font-weight: 600; }
+        .auth-links a:hover { text-decoration: underline; }
     </style>
 </head>
-
 <body>
-    <div class="card p-4" style="width:420px">
+    <div class="card p-4" style="width:400px">
         <div class="text-center mb-4">
             <span style="font-size:48px">🏸</span>
-            <h4 class="fw-bold mt-2 mb-0" style="color:#0f766e">Badminton Management</h4>
-            <p class="text-muted small">Đăng nhập để tiếp tục</p>
+            <h4 class="fw-black mt-2 mb-0" style="color:#0f766e">Badminton Management</h4>
+            <p class="text-muted small">Đăng nhập để quản lý lịch đặt sân</p>
         </div>
 
+        @if (TempData["LoginSuccess"] != null)
+        {
+            <div class="alert alert-success py-2 small">✅ @TempData["LoginSuccess"]</div>
+        }
         @if (ViewBag.Error != null)
         {
             <div class="alert alert-danger py-2 small">⚠️ @ViewBag.Error</div>
         }
 
-        <form method="post" action="/Auth/Login">
+        <form method="post" action="/Auth/Login" id="loginForm" novalidate>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Số điện thoại</label>
-                <input type="text" name="phone" class="form-control" placeholder="Nhập số điện thoại" required
-                       autofocus />
+                <input type="text" name="phone" id="phone" class="form-control" required autofocus />
+                <div class="invalid-feedback" id="phoneError"></div>
             </div>
-            <div class="mb-4">
-                <div class="d-flex justify-content-between">
-                    <label class="form-label fw-semibold">Mật khẩu</label>
-                    <a href="/Auth/ForgotPassword" class="text-decoration-none"
-                       style="color:#0f766e; font-size:0.8rem">Quên mật khẩu?</a>
-                </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Mật khẩu</label>
                 <div class="password-wrapper">
-                    <input type="password" name="password" id="password" class="form-control"
-                           placeholder="Nhập mật khẩu" required />
-                    <button type="button" class="password-toggle" onclick="togglePassword()" tabindex="-1">👁️</button>
+                    <input type="password" name="password" id="password" class="form-control" required />
+                    <button type="button" class="password-toggle" onclick="togglePassword()" tabindex="-1" id="toggleBtn">
+                        <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                        </svg>
+                        <svg id="eyeOffIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style="display:none">
+                            <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/>
+                            <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/>
+                            <path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>
+                        </svg>
+                    </button>
                 </div>
+                <div class="invalid-feedback" id="passwordError"></div>
             </div>
-            <button type="submit" class="btn btn-primary w-100 py-2 mb-3">Đăng nhập</button>
+            <button type="submit" class="btn btn-primary w-100 py-2">Đăng nhập</button>
         </form>
 
-        <hr class="my-3" />
-        <p class="text-center text-muted small mb-0">
-            Chưa có tài khoản? <a href="/Auth/Register" class="fw-bold text-decoration-none" style="color:#0f766e">Đăng
-            ký ngay</a>
-        </p>
+        <div class="auth-links">
+            <a href="/Auth/Register">Đăng ký ngay</a>
+            <a href="/Auth/ForgotPassword">Quên mật khẩu?</a>
+        </div>
     </div>
 
     <script>
-            function togglePassword() {
-                const passwordInput = document.getElementById('password');
-                const toggleBtn = document.querySelector('.password-toggle');
-
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    toggleBtn.textContent = '🙈';
-                } else {
-                    passwordInput.type = 'password';
-                    toggleBtn.textContent = '👁️';
-                }
+        function togglePassword() {
+            const input = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
+            const eyeOffIcon = document.getElementById('eyeOffIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                eyeIcon.style.display = 'none';
+                eyeOffIcon.style.display = 'inline';
+            } else {
+                input.type = 'password';
+                eyeIcon.style.display = 'inline';
+                eyeOffIcon.style.display = 'none';
             }
+        }
+
+        function showError(inputId, errorId, msg) {
+            const input = document.getElementById(inputId);
+            const err = document.getElementById(errorId);
+            input.classList.add('is-invalid');
+            err.textContent = msg;
+            err.style.display = 'block';
+        }
+
+        function clearError(inputId, errorId) {
+            const input = document.getElementById(inputId);
+            const err = document.getElementById(errorId);
+            input.classList.remove('is-invalid');
+            err.textContent = '';
+            err.style.display = 'none';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            let valid = true;
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value;
+
+            clearError('phone', 'phoneError');
+            clearError('password', 'passwordError');
+
+            if (!phone) {
+                showError('phone', 'phoneError', 'Vui lòng nhập số điện thoại.');
+                valid = false;
+            } else if (!/^0\d{9}$/.test(phone)) {
+                showError('phone', 'phoneError', 'Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số.');
+                valid = false;
+            }
+
+            if (!password) {
+                showError('password', 'passwordError', 'Vui lòng nhập mật khẩu.');
+                valid = false;
+            } else if (password.length < 6) {
+                showError('password', 'passwordError', 'Mật khẩu phải có ít nhất 6 ký tự.');
+                valid = false;
+            }
+
+            if (!valid) e.preventDefault();
+        });
+
+        // Xóa lỗi khi người dùng bắt đầu nhập lại
+        document.getElementById('phone').addEventListener('input', () => clearError('phone', 'phoneError'));
+        document.getElementById('password').addEventListener('input', () => clearError('password', 'passwordError'));
     </script>
 </body>
-
 </html>

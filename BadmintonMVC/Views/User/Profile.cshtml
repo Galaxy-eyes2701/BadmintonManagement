@@ -1,53 +1,525 @@
-@{
+﻿@{
     ViewData["Title"] = "Hồ sơ";
     Layout = "_UserLayout";
 }
 
 @{
-    var profile = ViewBag.Profile;
     var loyaltyPoints = ViewBag.LoyaltyPoints ?? "0";
-    string displayName = ViewBag.DisplayName ?? "Ngườii dùng";
+    string displayName = ViewBag.DisplayName ?? "Người dùng";
     string phone = ViewBag.UserPhone ?? Context.Session.GetString("UserPhone") ?? "Chưa cập nhật";
     string email = ViewBag.UserEmail ?? Context.Session.GetString("UserEmail") ?? "Chưa cập nhật";
     string userRole = Context.Session.GetString("UserRole") ?? "Customer";
-    
-    // Get level info
+
     int pts = 0;
-    if (loyaltyPoints != null) {
-        int.TryParse(loyaltyPoints.ToString(), out pts);
-    }
-    var level = "";
-    var levelColor = "#b45309";
-    var nextLevel = 500;
-    var progress = (pts / 500.0) * 100;
-    
-    if (pts >= 5000) {
-        level = "💎 Kim Cương";
-        levelColor = "#06b6d4";
-        nextLevel = 0;
-        progress = 100;
-    } else if (pts >= 2000) {
-        level = "🥇 Vàng";
-        levelColor = "#f59e0b";
-        nextLevel = 5000;
-        progress = ((pts - 2000) / 3000.0) * 100;
-    } else if (pts >= 500) {
-        level = "🥈 Bạc";
-        levelColor = "#64748b";
-        nextLevel = 2000;
-        progress = ((pts - 500) / 1500.0) * 100;
-    } else {
-        level = "🥉 Đồng";
-        levelColor = "#b45309";
-        nextLevel = 500;
-        progress = (pts / 500.0) * 100;
-    }
+    int.TryParse(loyaltyPoints?.ToString(), out pts);
+
+    int totalBookings = ViewBag.TotalBookings ?? 0;
+    int completedBookings = ViewBag.CompletedBookings ?? 0;
+    int cancelledBookings = ViewBag.CancelledBookings ?? 0;
+    decimal totalSpent = ViewBag.TotalSpent ?? 0m;
+
+    string level = "";
+    string levelColor = "#b45309";
+    int nextLevel = 500;
+    double progress = 0;
+
+    if (pts >= 5000) { level = "💎 Kim Cương"; levelColor = "#06b6d4"; nextLevel = 0; progress = 100; }
+    else if (pts >= 2000) { level = "🥇 Vàng"; levelColor = "#f59e0b"; nextLevel = 5000; progress = ((pts - 2000) / 3000.0) * 100; }
+    else if (pts >= 500) { level = "🥈 Bạc"; levelColor = "#64748b"; nextLevel = 2000; progress = ((pts - 500) / 1500.0) * 100; }
+    else { level = "🥉 Đồng"; levelColor = "#b45309"; nextLevel = 500; progress = (pts / 500.0) * 100; }
 }
 
+<style>
+    .profile-page {
+        padding: 24px;
+        max-width: 960px;
+        margin: 0 auto;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    /* ── Hero card ─────────────────────────────── */
+    .hero-card {
+        position: relative;
+        overflow: hidden;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #0d5e58 0%, #0f766e 60%, #14b8a6 100%);
+        padding: 32px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 30px rgba(15,118,110,.25);
+    }
+
+    .hero-card-bg {
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        background: rgba(255,255,255,.07);
+        pointer-events: none;
+    }
+
+    .hero-card-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .avatar-ring {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 3px solid rgba(255,255,255,.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,.15);
+        flex-shrink: 0;
+    }
+
+    .avatar-large {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: white;
+        color: #0f766e;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: 900;
+    }
+
+    .hero-card-name {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: white;
+    }
+
+    .hero-card-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+    }
+
+    .level-badge {
+        display: inline-block;
+        font-size: .78rem;
+        font-weight: 800;
+        padding: 4px 12px;
+        border-radius: 20px;
+        border: 1px solid;
+    }
+
+    .status-active {
+        font-size: .78rem;
+        font-weight: 700;
+        color: #6ee7b7;
+    }
+
+    /* ── Stats bar (inside hero) ───────────────── */
+    .hero-stats {
+        position: relative;
+        z-index: 1;
+        margin-top: 24px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+    }
+
+    .hero-stat {
+        background: rgba(255,255,255,.12);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 14px;
+        padding: 14px 12px;
+        text-align: center;
+        transition: transform .2s;
+    }
+
+        .hero-stat:hover {
+            transform: translateY(-2px);
+        }
+
+    .hero-stat-num {
+        display: block;
+        font-size: 1.6rem;
+        font-weight: 900;
+        color: white;
+        line-height: 1;
+    }
+
+    .hero-stat-label {
+        display: block;
+        font-size: .72rem;
+        color: rgba(255,255,255,.7);
+        margin-top: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+    }
+
+    /* ── Profile grid ──────────────────────────── */
+    .profile-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    @@media (max-width: 700px) {
+        .profile-grid
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-stats {
+        grid-template-columns: repeat(2,1fr);
+    }
+
+    }
+
+    .profile-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 12px rgba(0,0,0,.05);
+    }
+
+    .profile-card-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .profile-card-icon {
+        font-size: 22px;
+    }
+
+    .profile-card-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+
+    .info-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+    .info-label {
+        font-size: .84rem;
+        color: #64748b;
+        font-weight: 600;
+    }
+
+    .info-value {
+        font-size: .9rem;
+        color: #0f172a;
+        font-weight: 700;
+        text-align: right;
+        max-width: 60%;
+        word-break: break-word;
+    }
+
+    /* ── Points card ───────────────────────────── */
+    .points-display {
+        text-align: center;
+        padding: 16px 0 8px;
+    }
+
+    .points-big {
+        font-size: 2.8rem;
+        font-weight: 900;
+        color: #0f766e;
+        line-height: 1;
+    }
+
+    .points-label {
+        font-size: .85rem;
+        color: #64748b;
+        font-weight: 600;
+        margin-top: 4px;
+    }
+
+    .points-hint {
+        font-size: .76rem;
+        color: #94a3b8;
+        margin-top: 4px;
+    }
+
+    .progress-bar-track {
+        background: #e2e8f0;
+        border-radius: 8px;
+        height: 8px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        border-radius: 8px;
+        transition: width .6s ease;
+    }
+
+    .perks-box {
+        margin-top: 16px;
+        padding: 14px 16px;
+        background: #f8fafc;
+        border-radius: 12px;
+        font-size: .84rem;
+        color: #64748b;
+    }
+
+        .perks-box p {
+            margin: 0 0 8px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .perks-box ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .perks-box li {
+            margin-bottom: 4px;
+        }
+
+    /* ── Quick actions ─────────────────────────── */
+    .quick-actions {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .quick-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: .88rem;
+        border: 1.5px solid;
+        transition: all .2s;
+    }
+
+    .qa-booking {
+        background: #ecfdf5;
+        border-color: #6ee7b7;
+        color: #065f46;
+    }
+
+        .qa-booking:hover {
+            background: #d1fae5;
+            transform: translateY(-1px);
+        }
+
+    .qa-history {
+        background: #eff6ff;
+        border-color: #93c5fd;
+        color: #1e40af;
+    }
+
+        .qa-history:hover {
+            background: #dbeafe;
+            transform: translateY(-1px);
+        }
+
+    .qa-voucher {
+        background: #fef3c7;
+        border-color: #fcd34d;
+        color: #92400e;
+    }
+
+        .qa-voucher:hover {
+            background: #fde68a;
+            transform: translateY(-1px);
+        }
+
+    .qa-icon {
+        font-size: 1.2rem;
+    }
+
+    /* ── Edit profile button ───────────────────── */
+    .edit-profile-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 16px;
+        padding: 10px 20px;
+        background: linear-gradient(135deg, #0f766e, #14b8a6);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: .88rem;
+        cursor: pointer;
+        transition: all .2s;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .edit-profile-btn:hover {
+        background: linear-gradient(135deg, #0d5e58, #0f766e);
+        transform: translateY(-1px);
+    }
+
+    /* ── Alert bars ────────────────────────────── */
+    .alert-success-bar {
+        background: #ecfdf5;
+        border: 1px solid #6ee7b7;
+        color: #065f46;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: .84rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+
+    .alert-error-bar {
+        background: #fef2f2;
+        border: 1px solid #fca5a5;
+        color: #991b1b;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: .84rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+
+    /* ── Modal ─────────────────────────────────── */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.45);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.open {
+        display: flex;
+    }
+
+    .modal-box {
+        background: white;
+        border-radius: 20px;
+        padding: 32px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.2);
+        animation: modalIn .2s ease;
+    }
+
+    @@keyframes modalIn {
+        from { opacity: 0; transform: translateY(-16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-title {
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: #0f172a;
+        margin: 0 0 20px;
+    }
+
+    .modal-field {
+        margin-bottom: 16px;
+    }
+
+    .modal-field label {
+        display: block;
+        font-size: .84rem;
+        font-weight: 700;
+        color: #374151;
+        margin-bottom: 6px;
+    }
+
+    .modal-field input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: .9rem;
+        font-family: 'Nunito', sans-serif;
+        transition: border-color .2s;
+        box-sizing: border-box;
+    }
+
+    .modal-field input:focus {
+        outline: none;
+        border-color: #14b8a6;
+        box-shadow: 0 0 0 3px rgba(20,184,166,.12);
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 24px;
+    }
+
+    .btn-save {
+        flex: 1;
+        padding: 11px;
+        background: linear-gradient(135deg, #0f766e, #14b8a6);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: .9rem;
+        cursor: pointer;
+        transition: all .2s;
+    }
+
+    .btn-save:hover { background: linear-gradient(135deg, #0d5e58, #0f766e); }
+
+    .btn-cancel {
+        flex: 1;
+        padding: 11px;
+        background: #f1f5f9;
+        color: #64748b;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: .9rem;
+        cursor: pointer;
+        transition: all .2s;
+    }
+
+    .btn-cancel:hover { background: #e2e8f0; }
+</style>
+
 <div class="profile-page">
-    <!-- HERO CARD -->
+
+    <!-- ═══ HERO CARD ═══ -->
     <div class="hero-card">
         <div class="hero-card-bg"></div>
+
         <div class="hero-card-content">
             <div class="avatar-ring">
                 <div class="avatar-large">@(displayName.Length > 0 ? displayName[0] : 'U')</div>
@@ -55,82 +527,124 @@
             <div>
                 <h1 class="hero-card-name">@displayName</h1>
                 <div class="hero-card-meta">
-                    <span class="level-badge" style="background: @(levelColor)22; color: @(levelColor); border-color: @(levelColor)55">
+                    <span class="level-badge"
+                          style="background: @(levelColor)22; color: @(levelColor); border-color: @(levelColor)55">
                         @level
                     </span>
                     <span class="status-active">● Đang hoạt động</span>
                 </div>
             </div>
         </div>
+
+        <!-- Stats bar -->
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-num">@totalBookings</span>
+                <span class="hero-stat-label">Tổng booking</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-num">@completedBookings</span>
+                <span class="hero-stat-label">Đã xác nhận</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-num">@cancelledBookings</span>
+                <span class="hero-stat-label">Đã hủy</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-num">@(totalSpent >= 1_000_000 ? (totalSpent / 1_000_000m).ToString("0.#") + "tr" : (totalSpent / 1000m).ToString("0") + "k")</span>
+                <span class="hero-stat-label">Đã chi tiêu</span>
+            </div>
+        </div>
     </div>
 
     <div class="profile-grid">
-        <!-- PERSONAL INFO -->
-        <section class="profile-card">
+
+        <!-- ═══ PERSONAL INFO ═══ -->
+        <div class="profile-card">
             <div class="profile-card-header">
                 <span class="profile-card-icon">👤</span>
                 <h2 class="profile-card-title">Thông tin cá nhân</h2>
             </div>
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert-success-bar">✅ @TempData["Success"]</div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert-error-bar">⚠️ @TempData["Error"]</div>
+            }
+
             <div class="info-list">
                 <div class="info-row">
-                    <span class="info-label">Họ & Tên</span>
+                    <span class="info-label">Họ &amp; Tên</span>
                     <span class="info-value">@displayName</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Số điện thoại</span>
-                    <span class="info-value">@phone</span>
+                    <span class="info-value">@(string.IsNullOrEmpty(phone) ? "Chưa cập nhật" : phone)</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Email</span>
-                    <span class="info-value">@email</span>
+                    <span class="info-value">@(string.IsNullOrEmpty(email) ? "Chưa cập nhật" : email)</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Vai trò</span>
                     <span class="info-value">@userRole</span>
                 </div>
             </div>
-        </section>
 
-        <!-- LOYALTY POINTS -->
-        <section class="profile-card">
+            <button class="edit-profile-btn" onclick="openEditModal()">✏️ Sửa thông tin</button>
+
+            <!-- Quick actions -->
+            <div class="quick-actions">
+                <a href="/User/Voucher" class="quick-action-btn qa-voucher" style="grid-column: span 2">
+                    <span class="qa-icon">🎟️</span> Đổi điểm lấy voucher
+                </a>
+            </div>
+        </div>
+
+        <!-- ═══ LOYALTY POINTS ═══ -->
+        <div class="profile-card">
             <div class="profile-card-header">
                 <span class="profile-card-icon">⭐</span>
                 <h2 class="profile-card-title">Điểm tích lũy</h2>
             </div>
+
             <div class="points-display">
                 <div class="points-big">@pts.ToString("N0")</div>
                 <div class="points-label">điểm tích lũy</div>
-                <div class="points-hint">Mỗi 100.000đ chi tiêu = 1 điểm</div>
+                <div class="points-hint">Mỗi 10.000đ chi tiêu = 1 điểm</div>
             </div>
-            <div style="margin-top: 16px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="color: @(levelColor); font-weight: 700;">@level</span>
+
+            <div style="margin-top: 16px">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:.84rem">
+                    <span style="color:@(levelColor); font-weight:800">@level</span>
                     @if (nextLevel > 0)
                     {
-                        <span style="color: #64748b;">→ @nextLevel.ToString("N0") điểm</span>
+                        <span style="color:#64748b">→ @nextLevel.ToString("N0") điểm</span>
                     }
                 </div>
-                <div style="background: #e2e8f0; border-radius: 8px; height: 8px; overflow: hidden;">
-                    <div style="width: @(Math.Min(progress, 100))%; background: @(levelColor); height: 100%;"></div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill"
+                         style="width:@(Math.Min(progress, 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%; background:@(levelColor)"></div>
                 </div>
-                @if (nextLevel > 0)
-                {
-                    <p style="margin: 8px 0 0; font-size: 0.8rem; color: #64748b;">
-                        Còn <strong>@((nextLevel - pts).ToString("N0"))</strong> điểm để lên hạng
-                    </p>
-                }
-                else
-                {
-                    <p style="margin: 8px 0 0; font-size: 0.8rem; color: #64748b;">
-                        🎉 Bạn đã đạt cấp độ cao nhất!
-                    </p>
-                }
+                <p style="margin:8px 0 0; font-size:.76rem; color:#64748b">
+                    @if (nextLevel > 0)
+                    {
+                        <text>Còn <strong>@((nextLevel - pts).ToString("N0"))</strong> điểm để lên hạng tiếp</text>
+                    }
+                    else
+                    {
+                        <text>🎉 Bạn đã đạt cấp độ cao nhất!</text>
+                    }
+                </p>
             </div>
-            <div style="margin-top: 20px; padding: 16px; background: #f1f5f9; border-radius: 12px;">
-                <p style="margin: 0 0 8px; font-weight: 700; color: #0f172a;">Quyền lợi thành viên</p>
-                <ul style="margin: 0; padding-left: 20px; font-size: 0.85rem; color: #64748b;">
+
+            <div class="perks-box">
+                <p>Quyền lợi thành viên</p>
+                <ul>
                     <li>✅ Tích điểm mỗi lần thanh toán</li>
-                    <li>✅ Ưu tiên đặt sân giờ cao điểm</li>
+                    <li>✅ Đổi điểm lấy voucher giảm giá</li>
                     @if (pts >= 500)
                     {
                         <li>✅ Hạng Bạc: Ưu đãi đặc biệt</li>
@@ -145,6 +659,51 @@
                     }
                 </ul>
             </div>
-        </section>
+        </div>
+
     </div>
 </div>
+
+<!-- ═══ EDIT PROFILE MODAL ═══ -->
+<div class="modal-overlay" id="editModal" onclick="closeOnOverlay(event)">
+    <div class="modal-box">
+        <h2 class="modal-title">✏️ Sửa thông tin cá nhân</h2>
+        <form method="post" action="/User/EditProfile">
+            <div class="modal-field">
+                <label>Họ &amp; Tên</label>
+                <input type="text" name="fullName" id="editFullName" required maxlength="100" />
+            </div>
+            <div class="modal-field">
+                <label>Email</label>
+                <input type="email" name="email" id="editEmail" maxlength="200" placeholder="Nhập email (không bắt buộc)" />
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeEditModal()">Hủy</button>
+                <button type="submit" class="btn-save">Lưu thay đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    var currentFullName = '@Html.Raw(displayName.Replace("'", "\\'"))';
+    var currentEmail = '@Html.Raw((email ?? "").Replace("'", "\\'"))';
+
+    function openEditModal() {
+        document.getElementById('editFullName').value = currentFullName;
+        document.getElementById('editEmail').value = currentEmail === 'Chưa cập nhật' ? '' : currentEmail;
+        document.getElementById('editModal').classList.add('open');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.remove('open');
+    }
+
+    function closeOnOverlay(e) {
+        if (e.target === document.getElementById('editModal')) closeEditModal();
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeEditModal();
+    });
+</script>

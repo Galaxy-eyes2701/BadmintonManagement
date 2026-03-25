@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 using backend.Models;
 using backend.DTOs;
@@ -15,15 +16,21 @@ public class AuthController : ControllerBase
     private readonly BadmintonManagementContext _context;
     private readonly IPasswordService _passwordService;
     private readonly IJwtService _jwtService;
+    private readonly EmailService _emailService;
+    private readonly IMemoryCache _cache;
 
     public AuthController(
         BadmintonManagementContext context,
         IPasswordService passwordService,
-        IJwtService jwtService)
+        IJwtService jwtService,
+        EmailService emailService,
+        IMemoryCache cache)
     {
         _context = context;
         _passwordService = passwordService;
         _jwtService = jwtService;
+        _emailService = emailService;
+        _cache = cache;
     }
 
     [HttpPost("register")]
@@ -99,6 +106,78 @@ public class AuthController : ControllerBase
         });
     }
 
+    [HttpPost("forgot-password-by-email")]
+    public async Task<ActionResult> ForgotPasswordByEmail([FromBody] ForgotPasswordByEmailDto dto)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+
+        // Luôn trả về 200 để tránh lộ thông tin email có tồn tại không
+        if (user == null || user.Status != "active")
+            return Ok(new { message = "Nếu email tồn tại, mã OTP sẽ được gửi." });
+
+        // Tạo OTP 6 số
+        var otp = new Random().Next(100000, 999999).ToString();
+        var cacheKey = $"otp_{dto.Email}";
+
+        // Lưu OTP vào cache 10 phút
+        _cache.Set(cacheKey, new OtpEntry { Otp = otp, Phone = user.Phone },
+            TimeSpan.FromMinutes(10));
+
+        // Gửi email
+        var html = $@"
+            <div style='font-family:sans-serif;max-width:480px;margin:auto;padding:32px;border-radius:12px;border:1px solid #e2e8f0'>
+                <div style='text-align:center;margin-bottom:24px'>
+                    <span style='font-size:48px'>🏸</span>
+                    <h2 style='color:#0f766e;margin:8px 0 0'>Badminton Management</h2>
+                </div>
+                <p style='color:#374151'>Xin chào <strong>{user.FullName}</strong>,</p>
+                <p style='color:#374151'>Bạn vừa yêu cầu đặt lại mật khẩu. Mã OTP của bạn là:</p>
+                <div style='text-align:center;margin:24px 0'>
+                    <span style='font-size:36px;font-weight:900;letter-spacing:8px;color:#0f766e;
+                                 background:#ecfdf5;padding:16px 32px;border-radius:12px;display:inline-block'>
+                        {otp}
+                    </span>
+                </div>
+                <p style='color:#64748b;font-size:14px'>Mã có hiệu lực trong <strong>10 phút</strong>. Không chia sẻ mã này cho bất kỳ ai.</p>
+                <p style='color:#64748b;font-size:14px'>Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>
+            </div>";
+
+        try
+        {
+            await _emailService.SendEmailAsync(dto.Email, "🔐 Mã OTP đặt lại mật khẩu", html);
+        }
+        catch
+        {
+            return StatusCode(500, new { message = "Không thể gửi email. Vui lòng thử lại sau." });
+        }
+
+        return Ok(new { message = "Mã OTP đã được gửi đến email của bạn." });
+    }
+
+    [HttpPost("verify-otp-reset")]
+    public async Task<ActionResult> VerifyOtpAndReset([FromBody] VerifyOtpResetDto dto)
+    {
+        var cacheKey = $"otp_{dto.Email}";
+
+        if (!_cache.TryGetValue(cacheKey, out OtpEntry? entry) || entry == null)
+            return BadRequest(new { message = "Mã OTP đã hết hạn hoặc không hợp lệ!" });
+
+        if (entry.Otp != dto.Otp)
+            return BadRequest(new { message = "Mã OTP không đúng!" });
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Phone == entry.Phone);
+        if (user == null || user.Status != "active")
+            return BadRequest(new { message = "Tài khoản không hợp lệ!" });
+
+        user.PasswordHash = _passwordService.HashPassword(dto.NewPassword);
+        await _context.SaveChangesAsync();
+
+        // Xóa OTP sau khi dùng
+        _cache.Remove(cacheKey);
+
+        return Ok(new { message = "Đặt lại mật khẩu thành công!" });
+    }
+
     [HttpPost("reset-password")]
     public async Task<ActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
     {
@@ -136,6 +215,22 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new { message = "Token không hợp lệ hoặc đã hết hạn!" });
         }
+    }
+
+    [HttpPut("me")]
+    [Authorize]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
+    {
+        var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!);
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+        if (user.Status != "active") return StatusCode(403, new { message = "Tài khoản đã bị khóa!" });
+
+        if (!string.IsNullOrWhiteSpace(dto.FullName)) user.FullName = dto.FullName.Trim();
+        if (!string.IsNullOrWhiteSpace(dto.Email)) user.Email = dto.Email.Trim();
+
+        await _context.SaveChangesAsync();
+        return Ok(new { success = true, message = "Cập nhật thành công!", data = MapToDto(user) });
     }
 
     [HttpGet("me")]

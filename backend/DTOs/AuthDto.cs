@@ -19,6 +19,24 @@ public class ForgotPasswordDto
     public string Phone { get; set; } = null!;
 }
 
+public class ForgotPasswordByEmailDto
+{
+    public string Email { get; set; } = null!;
+}
+
+public class VerifyOtpResetDto
+{
+    public string Email { get; set; } = null!;
+    public string Otp { get; set; } = null!;
+    public string NewPassword { get; set; } = null!;
+}
+
+public class OtpEntry
+{
+    public string Otp { get; set; } = null!;
+    public string Phone { get; set; } = null!;
+}
+
 public class ResetPasswordDto
 {
     public string Phone { get; set; } = null!;
@@ -42,4 +60,10 @@ public class UserDto
     public int? LoyaltyPoints { get; set; }
     public string? Status { get; set; }
     public int? BranchId { get; set; }
+}
+
+public class UpdateProfileDto
+{
+    public string? FullName { get; set; }
+    public string? Email { get; set; }
 }

@@ -14,36 +14,27 @@ public class UserController : Controller
         _api = config["BackendApi"] + "/api";
     }
 
-    // Check if user is authenticated
     private bool IsAuthenticated()
-    {
-        return !string.IsNullOrEmpty(HttpContext.Session.GetString("AuthToken"));
-    }
+        => !string.IsNullOrEmpty(HttpContext.Session.GetString("AuthToken"));
+
     public IActionResult Voucher()
     {
-        // Kiểm tra đăng nhập
         var role = HttpContext.Session.GetString("UserRole");
         if (role != "Customer") return RedirectToAction("Login", "Auth");
-
         return View();
     }
-    // Get display name for header
-    private string GetDisplayName()
-    {
-        return HttpContext.Session.GetString("UserName") ?? "Khách";
-    }
 
-    // Get auth header
+    private string GetDisplayName()
+        => HttpContext.Session.GetString("UserName") ?? "Khách";
+
     private (HttpClient client, string token) GetAuthClient()
     {
         var token = HttpContext.Session.GetString("AuthToken");
         var client = new HttpClient();
         if (!string.IsNullOrEmpty(token))
-        {
             client.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-        }
-        return (client, token);
+        return (client, token ?? "");
     }
 
     // GET: User Index (Home Page)
@@ -60,62 +51,166 @@ public class UserController : Controller
     public async Task<IActionResult> Profile()
     {
         if (!IsAuthenticated())
-        {
             return RedirectToAction("Login", "Auth");
-        }
 
-        var token = HttpContext.Session.GetString("AuthToken");
-        var userId = HttpContext.Session.GetString("UserId");
+        var (client, token) = GetAuthClient();
 
-        using var client = new HttpClient();
-        client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        ViewBag.DisplayName = GetDisplayName();
+        ViewBag.LoyaltyPoints = HttpContext.Session.GetString("LoyaltyPoints") ?? "0";
+        ViewBag.UserPhone = HttpContext.Session.GetString("UserPhone") ?? "";
+        ViewBag.UserEmail = HttpContext.Session.GetString("UserEmail") ?? "";
+
+        ViewBag.TotalBookings = 0;
+        ViewBag.CompletedBookings = 0;
+        ViewBag.CancelledBookings = 0;
+        ViewBag.TotalSpent = 0m;
 
         try
         {
-            // Get user profile from API
-            var response = await client.GetAsync($"{_api}/Auth/me");
-
-            if (response.IsSuccessStatusCode)
+            // ── 1. Refresh latest user info from /api/Auth/me ─────────────────
+            var meResponse = await client.GetAsync($"{_api}/Auth/me");
+            if (meResponse.IsSuccessStatusCode)
             {
-                var json = await response.Content.ReadAsStringAsync();
-                var userData = JsonSerializer.Deserialize<JsonElement>(json);
+                var meJson = await meResponse.Content.ReadAsStringAsync();
+                var meData = JsonSerializer.Deserialize<JsonElement>(meJson);
 
-                ViewBag.Profile = userData;
-                ViewBag.DisplayName = GetDisplayName();
-                ViewBag.LoyaltyPoints = HttpContext.Session.GetString("LoyaltyPoints") ?? "0";
+                if (meData.TryGetProperty("loyaltyPoints", out var lpEl))
+                {
+                    var pts = lpEl.GetInt32().ToString();
+                    ViewBag.LoyaltyPoints = pts;
+                    HttpContext.Session.SetString("LoyaltyPoints", pts);
+                }
+                if (meData.TryGetProperty("phone", out var phEl))
+                    ViewBag.UserPhone = phEl.GetString() ?? ViewBag.UserPhone;
+                if (meData.TryGetProperty("email", out var emEl))
+                    ViewBag.UserEmail = emEl.GetString() ?? ViewBag.UserEmail;
+                if (meData.TryGetProperty("fullName", out var fnEl))
+                    ViewBag.DisplayName = fnEl.GetString() ?? ViewBag.DisplayName;
+            }
 
-                return View();
+            // ── 2. Booking statistics ─────────────────────────────────────────
+            var bookingsResponse = await client.GetAsync($"{_api}/bookings/my");
+            if (bookingsResponse.IsSuccessStatusCode)
+            {
+                var bookingsJson = await bookingsResponse.Content.ReadAsStringAsync();
+                var bookingsData = JsonSerializer.Deserialize<JsonElement>(bookingsJson);
+
+                if (bookingsData.TryGetProperty("data", out var dataEl) &&
+                    dataEl.ValueKind == JsonValueKind.Array)
+                {
+                    var bookings = dataEl.EnumerateArray().ToList();
+
+                    string GetStatus(JsonElement b)
+                    {
+                        if (b.TryGetProperty("status", out var sv)) return sv.GetString() ?? "";
+                        return "";
+                    }
+
+                    decimal GetPrice(JsonElement b)
+                    {
+                        if (b.TryGetProperty("totalPrice", out var tp))
+                            return tp.ValueKind == JsonValueKind.Number ? tp.GetDecimal() : 0m;
+                        return 0m;
+                    }
+
+                    int total = bookings.Count;
+                    int completed = bookings.Count(b => { var s = GetStatus(b); return s == "confirmed" || s == "completed"; });
+                    int cancelled = bookings.Count(b => GetStatus(b) == "cancelled");
+                    decimal courtSpent = bookings
+                        .Where(b => { var s = GetStatus(b); return s == "confirmed" || s == "completed"; })
+                        .Sum(GetPrice);
+
+                    ViewBag.TotalBookings = total;
+                    ViewBag.CompletedBookings = completed;
+                    ViewBag.CancelledBookings = cancelled;
+
+                    // ── 3. Cộng thêm tiền product từ /api/bookings/my/orders ──
+                    decimal productSpent = 0m;
+                    var ordersResponse = await client.GetAsync($"{_api}/bookings/my/orders");
+                    if (ordersResponse.IsSuccessStatusCode)
+                    {
+                        var ordersJson = await ordersResponse.Content.ReadAsStringAsync();
+                        var ordersData = JsonSerializer.Deserialize<JsonElement>(ordersJson);
+                        if (ordersData.TryGetProperty("data", out var ordersEl) &&
+                            ordersEl.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var order in ordersEl.EnumerateArray())
+                            {
+                                if (order.TryGetProperty("totalAmount", out var ta) &&
+                                    ta.ValueKind == JsonValueKind.Number)
+                                    productSpent += ta.GetDecimal();
+                            }
+                        }
+                    }
+
+                    ViewBag.TotalSpent = courtSpent + productSpent;
+                }
             }
         }
         catch
         {
-            // If API fails, use session data
+            // Stats stay at zero; page still renders with session data
         }
 
-        // Fallback to session data
-        ViewBag.DisplayName = GetDisplayName();
-        ViewBag.LoyaltyPoints = HttpContext.Session.GetString("LoyaltyPoints") ?? "0";
         return View();
     }
 
-    // GET: User Booking (Step 1 - Select Date & Filters)
+    // POST: Edit Profile
+    [HttpPost]
+    public async Task<IActionResult> EditProfile(string fullName, string? email)
+    {
+        if (!IsAuthenticated())
+            return RedirectToAction("Login", "Auth");
+
+        var (client, token) = GetAuthClient();
+
+        try
+        {
+            var payload = new { fullName, email };
+            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            var response = await client.PutAsync($"{_api}/Auth/me", content);
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var data = JsonSerializer.Deserialize<JsonElement>(json);
+                if (data.TryGetProperty("data", out var userData))
+                {
+                    if (userData.TryGetProperty("fullName", out var fn))
+                        HttpContext.Session.SetString("UserName", fn.GetString() ?? "");
+                    if (userData.TryGetProperty("email", out var em))
+                        HttpContext.Session.SetString("UserEmail", em.GetString() ?? "");
+                }
+                TempData["Success"] = "Cập nhật thông tin thành công!";
+            }
+            else
+            {
+                var errorData = JsonSerializer.Deserialize<JsonElement>(json);
+                TempData["Error"] = errorData.TryGetProperty("message", out var msg)
+                    ? msg.GetString() : "Cập nhật thất bại!";
+            }
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = "Lỗi: " + ex.Message;
+        }
+
+        return RedirectToAction("Profile");
+    }
+
+    // GET: User Booking (Step 1)
     [HttpGet]
     public async Task<IActionResult> Booking()
     {
         if (!IsAuthenticated())
-        {
             return RedirectToAction("Login", "Auth");
-        }
 
         ViewBag.DisplayName = GetDisplayName();
 
-        // Load branches and court types for filters
         try
         {
             var branchesJson = await _http.GetStringAsync($"{_api}/branches");
             var courtTypesJson = await _http.GetStringAsync($"{_api}/courttypes");
-
             ViewBag.Branches = JsonSerializer.Deserialize<JsonElement>(branchesJson);
             ViewBag.CourtTypes = JsonSerializer.Deserialize<JsonElement>(courtTypesJson);
         }
@@ -128,14 +223,12 @@ public class UserController : Controller
         return View();
     }
 
-    // POST: User Booking - Search Available Courts (Step 1 -> Step 2)
+    // POST: Search Available Courts (Step 1 → 2)
     [HttpPost]
     public async Task<IActionResult> SearchCourts(string selectedDate, string? branchId, string? courtTypeId)
     {
         if (!IsAuthenticated())
-        {
             return RedirectToAction("Login", "Auth");
-        }
 
         var (client, token) = GetAuthClient();
 
@@ -155,7 +248,6 @@ public class UserController : Controller
             ViewBag.CourtTypeId = courtTypeId;
             ViewBag.DisplayName = GetDisplayName();
 
-            // Reload filters
             var branchesJson = await _http.GetStringAsync($"{_api}/branches");
             var courtTypesJson = await _http.GetStringAsync($"{_api}/courttypes");
             ViewBag.Branches = JsonSerializer.Deserialize<JsonElement>(branchesJson);
@@ -170,25 +262,22 @@ public class UserController : Controller
         }
     }
 
-    // POST: User Booking - Confirm Booking (Step 3)
+    // POST: Confirm Booking (Step 3)
     [HttpPost]
     public async Task<IActionResult> ConfirmBooking(string slotsJson, string? voucherCode)
     {
         if (!IsAuthenticated())
-        {
             return RedirectToAction("Login", "Auth");
-        }
 
         var (client, token) = GetAuthClient();
 
         try
         {
-            // Parse slots
             var slots = JsonSerializer.Deserialize<List<SlotItem>>(slotsJson);
 
             var payload = new
             {
-                slots = slots.Select(s => new { s.courtId, s.timeSlotId, s.playDate }),
+                slots = slots!.Select(s => new { s.courtId, s.timeSlotId, s.playDate }),
                 voucherCode = !string.IsNullOrEmpty(voucherCode) ? voucherCode : null,
                 paymentMethod = "CASH"
             };
@@ -223,9 +312,7 @@ public class UserController : Controller
     public async Task<IActionResult> ValidateVoucher(string code, decimal totalAmount)
     {
         if (!IsAuthenticated())
-        {
             return Json(new { success = false, message = "Chưa đăng nhập" });
-        }
 
         var (client, token) = GetAuthClient();
 
@@ -248,9 +335,7 @@ public class UserController : Controller
     public IActionResult ConfirmBookingPage()
     {
         if (!IsAuthenticated())
-        {
             return RedirectToAction("Login", "Auth");
-        }
 
         ViewBag.DisplayName = GetDisplayName();
         return View("ConfirmBooking");
@@ -261,9 +346,7 @@ public class UserController : Controller
     public async Task<IActionResult> CreateDepositPayment(int bookingId)
     {
         if (!IsAuthenticated())
-        {
             return Json(new { success = false, message = "Chưa đăng nhập" });
-        }
 
         var (client, token) = GetAuthClient();
 
@@ -275,28 +358,21 @@ public class UserController : Controller
             var json = await response.Content.ReadAsStringAsync();
             var data = JsonSerializer.Deserialize<JsonElement>(json);
 
-            // Check for error response from backend
             if (data.TryGetProperty("success", out var successEl) && !successEl.GetBoolean())
             {
                 var errorMsg = data.TryGetProperty("message", out var msgEl) ? msgEl.GetString() : "Lỗi từ server";
                 return Json(new { success = false, message = errorMsg });
             }
 
-            // Check for paymentUrl (case-insensitive)
             string? paymentUrl = null;
             if (data.TryGetProperty("paymentUrl", out var urlEl))
-            {
                 paymentUrl = urlEl.GetString();
-            }
             else if (data.TryGetProperty("PaymentUrl", out urlEl))
-            {
                 paymentUrl = urlEl.GetString();
-            }
 
             if (!string.IsNullOrEmpty(paymentUrl))
-            {
                 return Json(new { success = true, paymentUrl = paymentUrl });
-            }
+
             return Json(new { success = false, message = "Không thể tạo thanh toán", debug = json });
         }
         catch (Exception ex)
@@ -310,9 +386,7 @@ public class UserController : Controller
     public async Task<IActionResult> History(string tab = "bookings", int page = 1, int pageSize = 5)
     {
         if (!IsAuthenticated())
-        {
             return RedirectToAction("Login", "Auth");
-        }
 
         var (client, token) = GetAuthClient();
         ViewBag.DisplayName = GetDisplayName();
@@ -328,7 +402,6 @@ public class UserController : Controller
                 var json = await response.Content.ReadAsStringAsync();
                 var data = JsonSerializer.Deserialize<JsonElement>(json);
 
-                // Get all bookings and paginate
                 var allBookings = data.GetProperty("data");
                 var bookingsList = allBookings.EnumerateArray().ToList();
                 var totalCount = bookingsList.Count;
@@ -336,7 +409,8 @@ public class UserController : Controller
 
                 ViewBag.TotalCount = totalCount;
                 ViewBag.TotalPages = totalPages;
-                ViewBag.Bookings = JsonSerializer.SerializeToElement(bookingsList.Skip((page - 1) * pageSize).Take(pageSize));
+                ViewBag.Bookings = JsonSerializer.SerializeToElement(
+                    bookingsList.Skip((page - 1) * pageSize).Take(pageSize));
             }
             else
             {
@@ -344,7 +418,6 @@ public class UserController : Controller
                 var json = await response.Content.ReadAsStringAsync();
                 var data = JsonSerializer.Deserialize<JsonElement>(json);
 
-                // Get all orders and paginate
                 var allOrders = data.GetProperty("data");
                 var ordersList = allOrders.EnumerateArray().ToList();
                 var totalCount = ordersList.Count;
@@ -352,7 +425,8 @@ public class UserController : Controller
 
                 ViewBag.TotalCount = totalCount;
                 ViewBag.TotalPages = totalPages;
-                ViewBag.Orders = JsonSerializer.SerializeToElement(ordersList.Skip((page - 1) * pageSize).Take(pageSize));
+                ViewBag.Orders = JsonSerializer.SerializeToElement(
+                    ordersList.Skip((page - 1) * pageSize).Take(pageSize));
             }
         }
         catch
@@ -369,9 +443,7 @@ public class UserController : Controller
     public async Task<IActionResult> BookingDetail(int id)
     {
         if (!IsAuthenticated())
-        {
             return Json(new { success = false, message = "Chưa đăng nhập" });
-        }
 
         var (client, token) = GetAuthClient();
 
@@ -392,9 +464,7 @@ public class UserController : Controller
     public async Task<IActionResult> CancelBooking(int id)
     {
         if (!IsAuthenticated())
-        {
             return Json(new { success = false, message = "Chưa đăng nhập" });
-        }
 
         var (client, token) = GetAuthClient();
 
@@ -410,27 +480,23 @@ public class UserController : Controller
         }
     }
 
-    // GET: Purchase Products (Step 1)
+    // GET: Purchase Products
     [HttpGet]
     public async Task<IActionResult> Purchase()
     {
         if (!IsAuthenticated())
-        {
             return RedirectToAction("Login", "Auth");
-        }
 
         var (client, token) = GetAuthClient();
         ViewBag.DisplayName = GetDisplayName();
 
         try
         {
-            // Load active bookings for purchase
             var bookingsResponse = await client.GetAsync($"{_api}/bookings/my/active-for-purchase");
             var bookingsJson = await bookingsResponse.Content.ReadAsStringAsync();
             var bookingsData = JsonSerializer.Deserialize<JsonElement>(bookingsJson);
             ViewBag.Bookings = bookingsData.GetProperty("data");
 
-            // Load products
             var productsResponse = await _http.GetAsync($"{_api}/bookings/products");
             var productsJson = await productsResponse.Content.ReadAsStringAsync();
             var productsData = JsonSerializer.Deserialize<JsonElement>(productsJson);
@@ -450,9 +516,7 @@ public class UserController : Controller
     public async Task<IActionResult> ConfirmPurchase(int bookingId, string productsJson)
     {
         if (!IsAuthenticated())
-        {
             return Json(new { success = false, message = "Chưa đăng nhập" });
-        }
 
         var (client, token) = GetAuthClient();
 
@@ -462,7 +526,7 @@ public class UserController : Controller
             var payload = new
             {
                 bookingId,
-                products = products.Select(p => new { p.productId, p.quantity })
+                products = products!.Select(p => new { p.productId, p.quantity })
             };
 
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -481,9 +545,7 @@ public class UserController : Controller
     public async Task<IActionResult> CreateProductPayment(int bookingId, decimal amount)
     {
         if (!IsAuthenticated())
-        {
             return Json(new { success = false, message = "Chưa đăng nhập" });
-        }
 
         var (client, token) = GetAuthClient();
 
@@ -495,28 +557,21 @@ public class UserController : Controller
             var json = await response.Content.ReadAsStringAsync();
             var data = JsonSerializer.Deserialize<JsonElement>(json);
 
-            // Check for error response from backend
             if (data.TryGetProperty("success", out var successEl) && !successEl.GetBoolean())
             {
                 var errorMsg = data.TryGetProperty("message", out var msgEl) ? msgEl.GetString() : "Lỗi từ server";
                 return Json(new { success = false, message = errorMsg });
             }
 
-            // Check for paymentUrl (case-insensitive)
             string? paymentUrl = null;
             if (data.TryGetProperty("paymentUrl", out var urlEl))
-            {
                 paymentUrl = urlEl.GetString();
-            }
             else if (data.TryGetProperty("PaymentUrl", out urlEl))
-            {
                 paymentUrl = urlEl.GetString();
-            }
 
             if (!string.IsNullOrEmpty(paymentUrl))
-            {
                 return Json(new { success = true, paymentUrl = paymentUrl });
-            }
+
             return Json(new { success = false, message = "Không thể tạo thanh toán", debug = json });
         }
         catch (Exception ex)
@@ -555,7 +610,6 @@ public class UserController : Controller
             var json = await response.Content.ReadAsStringAsync();
             var data = JsonSerializer.Deserialize<JsonElement>(json);
 
-            // Check for success (case-insensitive)
             bool isSuccess = false;
             if (data.TryGetProperty("success", out var successEl))
                 isSuccess = successEl.GetBoolean();
@@ -565,7 +619,6 @@ public class UserController : Controller
             if (isSuccess)
             {
                 ViewBag.Status = "success";
-                // Get booking ID (case-insensitive)
                 int bookingId = 0;
                 if (data.TryGetProperty("bookingId", out var bookingIdEl))
                     bookingId = bookingIdEl.GetInt32();
@@ -585,14 +638,9 @@ public class UserController : Controller
                 };
 
                 var payDate = Request.Query["vnp_PayDate"].ToString();
-                if (payDate.Length == 14)
-                {
-                    ViewBag.PayDate = $"{payDate.Substring(8, 2)}:{payDate.Substring(10, 2)}, {payDate.Substring(6, 2)}/{payDate.Substring(4, 2)}/{payDate.Substring(0, 4)}";
-                }
-                else
-                {
-                    ViewBag.PayDate = payDate;
-                }
+                ViewBag.PayDate = payDate.Length == 14
+                    ? $"{payDate.Substring(8, 2)}:{payDate.Substring(10, 2)}, {payDate.Substring(6, 2)}/{payDate.Substring(4, 2)}/{payDate.Substring(0, 4)}"
+                    : payDate;
             }
             else
             {
@@ -612,7 +660,7 @@ public class UserController : Controller
     }
 }
 
-// Helper classes for deserialization
+// Helper classes
 public class SlotItem
 {
     public int courtId { get; set; }

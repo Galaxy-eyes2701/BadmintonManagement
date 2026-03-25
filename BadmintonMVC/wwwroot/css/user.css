@@ -1007,6 +1007,36 @@ body {
     color: var(--primary);
 }
 
+/* Sticky Bar Button */
+.sticky-bar .btn-primary {
+    background: linear-gradient(135deg, #0d9488, #0f766e);
+    color: white;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 16px rgba(13, 148, 136, 0.4);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+.sticky-bar .btn-primary:hover {
+    background: linear-gradient(135deg, #0f766e, #115e59);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 148, 136, 0.5);
+}
+
+.sticky-bar .btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
+}
+
 /* Step 3 - Confirm */
 .step3-section {
     margin-top: 16px;
