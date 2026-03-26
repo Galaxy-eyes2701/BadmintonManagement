@@ -356,25 +356,13 @@ namespace backend.Controllers
         // =======================================================
         // 5. QUẢN LÝ HỢP ĐỒNG CỐ ĐỊNH (LỌC THEO CHI NHÁNH TỪ TOKEN)
         // =======================================================
-        [HttpGet("setup-data")]
-        public async Task<IActionResult> GetSetupData()
-        {
-            var branchId = await GetStaffBranchIdAsync();
-
-            var customers = await _context.Users.Where(u => u.Role == "Customer").Select(u => new { u.Id, u.FullName, u.Phone }).ToListAsync();
-
-            // CHỈ ĐỔ RA DANH SÁCH SÂN Ở CHI NHÁNH CỦA LỄ TÂN
-            var courtQuery = _context.Courts.AsQueryable();
-            if (branchId.HasValue) courtQuery = courtQuery.Where(c => c.BranchId == branchId.Value);
-            var courts = await courtQuery.Select(c => new { c.Id, c.Name }).ToListAsync();
-
-            var timeSlots = await _context.TimeSlots.Select(t => new { t.Id, time = $"{t.StartTime:HH\\:mm} - {t.EndTime:HH\\:mm}" }).ToListAsync();
-
-            return Ok(new { customers, courts, timeSlots });
-        }
-
+        // Bổ sung thêm tham số [FromQuery] string? searchName
         [HttpGet("fixed-schedules")]
-        public async Task<IActionResult> GetFixedSchedules()
+        // Thêm tham số page và pageSize
+        public async Task<IActionResult> GetFixedSchedules(
+      [FromQuery] string? searchName,
+      [FromQuery] int page = 1,
+      [FromQuery] int pageSize = 6) // Mặc định lấy 6 item/trang
         {
             var branchId = await GetStaffBranchIdAsync();
 
@@ -385,13 +373,29 @@ namespace backend.Controllers
                         from c in courtGroup.DefaultIfEmpty()
                         join t in _context.TimeSlots on fs.TimeSlotId equals t.Id into timeGroup
                         from t in timeGroup.DefaultIfEmpty()
-                        where branchId == null || c.BranchId == branchId // CHỈ XEM HỢP ĐỒNG CỦA CƠ SỞ MÌNH
+                        where branchId == null || c.BranchId == branchId
                         select new { fs, u, c, t };
 
-            var schedules = await query.ToListAsync();
-            var today = DateOnly.FromDateTime(DateTime.Now);
+            if (!string.IsNullOrWhiteSpace(searchName))
+            {
+                var lowerSearch = searchName.ToLower();
+                query = query.Where(x => x.u != null && x.u.FullName.ToLower().Contains(lowerSearch));
+            }
 
-            var result = schedules.Select(x => new
+            // === LOGIC PHÂN TRANG (PAGINATION) ===
+            int totalItems = await query.CountAsync(); // Đếm tổng số dòng
+            int totalPages = (int)Math.Ceiling(totalItems / (double)pageSize); // Tính tổng số trang
+
+            // Cắt dữ liệu theo trang hiện tại
+            var schedules = await query
+                .OrderByDescending(x => x.fs.Id) // Nhớ phải OrderBy trước khi Skip/Take
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+            // =====================================
+
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            var itemsResult = schedules.Select(x => new
             {
                 id = x.fs.Id,
                 teamName = x.u?.FullName ?? "Khách hàng",
@@ -401,9 +405,16 @@ namespace backend.Controllers
                 duration = $"{x.fs.StartDate:dd/MM/yyyy} - {x.fs.EndDate:dd/MM/yyyy}",
                 status = x.fs.Status == "cancelled" ? "cancelled" : x.fs.EndDate < today ? "expired" : x.fs.EndDate <= today.AddDays(7) ? "warning" : "active",
                 totalPrice = x.fs.TotalPrice
-            }).OrderByDescending(x => x.id);
+            });
 
-            return Ok(result);
+            // Quan trọng: Trả về 1 cục JSON bọc lại, chứa cả data lẫn thông tin phân trang
+            return Ok(new
+            {
+                data = itemsResult,
+                currentPage = page,
+                totalPages = totalPages,
+                totalItems = totalItems
+            });
         }
 
         [HttpPost("fixed-schedules")]
@@ -538,34 +549,91 @@ namespace backend.Controllers
             return Ok(new { message = "Đã hủy lịch đặt sân thành công!" });
         }
 
-        // =======================================================
-        // 7. API TẠO DỮ LIỆU TEST (HỖ TRỢ BRANCH_ID)
-        // =======================================================
-        [HttpGet("seed-test-data")]
-        public async Task<IActionResult> SeedTestData()
+        [HttpGet("setup-data")]
+        public async Task<IActionResult> GetSetupData()
         {
-            try
+            var branchId = await GetStaffBranchIdAsync();
+
+            var customers = await _context.Users
+                .Where(u => u.Role == "Customer" && u.Status == "active")
+                .Select(u => new
+                {
+                    id = u.Id,
+                    fullName = u.FullName,
+                    phone = u.Phone
+                })
+                .ToListAsync();
+
+            return Ok(new
             {
-                var hardcodedPassword = _passwordService.HashPassword("123456");
+                customers = customers
+            });
+        }
+        // =======================================================
+        // 8. ĐẶT SÂN TẠI CHỖ (DROPDOWN KHÁCH HÀNG)
+        // =======================================================
+        [HttpPost("walk-in")]
+        public async Task<IActionResult> CreateWalkInBooking([FromBody] WalkInBookingDto dto)
+        {
+            if (!DateOnly.TryParse(dto.PlayDate, out DateOnly playDate))
+                return BadRequest("Ngày không hợp lệ.");
 
-                // LỄ TÂN ĐƯỢC GẮN VÀO CHI NHÁNH 1 (BranchId = 1)
-                var staff = await _context.Users.FirstOrDefaultAsync(u => u.Phone == "0988111222");
-                if (staff == null) _context.Users.Add(new User { FullName = "Nguyễn Văn Lễ Tân", Phone = "0988111222", Email = "staff_test@fpt.edu.vn", PasswordHash = hardcodedPassword, Role = "Staff", LoyaltyPoints = 0, BranchId = 1 });
-                else { staff.PasswordHash = hardcodedPassword; staff.BranchId = 1; }
+            // 1. Kiểm tra xem ca này đã có ai đặt chưa
+            var isBooked = await _context.BookingDetails.Include(bd => bd.Booking)
+                .AnyAsync(bd => bd.CourtId == dto.CourtId && bd.TimeSlotId == dto.TimeSlotId
+                             && bd.PlayDate == playDate && bd.Booking.Status != "cancelled");
 
-                // KHÁCH HÀNG THÌ KHÔNG BỊ TRÓI VÀO CHI NHÁNH NÀO (BranchId = null)
-                var customer = await _context.Users.FirstOrDefaultAsync(u => u.Phone == "0909333444");
-                if (customer == null) _context.Users.Add(new User { FullName = "Trần Khách VIP", Phone = "0909333444", Email = "khachvip@gmail.com", PasswordHash = hardcodedPassword, Role = "Customer", LoyaltyPoints = 50, BranchId = null });
-                else { customer.PasswordHash = hardcodedPassword; customer.LoyaltyPoints = 50; customer.BranchId = null; }
+            if (isBooked) return BadRequest("Lỗi: Ca này đang có người chơi hoặc đã được đặt trước!");
 
-                if (!await _context.Vouchers.AnyAsync(v => v.Code == "FPT50K"))
-                    _context.Vouchers.Add(new Voucher { Code = "FPT50K", DiscountAmount = 50000, UsageLimit = 10, ExpiryDate = DateOnly.FromDateTime(DateTime.Now.AddYears(1)) });
+            // 2. Lấy giá tiền
+            var court = await _context.Courts.FindAsync(dto.CourtId);
+            if (court == null) return NotFound("Không tìm thấy sân.");
+            int vnDow = (int)playDate.DayOfWeek == 0 ? 8 : (int)playDate.DayOfWeek + 1;
+            var priceConfig = await _context.PriceConfigs.FirstOrDefaultAsync(p => p.CourtTypeId == court.CourtTypeId && p.TimeSlotId == dto.TimeSlotId && p.DayOfWeek == vnDow);
+            decimal price = priceConfig != null ? priceConfig.Price : 50000;
 
-                await _context.SaveChangesAsync();
-
-                return Ok(new { message = "Tạo dữ liệu Test thành công! Lễ tân đã được gán vào Cơ sở 1.", accounts = new { staff = "0988111222 - Pass: 123456", customer = "0909333444 - Pass: 123456", voucher = "FPT50K" } });
+            // 3. Xử lý User (Chủ yếu lấy từ Dropdown Frontend gửi lên)
+            User user = null;
+            if (dto.UserId.HasValue && dto.UserId > 0)
+            {
+                // Nếu lễ tân chọn một khách hàng có sẵn trong Dropdown
+                user = await _context.Users.FindAsync(dto.UserId.Value);
             }
-            catch (Exception ex) { return BadRequest("Lỗi: " + ex.Message); }
+
+            if (user == null)
+            {
+                // Nếu lễ tân chọn "Khách Vãng Lai" (UserId = null)
+                user = await _context.Users.FirstOrDefaultAsync(u => u.Phone == "0000000000");
+                if (user == null)
+                {
+                    // Tạo 1 tài khoản mặc định duy nhất cho tất cả Khách Vãng Lai (chỉ tạo 1 lần)
+                    user = new User { FullName = "Khách Vãng Lai", Phone = "0000000000", Role = "Customer", Status = "active", LoyaltyPoints = 0 };
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            // 4. Tạo Booking & Details
+            var booking = new Booking { UserId = user.Id, TotalPrice = price, Status = "confirmed", CreatedAt = DateTime.Now };
+            _context.Bookings.Add(booking);
+            await _context.SaveChangesAsync();
+
+            _context.BookingDetails.Add(new BookingDetail { BookingId = booking.Id, CourtId = dto.CourtId, TimeSlotId = dto.TimeSlotId, PlayDate = playDate, PriceSnapshot = price });
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Tạo lịch chơi thành công!" });
         }
     }
+
+    // DTO đã được thay đổi: Dùng UserId thay vì Name/Phone
+    public class WalkInBookingDto
+    {
+        public int CourtId { get; set; }
+        public int TimeSlotId { get; set; }
+        public string PlayDate { get; set; }
+        public int? UserId { get; set; } // Nhận ID từ Dropdown, nếu null là Khách vãng lai
+    }
+
+
 }
+
