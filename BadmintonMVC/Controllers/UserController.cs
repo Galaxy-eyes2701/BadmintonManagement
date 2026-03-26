@@ -63,6 +63,10 @@ public class UserController : Controller
         ViewBag.TotalBookings = 0;
         ViewBag.CompletedBookings = 0;
         ViewBag.CancelledBookings = 0;
+        ViewBag.PendingBookings = 0;
+        ViewBag.CourtSpent = 0m;
+        ViewBag.ProductSpent = 0m;
+        ViewBag.TotalOrders = 0;
         ViewBag.TotalSpent = 0m;
 
         try
@@ -120,12 +124,17 @@ public class UserController : Controller
                         .Where(b => { var s = GetStatus(b); return s == "confirmed" || s == "completed"; })
                         .Sum(GetPrice);
 
+                    int pending = bookings.Count(b => GetStatus(b) == "pending");
+
                     ViewBag.TotalBookings = total;
                     ViewBag.CompletedBookings = completed;
                     ViewBag.CancelledBookings = cancelled;
+                    ViewBag.PendingBookings = pending;
+                    ViewBag.CourtSpent = courtSpent;
 
                     // ── 3. Cộng thêm tiền product từ /api/bookings/my/orders ──
                     decimal productSpent = 0m;
+                    int totalOrders = 0;
                     var ordersResponse = await client.GetAsync($"{_api}/bookings/my/orders");
                     if (ordersResponse.IsSuccessStatusCode)
                     {
@@ -134,6 +143,7 @@ public class UserController : Controller
                         if (ordersData.TryGetProperty("data", out var ordersEl) &&
                             ordersEl.ValueKind == JsonValueKind.Array)
                         {
+                            totalOrders = ordersEl.GetArrayLength();
                             foreach (var order in ordersEl.EnumerateArray())
                             {
                                 if (order.TryGetProperty("totalAmount", out var ta) &&
@@ -143,6 +153,8 @@ public class UserController : Controller
                         }
                     }
 
+                    ViewBag.ProductSpent = productSpent;
+                    ViewBag.TotalOrders = totalOrders;
                     ViewBag.TotalSpent = courtSpent + productSpent;
                 }
             }
