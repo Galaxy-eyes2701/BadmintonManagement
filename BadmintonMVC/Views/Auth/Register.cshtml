@@ -219,6 +219,9 @@
             if (email && !/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email)) {
                 showError('email', 'emailError', 'Email không hợp lệ.');
                 valid = false;
+            } else if (email && !/^[a-zA-Z0-9._%+\-]+@@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email)) {
+                showError('email', 'emailError', 'Email không đúng định dạng (VD: ten@@gmail.com).');
+                valid = false;
             }
 
             if (!password) {

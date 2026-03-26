@@ -63,6 +63,10 @@ public class UserController : Controller
         ViewBag.TotalBookings = 0;
         ViewBag.CompletedBookings = 0;
         ViewBag.CancelledBookings = 0;
+        ViewBag.PendingBookings = 0;
+        ViewBag.CourtSpent = 0m;
+        ViewBag.ProductSpent = 0m;
+        ViewBag.TotalOrders = 0;
         ViewBag.TotalSpent = 0m;
 
         try
@@ -120,12 +124,17 @@ public class UserController : Controller
                         .Where(b => { var s = GetStatus(b); return s == "confirmed" || s == "completed"; })
                         .Sum(GetPrice);
 
+                    int pending = bookings.Count(b => GetStatus(b) == "pending");
+
                     ViewBag.TotalBookings = total;
                     ViewBag.CompletedBookings = completed;
                     ViewBag.CancelledBookings = cancelled;
+                    ViewBag.PendingBookings = pending;
+                    ViewBag.CourtSpent = courtSpent;
 
                     // ── 3. Cộng thêm tiền product từ /api/bookings/my/orders ──
                     decimal productSpent = 0m;
+                    int totalOrders = 0;
                     var ordersResponse = await client.GetAsync($"{_api}/bookings/my/orders");
                     if (ordersResponse.IsSuccessStatusCode)
                     {
@@ -134,6 +143,7 @@ public class UserController : Controller
                         if (ordersData.TryGetProperty("data", out var ordersEl) &&
                             ordersEl.ValueKind == JsonValueKind.Array)
                         {
+                            totalOrders = ordersEl.GetArrayLength();
                             foreach (var order in ordersEl.EnumerateArray())
                             {
                                 if (order.TryGetProperty("totalAmount", out var ta) &&
@@ -143,6 +153,8 @@ public class UserController : Controller
                         }
                     }
 
+                    ViewBag.ProductSpent = productSpent;
+                    ViewBag.TotalOrders = totalOrders;
                     ViewBag.TotalSpent = courtSpent + productSpent;
                 }
             }
@@ -157,42 +169,61 @@ public class UserController : Controller
 
     // POST: Edit Profile
     [HttpPost]
-    public async Task<IActionResult> EditProfile(string fullName, string? email)
+    public async Task<IActionResult> EditProfile(string fullName, string? email, string? phone)
     {
         if (!IsAuthenticated())
             return RedirectToAction("Login", "Auth");
 
-        var (client, token) = GetAuthClient();
+        var userIdStr = HttpContext.Session.GetString("UserId");
+        if (!int.TryParse(userIdStr, out int userId))
+        {
+            TempData["Error"] = "Không xác định được người dùng, vui lòng đăng nhập lại!";
+            return RedirectToAction("Profile");
+        }
 
         try
         {
-            var payload = new { fullName, email };
+            var payload = new { userId, fullName, email, phone };
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            var response = await client.PutAsync($"{_api}/Auth/me", content);
+            var response = await _http.PutAsync($"{_api}/Auth/me/update", content);
             var json = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
             {
-                var data = JsonSerializer.Deserialize<JsonElement>(json);
-                if (data.TryGetProperty("data", out var userData))
+                if (!string.IsNullOrWhiteSpace(json))
                 {
-                    if (userData.TryGetProperty("fullName", out var fn))
-                        HttpContext.Session.SetString("UserName", fn.GetString() ?? "");
-                    if (userData.TryGetProperty("email", out var em))
-                        HttpContext.Session.SetString("UserEmail", em.GetString() ?? "");
+                    var data = JsonSerializer.Deserialize<JsonElement>(json);
+                    if (data.TryGetProperty("data", out var userData))
+                    {
+                        if (userData.TryGetProperty("fullName", out var fn))
+                            HttpContext.Session.SetString("UserName", fn.GetString() ?? "");
+                        if (userData.TryGetProperty("email", out var em))
+                            HttpContext.Session.SetString("UserEmail", em.GetString() ?? "");
+                        if (userData.TryGetProperty("phone", out var ph))
+                            HttpContext.Session.SetString("UserPhone", ph.GetString() ?? "");
+                    }
                 }
                 TempData["Success"] = "Cập nhật thông tin thành công!";
             }
             else
             {
-                var errorData = JsonSerializer.Deserialize<JsonElement>(json);
-                TempData["Error"] = errorData.TryGetProperty("message", out var msg)
-                    ? msg.GetString() : "Cập nhật thất bại!";
+                string errorMsg = "Cập nhật thất bại!";
+                if (!string.IsNullOrWhiteSpace(json))
+                {
+                    try
+                    {
+                        var err = JsonSerializer.Deserialize<JsonElement>(json);
+                        if (err.TryGetProperty("message", out var msg))
+                            errorMsg = msg.GetString() ?? errorMsg;
+                    }
+                    catch { }
+                }
+                TempData["Error"] = errorMsg;
             }
         }
         catch (Exception ex)
         {
-            TempData["Error"] = "Lỗi: " + ex.Message;
+            TempData["Error"] = "Lỗi kết nối: " + ex.Message;
         }
 
         return RedirectToAction("Profile");

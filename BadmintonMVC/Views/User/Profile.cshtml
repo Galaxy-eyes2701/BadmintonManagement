@@ -4,706 +4,610 @@
 }
 
 @{
-    var loyaltyPoints = ViewBag.LoyaltyPoints ?? "0";
     string displayName = ViewBag.DisplayName ?? "Người dùng";
     string phone = ViewBag.UserPhone ?? Context.Session.GetString("UserPhone") ?? "Chưa cập nhật";
     string email = ViewBag.UserEmail ?? Context.Session.GetString("UserEmail") ?? "Chưa cập nhật";
     string userRole = Context.Session.GetString("UserRole") ?? "Customer";
 
-    int pts = 0;
-    int.TryParse(loyaltyPoints?.ToString(), out pts);
+    int totalBookings    = ViewBag.TotalBookings    ?? 0;
+    int completedBookings= ViewBag.CompletedBookings ?? 0;
+    int cancelledBookings= ViewBag.CancelledBookings ?? 0;
+    int pendingBookings  = ViewBag.PendingBookings   ?? 0;
+    decimal totalSpent   = ViewBag.TotalSpent   ?? 0m;
+    decimal courtSpent   = ViewBag.CourtSpent   ?? 0m;
+    decimal productSpent = ViewBag.ProductSpent ?? 0m;
+    int totalOrders      = ViewBag.TotalOrders  ?? 0;
 
-    int totalBookings = ViewBag.TotalBookings ?? 0;
-    int completedBookings = ViewBag.CompletedBookings ?? 0;
-    int cancelledBookings = ViewBag.CancelledBookings ?? 0;
-    decimal totalSpent = ViewBag.TotalSpent ?? 0m;
+    double completionRate   = totalBookings > 0 ? Math.Round((double)completedBookings / totalBookings * 100, 1) : 0;
+    double cancellationRate = totalBookings > 0 ? Math.Round((double)cancelledBookings  / totalBookings * 100, 1) : 0;
 
-    string level = "";
-    string levelColor = "#b45309";
-    int nextLevel = 500;
-    double progress = 0;
+    // donut
+    double r = 38; double cx = 46; double cy = 46;
+    double circ       = 2 * Math.PI * r;
+    double completeLen= totalBookings > 0 ? (double)completedBookings / totalBookings * circ : 0;
+    double cancelLen  = totalBookings > 0 ? (double)cancelledBookings  / totalBookings * circ : 0;
+    double pendingLen = totalBookings > 0 ? (double)pendingBookings    / totalBookings * circ : 0;
+    string F(double v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
-    if (pts >= 5000) { level = "💎 Kim Cương"; levelColor = "#06b6d4"; nextLevel = 0; progress = 100; }
-    else if (pts >= 2000) { level = "🥇 Vàng"; levelColor = "#f59e0b"; nextLevel = 5000; progress = ((pts - 2000) / 3000.0) * 100; }
-    else if (pts >= 500) { level = "🥈 Bạc"; levelColor = "#64748b"; nextLevel = 2000; progress = ((pts - 500) / 1500.0) * 100; }
-    else { level = "🥉 Đồng"; levelColor = "#b45309"; nextLevel = 500; progress = (pts / 500.0) * 100; }
+    // spend bars
+    decimal spendMax  = Math.Max(courtSpent, productSpent);
+    double courtPct   = spendMax > 0 ? (double)(courtSpent   / spendMax) * 100 : 0;
+    double productPct = spendMax > 0 ? (double)(productSpent / spendMax) * 100 : 0;
+
+    string Fmt(decimal v) =>
+        v >= 1_000_000 ? (v / 1_000_000m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " tr đ"
+                       : (v / 1000m).ToString("0") + "k đ";
 }
 
 <style>
-    .profile-page {
-        padding: 24px;
-        max-width: 960px;
-        margin: 0 auto;
-        font-family: 'Nunito', sans-serif;
-    }
-
-    /* ── Hero card ─────────────────────────────── */
-    .hero-card {
-        position: relative;
-        overflow: hidden;
-        border-radius: 20px;
-        background: linear-gradient(135deg, #0d5e58 0%, #0f766e 60%, #14b8a6 100%);
-        padding: 32px;
-        margin-bottom: 24px;
-        box-shadow: 0 10px 30px rgba(15,118,110,.25);
-    }
-
-    .hero-card-bg {
-        position: absolute;
-        top: -60px;
-        right: -60px;
-        width: 260px;
-        height: 260px;
-        border-radius: 50%;
-        background: rgba(255,255,255,.07);
-        pointer-events: none;
-    }
-
-    .hero-card-content {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        flex-wrap: wrap;
-    }
-
-    .avatar-ring {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        border: 3px solid rgba(255,255,255,.4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255,255,255,.15);
-        flex-shrink: 0;
-    }
-
-    .avatar-large {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background: white;
-        color: #0f766e;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 28px;
-        font-weight: 900;
-    }
-
-    .hero-card-name {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 900;
-        color: white;
-    }
-
-    .hero-card-meta {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-top: 6px;
-        flex-wrap: wrap;
-    }
-
-    .level-badge {
-        display: inline-block;
-        font-size: .78rem;
-        font-weight: 800;
-        padding: 4px 12px;
-        border-radius: 20px;
-        border: 1px solid;
-    }
-
-    .status-active {
-        font-size: .78rem;
-        font-weight: 700;
-        color: #6ee7b7;
-    }
-
-    /* ── Stats bar (inside hero) ───────────────── */
-    .hero-stats {
-        position: relative;
-        z-index: 1;
-        margin-top: 24px;
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-    }
-
-    .hero-stat {
-        background: rgba(255,255,255,.12);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,.2);
-        border-radius: 14px;
-        padding: 14px 12px;
-        text-align: center;
-        transition: transform .2s;
-    }
-
-        .hero-stat:hover {
-            transform: translateY(-2px);
-        }
-
-    .hero-stat-num {
-        display: block;
-        font-size: 1.6rem;
-        font-weight: 900;
-        color: white;
-        line-height: 1;
-    }
-
-    .hero-stat-label {
-        display: block;
-        font-size: .72rem;
-        color: rgba(255,255,255,.7);
-        margin-top: 4px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: .4px;
-    }
-
-    /* ── Profile grid ──────────────────────────── */
-    .profile-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-    @@media (max-width: 700px) {
-        .profile-grid
-
-    {
-        grid-template-columns: 1fr;
-    }
-
-    .hero-stats {
-        grid-template-columns: repeat(2,1fr);
-    }
-
-    }
-
-    .profile-card {
-        background: white;
-        border-radius: 16px;
-        padding: 24px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 12px rgba(0,0,0,.05);
-    }
-
-    .profile-card-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-
-    .profile-card-icon {
-        font-size: 22px;
-    }
-
-    .profile-card-title {
-        font-size: 1rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin: 0;
-    }
-
-    .info-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-    }
-
-    .info-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 0;
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-        .info-row:last-child {
-            border-bottom: none;
-        }
-
-    .info-label {
-        font-size: .84rem;
-        color: #64748b;
-        font-weight: 600;
-    }
-
-    .info-value {
-        font-size: .9rem;
-        color: #0f172a;
-        font-weight: 700;
-        text-align: right;
-        max-width: 60%;
-        word-break: break-word;
-    }
-
-    /* ── Points card ───────────────────────────── */
-    .points-display {
-        text-align: center;
-        padding: 16px 0 8px;
-    }
-
-    .points-big {
-        font-size: 2.8rem;
-        font-weight: 900;
-        color: #0f766e;
-        line-height: 1;
-    }
-
-    .points-label {
-        font-size: .85rem;
-        color: #64748b;
-        font-weight: 600;
-        margin-top: 4px;
-    }
-
-    .points-hint {
-        font-size: .76rem;
-        color: #94a3b8;
-        margin-top: 4px;
-    }
-
-    .progress-bar-track {
-        background: #e2e8f0;
-        border-radius: 8px;
-        height: 8px;
-        overflow: hidden;
-    }
-
-    .progress-bar-fill {
-        height: 100%;
-        border-radius: 8px;
-        transition: width .6s ease;
-    }
-
-    .perks-box {
-        margin-top: 16px;
-        padding: 14px 16px;
-        background: #f8fafc;
-        border-radius: 12px;
-        font-size: .84rem;
-        color: #64748b;
-    }
-
-        .perks-box p {
-            margin: 0 0 8px;
-            font-weight: 800;
-            color: #0f172a;
-        }
-
-        .perks-box ul {
-            margin: 0;
-            padding-left: 18px;
-        }
-
-        .perks-box li {
-            margin-bottom: 4px;
-        }
-
-    /* ── Quick actions ─────────────────────────── */
-    .quick-actions {
-        margin-top: 20px;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-    }
-
-    .quick-action-btn {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 14px 16px;
-        border-radius: 12px;
-        text-decoration: none;
-        font-weight: 700;
-        font-size: .88rem;
-        border: 1.5px solid;
-        transition: all .2s;
-    }
-
-    .qa-booking {
-        background: #ecfdf5;
-        border-color: #6ee7b7;
-        color: #065f46;
-    }
-
-        .qa-booking:hover {
-            background: #d1fae5;
-            transform: translateY(-1px);
-        }
-
-    .qa-history {
-        background: #eff6ff;
-        border-color: #93c5fd;
-        color: #1e40af;
-    }
-
-        .qa-history:hover {
-            background: #dbeafe;
-            transform: translateY(-1px);
-        }
-
-    .qa-voucher {
-        background: #fef3c7;
-        border-color: #fcd34d;
-        color: #92400e;
-    }
-
-        .qa-voucher:hover {
-            background: #fde68a;
-            transform: translateY(-1px);
-        }
-
-    .qa-icon {
-        font-size: 1.2rem;
-    }
-
-    /* ── Edit profile button ───────────────────── */
-    .edit-profile-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 16px;
-        padding: 10px 20px;
-        background: linear-gradient(135deg, #0f766e, #14b8a6);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: .88rem;
-        cursor: pointer;
-        transition: all .2s;
-        width: 100%;
-        justify-content: center;
-    }
-
-    .edit-profile-btn:hover {
-        background: linear-gradient(135deg, #0d5e58, #0f766e);
-        transform: translateY(-1px);
-    }
-
-    /* ── Alert bars ────────────────────────────── */
-    .alert-success-bar {
-        background: #ecfdf5;
-        border: 1px solid #6ee7b7;
-        color: #065f46;
-        border-radius: 8px;
-        padding: 10px 14px;
-        font-size: .84rem;
-        font-weight: 600;
-        margin-bottom: 12px;
-    }
-
-    .alert-error-bar {
-        background: #fef2f2;
-        border: 1px solid #fca5a5;
-        color: #991b1b;
-        border-radius: 8px;
-        padding: 10px 14px;
-        font-size: .84rem;
-        font-weight: 600;
-        margin-bottom: 12px;
-    }
-
-    /* ── Modal ─────────────────────────────────── */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,.45);
-        z-index: 1000;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .modal-overlay.open {
-        display: flex;
-    }
-
-    .modal-box {
-        background: white;
-        border-radius: 20px;
-        padding: 32px;
-        width: 100%;
-        max-width: 440px;
-        box-shadow: 0 20px 60px rgba(0,0,0,.2);
-        animation: modalIn .2s ease;
-    }
-
-    @@keyframes modalIn {
-        from { opacity: 0; transform: translateY(-16px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .modal-title {
-        font-size: 1.1rem;
-        font-weight: 900;
-        color: #0f172a;
-        margin: 0 0 20px;
-    }
-
-    .modal-field {
-        margin-bottom: 16px;
-    }
-
-    .modal-field label {
-        display: block;
-        font-size: .84rem;
-        font-weight: 700;
-        color: #374151;
-        margin-bottom: 6px;
-    }
-
-    .modal-field input {
-        width: 100%;
-        padding: 10px 14px;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 10px;
-        font-size: .9rem;
-        font-family: 'Nunito', sans-serif;
-        transition: border-color .2s;
-        box-sizing: border-box;
-    }
-
-    .modal-field input:focus {
-        outline: none;
-        border-color: #14b8a6;
-        box-shadow: 0 0 0 3px rgba(20,184,166,.12);
-    }
-
-    .modal-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 24px;
-    }
-
-    .btn-save {
-        flex: 1;
-        padding: 11px;
-        background: linear-gradient(135deg, #0f766e, #14b8a6);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: .9rem;
-        cursor: pointer;
-        transition: all .2s;
-    }
-
-    .btn-save:hover { background: linear-gradient(135deg, #0d5e58, #0f766e); }
-
-    .btn-cancel {
-        flex: 1;
-        padding: 11px;
-        background: #f1f5f9;
-        color: #64748b;
-        border: none;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: .9rem;
-        cursor: pointer;
-        transition: all .2s;
-    }
-
-    .btn-cancel:hover { background: #e2e8f0; }
+/* ─── reset / base ─────────────────────────────────── */
+.pp { padding: 28px 24px; max-width: 1000px; margin: 0 auto; font-family: 'Nunito', sans-serif; }
+
+/* ─── hero ──────────────────────────────────────────── */
+.pp-hero {
+    position: relative; overflow: hidden;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #0a4f4a 0%, #0f766e 55%, #0d9488 100%);
+    padding: 36px 40px;
+    margin-bottom: 24px;
+    box-shadow: 0 12px 40px rgba(15,118,110,.3);
+    display: flex; align-items: center; gap: 24px;
+}
+
+.pp-hero::before {
+    content: '';
+    position: absolute; top: -80px; right: -80px;
+    width: 320px; height: 320px; border-radius: 50%;
+    background: rgba(255,255,255,.06); pointer-events: none;
+}
+.pp-hero::after {
+    content: '';
+    position: absolute; bottom: -60px; right: 160px;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: rgba(255,255,255,.04); pointer-events: none;
+}
+
+.pp-avatar {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: rgba(255,255,255,.18);
+    border: 3px solid rgba(255,255,255,.35);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; font-weight: 900; color: white;
+    flex-shrink: 0; position: relative; z-index: 1;
+    box-shadow: 0 4px 16px rgba(0,0,0,.2);
+}
+
+.pp-hero-info { position: relative; z-index: 1; }
+
+.pp-hero-name { margin: 0; font-size: 1.7rem; font-weight: 900; color: white; letter-spacing: -.3px; }
+
+.pp-hero-sub {
+    display: flex; align-items: center; gap: 8px; margin-top: 6px;
+}
+
+.pp-dot { width: 7px; height: 7px; border-radius: 50%; background: #6ee7b7; }
+
+.pp-status { font-size: .82rem; font-weight: 700; color: rgba(255,255,255,.8); }
+
+.pp-role-badge {
+    font-size: .72rem; font-weight: 800;
+    padding: 3px 10px; border-radius: 20px;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.25);
+    color: rgba(255,255,255,.9);
+    letter-spacing: .3px;
+}
+
+/* ─── grid ──────────────────────────────────────────── */
+.pp-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+@@media (max-width: 760px) {
+    .pp-grid { grid-template-columns: 1fr; }
+    .pp-hero  { padding: 28px 24px; }
+}
+
+/* ─── card base ─────────────────────────────────────── */
+.pp-card {
+    background: white;
+    border-radius: 20px;
+    padding: 28px;
+    border: 1px solid #e8edf3;
+    box-shadow: 0 2px 16px rgba(0,0,0,.06);
+}
+
+.pp-card-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 22px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.pp-card-icon-wrap {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+}
+
+.icon-teal   { background: #ccfbf1; }
+.icon-indigo { background: #ede9fe; }
+
+.pp-card-title { font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0; }
+
+/* ─── info rows ─────────────────────────────────────── */
+.pp-info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid #f8fafc;
+}
+.pp-info-row:last-of-type { border-bottom: none; }
+
+.pp-info-label { font-size: .83rem; color: #94a3b8; font-weight: 600; }
+
+.pp-info-val {
+    font-size: .88rem; color: #1e293b; font-weight: 700;
+    text-align: right; max-width: 58%; word-break: break-word;
+}
+
+/* ─── edit btn ──────────────────────────────────────── */
+.pp-edit-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 20px; padding: 12px;
+    background: linear-gradient(135deg, #0f766e, #14b8a6);
+    color: white; border: none; border-radius: 12px;
+    font-weight: 800; font-size: .88rem; cursor: pointer;
+    transition: all .2s; width: 100%;
+    box-shadow: 0 4px 14px rgba(15,118,110,.25);
+}
+.pp-edit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(15,118,110,.35); }
+
+/* ─── stats card internals ──────────────────────────── */
+.stats-sections {
+    display: flex; flex-direction: column; gap: 20px;
+}
+
+/* donut row */
+.donut-row {
+    display: flex; align-items: center; gap: 20px;
+    background: #f8fafc; border-radius: 16px; padding: 18px 20px;
+}
+
+.donut-svg-wrap { position: relative; flex-shrink: 0; }
+
+.donut-label {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+}
+
+.donut-num { font-size: 1.1rem; font-weight: 900; color: #0f172a; line-height: 1; }
+.donut-txt { font-size: .58rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
+
+.donut-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+
+.dl-row { display: flex; align-items: center; justify-content: space-between; }
+
+.dl-left { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: #64748b; font-weight: 600; }
+
+.dl-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+.dl-right { font-size: .82rem; font-weight: 800; }
+
+.dl-pct { font-size: .75rem; font-weight: 600; color: #94a3b8; margin-left: 3px; }
+
+/* chips */
+.chips-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.pp-chip {
+    border-radius: 14px; padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+    position: relative; overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+
+.pp-chip::after {
+    content: '';
+    position: absolute; top: -20px; right: -20px;
+    width: 70px; height: 70px; border-radius: 50%;
+    background: rgba(255,255,255,.12);
+}
+
+.chip-amber  { background: linear-gradient(135deg, #d97706, #f59e0b); }
+.chip-violet { background: linear-gradient(135deg, #6d28d9, #8b5cf6); }
+
+.chip-icon { font-size: 1.5rem; flex-shrink: 0; }
+
+.chip-body { display: flex; flex-direction: column; }
+
+.chip-num   { font-size: 1.6rem; font-weight: 900; color: white; line-height: 1; }
+.chip-label { font-size: .7rem; font-weight: 700; color: rgba(255,255,255,.85); text-transform: uppercase; letter-spacing: .5px; margin-top: 3px; }
+
+/* spend section */
+.spend-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.spend-section-title { font-size: .75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .6px; margin: 0; }
+
+.spend-total-badge {
+    font-size: .8rem; font-weight: 900; color: #0f766e;
+    background: #ccfbf1; padding: 3px 10px; border-radius: 20px;
+}
+
+.spend-item { margin-bottom: 14px; }
+.spend-item:last-child { margin-bottom: 0; }
+
+.spend-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+
+.spend-item-label { font-size: .83rem; font-weight: 700; color: #374151; display: flex; align-items: center; gap: 7px; }
+.spend-item-val   { font-size: .83rem; font-weight: 900; color: #1e293b; }
+
+.spend-track { background: #e2e8f0; border-radius: 99px; height: 8px; overflow: hidden; }
+
+.spend-fill { height: 100%; border-radius: 99px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+
+/* ─── alerts ────────────────────────────────────────── */
+.pp-alert-ok  { background:#ecfdf5; border:1px solid #6ee7b7; color:#065f46; border-radius:10px; padding:10px 14px; font-size:.83rem; font-weight:600; margin-bottom:14px; }
+.pp-alert-err { background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; border-radius:10px; padding:10px 14px; font-size:.83rem; font-weight:600; margin-bottom:14px; }
+
+/* ─── modal ─────────────────────────────────────────── */
+.pp-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.5); z-index: 1000;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+}
+.pp-modal-overlay.open { display: flex; }
+
+.pp-modal {
+    background: white; border-radius: 24px; padding: 36px;
+    width: 100%; max-width: 440px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.18);
+    animation: ppModalIn .22s ease;
+}
+
+@@keyframes ppModalIn {
+    from { opacity: 0; transform: translateY(-20px) scale(.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.pp-modal-title { font-size: 1.15rem; font-weight: 900; color: #0f172a; margin: 0 0 24px; }
+
+.pp-field { margin-bottom: 18px; }
+.pp-field label { display: block; font-size: .83rem; font-weight: 700; color: #374151; margin-bottom: 7px; }
+.pp-field input {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid #e2e8f0; border-radius: 12px;
+    font-size: .9rem; font-family: 'Nunito', sans-serif;
+    transition: border-color .2s; box-sizing: border-box;
+}
+.pp-field input:focus { outline: none; border-color: #14b8a6; box-shadow: 0 0 0 3px rgba(20,184,166,.12); }
+
+.pp-modal-actions { display: flex; gap: 10px; margin-top: 26px; }
+
+.pp-btn-save {
+    flex: 1; padding: 12px;
+    background: linear-gradient(135deg, #0f766e, #14b8a6);
+    color: white; border: none; border-radius: 12px;
+    font-weight: 800; font-size: .9rem; cursor: pointer; transition: all .2s;
+    box-shadow: 0 4px 14px rgba(15,118,110,.25);
+}
+.pp-btn-save:hover { transform: translateY(-1px); }
+
+.pp-btn-cancel {
+    flex: 1; padding: 12px;
+    background: #f1f5f9; color: #64748b; border: none; border-radius: 12px;
+    font-weight: 700; font-size: .9rem; cursor: pointer; transition: all .2s;
+}
+.pp-btn-cancel:hover { background: #e2e8f0; }
+
+.pp-field-err {
+    display: block;
+    font-size: .78rem;
+    color: #ef4444;
+    font-weight: 600;
+    margin-top: 5px;
+    min-height: 1em;
+}
+
+.pp-phone-warn {
+    display: none;
+    margin-top: 7px;
+    padding: 9px 12px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    font-size: .78rem;
+    font-weight: 600;
+    color: #92400e;
+    line-height: 1.5;
+}
 </style>
 
-<div class="profile-page">
+<div class="pp">
 
-    <!-- ═══ HERO CARD ═══ -->
-    <div class="hero-card">
-        <div class="hero-card-bg"></div>
-
-        <div class="hero-card-content">
-            <div class="avatar-ring">
-                <div class="avatar-large">@(displayName.Length > 0 ? displayName[0] : 'U')</div>
-            </div>
-            <div>
-                <h1 class="hero-card-name">@displayName</h1>
-                <div class="hero-card-meta">
-                    <span class="level-badge"
-                          style="background: @(levelColor)22; color: @(levelColor); border-color: @(levelColor)55">
-                        @level
-                    </span>
-                    <span class="status-active">● Đang hoạt động</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stats bar -->
-        <div class="hero-stats">
-            <div class="hero-stat">
-                <span class="hero-stat-num">@totalBookings</span>
-                <span class="hero-stat-label">Tổng booking</span>
-            </div>
-            <div class="hero-stat">
-                <span class="hero-stat-num">@completedBookings</span>
-                <span class="hero-stat-label">Đã xác nhận</span>
-            </div>
-            <div class="hero-stat">
-                <span class="hero-stat-num">@cancelledBookings</span>
-                <span class="hero-stat-label">Đã hủy</span>
-            </div>
-            <div class="hero-stat">
-                <span class="hero-stat-num">@(totalSpent >= 1_000_000 ? (totalSpent / 1_000_000m).ToString("0.#") + "tr" : (totalSpent / 1000m).ToString("0") + "k")</span>
-                <span class="hero-stat-label">Đã chi tiêu</span>
+    <!-- ══ HERO ══ -->
+    <div class="pp-hero">
+        <div class="pp-avatar">@(displayName.Length > 0 ? displayName[0].ToString().ToUpper() : "U")</div>
+        <div class="pp-hero-info">
+            <h1 class="pp-hero-name">@displayName</h1>
+            <div class="pp-hero-sub">
+                <span class="pp-dot"></span>
+                <span class="pp-status">Đang hoạt động</span>
+                <span class="pp-role-badge">@userRole</span>
             </div>
         </div>
     </div>
 
-    <div class="profile-grid">
+    <!-- ══ GRID ══ -->
+    <div class="pp-grid">
 
-        <!-- ═══ PERSONAL INFO ═══ -->
-        <div class="profile-card">
-            <div class="profile-card-header">
-                <span class="profile-card-icon">👤</span>
-                <h2 class="profile-card-title">Thông tin cá nhân</h2>
+        <!-- ── Thông tin cá nhân ── -->
+        <div class="pp-card">
+            <div class="pp-card-head">
+                <div class="pp-card-icon-wrap icon-teal">👤</div>
+                <h2 class="pp-card-title">Thông tin cá nhân</h2>
             </div>
+
             @if (TempData["Success"] != null)
             {
-                <div class="alert-success-bar">✅ @TempData["Success"]</div>
+                <div class="pp-alert-ok">✅ @TempData["Success"]</div>
             }
             @if (TempData["Error"] != null)
             {
-                <div class="alert-error-bar">⚠️ @TempData["Error"]</div>
+                <div class="pp-alert-err">⚠️ @TempData["Error"]</div>
             }
 
-            <div class="info-list">
-                <div class="info-row">
-                    <span class="info-label">Họ &amp; Tên</span>
-                    <span class="info-value">@displayName</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Số điện thoại</span>
-                    <span class="info-value">@(string.IsNullOrEmpty(phone) ? "Chưa cập nhật" : phone)</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Email</span>
-                    <span class="info-value">@(string.IsNullOrEmpty(email) ? "Chưa cập nhật" : email)</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Vai trò</span>
-                    <span class="info-value">@userRole</span>
-                </div>
+            <div class="pp-info-row">
+                <span class="pp-info-label">Họ &amp; Tên</span>
+                <span class="pp-info-val">@displayName</span>
+            </div>
+            <div class="pp-info-row">
+                <span class="pp-info-label">Số điện thoại</span>
+                <span class="pp-info-val">@(string.IsNullOrEmpty(phone) ? "Chưa cập nhật" : phone)</span>
+            </div>
+            <div class="pp-info-row">
+                <span class="pp-info-label">Email</span>
+                <span class="pp-info-val">@(string.IsNullOrEmpty(email) ? "Chưa cập nhật" : email)</span>
+            </div>
+            <div class="pp-info-row">
+                <span class="pp-info-label">Vai trò</span>
+                <span class="pp-info-val">@userRole</span>
             </div>
 
-            <button class="edit-profile-btn" onclick="openEditModal()">✏️ Sửa thông tin</button>
-
-            <!-- Quick actions -->
-            <div class="quick-actions">
-                <a href="/User/Voucher" class="quick-action-btn qa-voucher" style="grid-column: span 2">
-                    <span class="qa-icon">🎟️</span> Đổi điểm lấy voucher
-                </a>
-            </div>
+            <button class="pp-edit-btn" onclick="openEditModal()">✏️ Sửa thông tin</button>
         </div>
 
-        <!-- ═══ LOYALTY POINTS ═══ -->
-        <div class="profile-card">
-            <div class="profile-card-header">
-                <span class="profile-card-icon">⭐</span>
-                <h2 class="profile-card-title">Điểm tích lũy</h2>
+        <!-- ── Thống kê hoạt động ── -->
+        <div class="pp-card">
+            <div class="pp-card-head">
+                <div class="pp-card-icon-wrap icon-indigo">📊</div>
+                <h2 class="pp-card-title">Thống kê hoạt động</h2>
             </div>
 
-            <div class="points-display">
-                <div class="points-big">@pts.ToString("N0")</div>
-                <div class="points-label">điểm tích lũy</div>
-                <div class="points-hint">Mỗi 10.000đ chi tiêu = 1 điểm</div>
-            </div>
+            <div class="stats-sections">
 
-            <div style="margin-top: 16px">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:.84rem">
-                    <span style="color:@(levelColor); font-weight:800">@level</span>
-                    @if (nextLevel > 0)
-                    {
-                        <span style="color:#64748b">→ @nextLevel.ToString("N0") điểm</span>
-                    }
+                <!-- donut -->
+                <div class="donut-row">
+                    <div class="donut-svg-wrap">
+                        <svg width="92" height="92" viewBox="0 0 92 92">
+                            <circle cx="@F(cx)" cy="@F(cy)" r="@F(r)" fill="none" stroke="#e2e8f0" stroke-width="11"/>
+                            @if (totalBookings > 0)
+                            {
+                                <circle cx="@F(cx)" cy="@F(cy)" r="@F(r)" fill="none"
+                                        stroke="#10b981" stroke-width="11"
+                                        stroke-dasharray="@F(completeLen) @F(circ - completeLen)"
+                                        stroke-dashoffset="@F(circ * 0.25)"
+                                        stroke-linecap="round"/>
+                                <circle cx="@F(cx)" cy="@F(cy)" r="@F(r)" fill="none"
+                                        stroke="#f43f5e" stroke-width="11"
+                                        stroke-dasharray="@F(cancelLen) @F(circ - cancelLen)"
+                                        stroke-dashoffset="@F(circ * 0.25 + completeLen)"
+                                        stroke-linecap="round"/>
+                                <circle cx="@F(cx)" cy="@F(cy)" r="@F(r)" fill="none"
+                                        stroke="#f59e0b" stroke-width="11"
+                                        stroke-dasharray="@F(pendingLen) @F(circ - pendingLen)"
+                                        stroke-dashoffset="@F(circ * 0.25 + completeLen + cancelLen)"
+                                        stroke-linecap="round"/>
+                            }
+                        </svg>
+                        <div class="donut-label">
+                            <span class="donut-num">@totalBookings</span>
+                            <span class="donut-txt">booking</span>
+                        </div>
+                    </div>
+
+                    <div class="donut-legend">
+                        <div class="dl-row">
+                            <span class="dl-left">
+                                <span class="dl-dot" style="background:#10b981"></span>Hoàn thành
+                            </span>
+                            <span class="dl-right" style="color:#10b981">
+                                @completedBookings<span class="dl-pct">(@completionRate%)</span>
+                            </span>
+                        </div>
+                        <div class="dl-row">
+                            <span class="dl-left">
+                                <span class="dl-dot" style="background:#f43f5e"></span>Đã hủy
+                            </span>
+                            <span class="dl-right" style="color:#f43f5e">
+                                @cancelledBookings<span class="dl-pct">(@cancellationRate%)</span>
+                            </span>
+                        </div>
+                        <div class="dl-row">
+                            <span class="dl-left">
+                                <span class="dl-dot" style="background:#f59e0b"></span>Đang chờ
+                            </span>
+                            <span class="dl-right" style="color:#f59e0b">@pendingBookings</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="progress-bar-track">
-                    <div class="progress-bar-fill"
-                         style="width:@(Math.Min(progress, 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%; background:@(levelColor)"></div>
-                </div>
-                <p style="margin:8px 0 0; font-size:.76rem; color:#64748b">
-                    @if (nextLevel > 0)
-                    {
-                        <text>Còn <strong>@((nextLevel - pts).ToString("N0"))</strong> điểm để lên hạng tiếp</text>
-                    }
-                    else
-                    {
-                        <text>🎉 Bạn đã đạt cấp độ cao nhất!</text>
-                    }
-                </p>
-            </div>
 
-            <div class="perks-box">
-                <p>Quyền lợi thành viên</p>
-                <ul>
-                    <li>✅ Tích điểm mỗi lần thanh toán</li>
-                    <li>✅ Đổi điểm lấy voucher giảm giá</li>
-                    @if (pts >= 500)
-                    {
-                        <li>✅ Hạng Bạc: Ưu đãi đặc biệt</li>
-                    }
-                    @if (pts >= 2000)
-                    {
-                        <li>✅ Hạng Vàng: Giảm 10% phí sân</li>
-                    }
-                    @if (pts >= 5000)
-                    {
-                        <li>✅ Hạng Kim Cương: Ưu tiên tối đa</li>
-                    }
-                </ul>
+                <!-- chips -->
+                <div class="chips-row">
+                    <div class="pp-chip chip-amber">
+                        <span class="chip-icon">⏳</span>
+                        <div class="chip-body">
+                            <span class="chip-num">@pendingBookings</span>
+                            <span class="chip-label">Đang chờ</span>
+                        </div>
+                    </div>
+                    <div class="pp-chip chip-violet">
+                        <span class="chip-icon">🛒</span>
+                        <div class="chip-body">
+                            <span class="chip-num">@totalOrders</span>
+                            <span class="chip-label">Đơn sản phẩm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- spend bars -->
+                <div>
+                    <div class="spend-head">
+                        <p class="spend-section-title">Chi tiêu theo danh mục</p>
+                        <span class="spend-total-badge">@Fmt(totalSpent)</span>
+                    </div>
+
+                    <div class="spend-item">
+                        <div class="spend-item-top">
+                            <span class="spend-item-label">🏸 Tiền sân</span>
+                            <span class="spend-item-val">@Fmt(courtSpent)</span>
+                        </div>
+                        <div class="spend-track">
+                            <div class="spend-fill" style="width:@(F(courtPct))%; background:linear-gradient(90deg,#0f766e,#2dd4bf)"></div>
+                        </div>
+                    </div>
+
+                    <div class="spend-item">
+                        <div class="spend-item-top">
+                            <span class="spend-item-label">🛍️ Sản phẩm</span>
+                            <span class="spend-item-val">@Fmt(productSpent)</span>
+                        </div>
+                        <div class="spend-track">
+                            <div class="spend-fill" style="width:@(F(productPct))%; background:linear-gradient(90deg,#7c3aed,#c084fc)"></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
     </div>
 </div>
 
-<!-- ═══ EDIT PROFILE MODAL ═══ -->
-<div class="modal-overlay" id="editModal" onclick="closeOnOverlay(event)">
-    <div class="modal-box">
-        <h2 class="modal-title">✏️ Sửa thông tin cá nhân</h2>
-        <form method="post" action="/User/EditProfile">
-            <div class="modal-field">
+<!-- ══ MODAL ══ -->
+<div class="pp-modal-overlay" id="editModal" onclick="closeOnOverlay(event)">
+    <div class="pp-modal">
+        <h2 class="pp-modal-title">✏️ Sửa thông tin cá nhân</h2>
+        <form method="post" action="/User/EditProfile" id="editProfileForm" onsubmit="return validateEditForm()">
+            <div class="pp-field">
                 <label>Họ &amp; Tên</label>
                 <input type="text" name="fullName" id="editFullName" required maxlength="100" />
+                <span class="pp-field-err" id="errFullName"></span>
             </div>
-            <div class="modal-field">
+            <div class="pp-field">
+                <label>Số điện thoại</label>
+                <input type="tel" name="phone" id="editPhone" maxlength="15" placeholder="Nhập số điện thoại" />
+                <div class="pp-phone-warn" id="phoneWarn">
+                    ⚠️ Số điện thoại dùng để đăng nhập. Sau khi đổi, bạn cần dùng số mới để đăng nhập.
+                </div>
+                <span class="pp-field-err" id="errPhone"></span>
+            </div>
+            <div class="pp-field">
                 <label>Email</label>
                 <input type="email" name="email" id="editEmail" maxlength="200" placeholder="Nhập email (không bắt buộc)" />
+                <span class="pp-field-err" id="errEmail"></span>
             </div>
-            <div class="modal-actions">
-                <button type="button" class="btn-cancel" onclick="closeEditModal()">Hủy</button>
-                <button type="submit" class="btn-save">Lưu thay đổi</button>
+            <div class="pp-modal-actions">
+                <button type="button" class="pp-btn-cancel" onclick="closeEditModal()">Hủy</button>
+                <button type="submit" class="pp-btn-save">Lưu thay đổi</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    var currentFullName = '@Html.Raw(displayName.Replace("'", "\\'"))';
-    var currentEmail = '@Html.Raw((email ?? "").Replace("'", "\\'"))';
+    var _name  = '@Html.Raw(displayName.Replace("'", "\\'"))';
+    var _email = '@Html.Raw((email ?? "").Replace("'", "\\'"))';
+    var _phone = '@Html.Raw((phone ?? "").Replace("'", "\\'"))';
 
     function openEditModal() {
-        document.getElementById('editFullName').value = currentFullName;
-        document.getElementById('editEmail').value = currentEmail === 'Chưa cập nhật' ? '' : currentEmail;
+        document.getElementById('editFullName').value = _name;
+        document.getElementById('editPhone').value  = _phone === 'Chưa cập nhật' ? '' : _phone;
+        document.getElementById('editEmail').value  = _email === 'Chưa cập nhật' ? '' : _email;
+        clearErrors();
         document.getElementById('editModal').classList.add('open');
     }
-
     function closeEditModal() {
         document.getElementById('editModal').classList.remove('open');
     }
-
     function closeOnOverlay(e) {
         if (e.target === document.getElementById('editModal')) closeEditModal();
     }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditModal(); });
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeEditModal();
+    function clearErrors() {
+        ['errFullName','errPhone','errEmail'].forEach(id => {
+            document.getElementById(id).textContent = '';
+        });
+        ['editFullName','editPhone','editEmail'].forEach(id => {
+            document.getElementById(id).style.borderColor = '';
+        });
+    }
+
+    function setError(inputId, errId, msg) {
+        document.getElementById(errId).textContent = msg;
+        document.getElementById(inputId).style.borderColor = '#ef4444';
+    }
+
+    function validateEditForm() {
+        clearErrors();
+        let valid = true;
+
+        const name  = document.getElementById('editFullName').value.trim();
+        const phone = document.getElementById('editPhone').value.trim();
+        const email = document.getElementById('editEmail').value.trim();
+
+        if (!name) {
+            setError('editFullName', 'errFullName', 'Họ & Tên không được để trống.');
+            valid = false;
+        } else if (name.length < 2) {
+            setError('editFullName', 'errFullName', 'Họ & Tên phải có ít nhất 2 ký tự.');
+            valid = false;
+        }
+
+        if (phone && !/^(0[3|5|7|8|9])[0-9]{8}$/.test(phone)) {
+            setError('editPhone', 'errPhone', 'Số điện thoại không hợp lệ (VD: 0912345678).');
+            valid = false;
+        }
+
+        if (email && !/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email)) {
+            setError('editEmail', 'errEmail', 'Địa chỉ email không hợp lệ.');
+            valid = false;
+        }
+
+        return valid;
+    }
+
+    // Realtime clear error on input
+    ['editFullName','editPhone','editEmail'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', function() {
+            this.style.borderColor = '';
+            const errMap = { editFullName:'errFullName', editPhone:'errPhone', editEmail:'errEmail' };
+            document.getElementById(errMap[id]).textContent = '';
+        });
+    });
+
+    // Phone change warning
+    document.getElementById('editPhone')?.addEventListener('input', function() {
+        const warn = document.getElementById('phoneWarn');
+        const originalPhone = _phone === 'Chưa cập nhật' ? '' : _phone;
+        warn.style.display = this.value.trim() !== originalPhone ? 'block' : 'none';
     });
 </script>
