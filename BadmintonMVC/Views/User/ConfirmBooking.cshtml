@@ -49,10 +49,6 @@
                 </div>
 
                 <div class="total-section">
-                    <div class="total-row">
-                        <span>Tạm tính</span>
-                        <span id="subtotalDisplay">0đ</span>
-                    </div>
                     <div class="total-row grand-total">
                         <span>Tổng cộng</span>
                         <strong id="totalDisplay">0đ</strong>
@@ -67,7 +63,7 @@
                     toán tại quầy.
                 </p>
                 <div class="payment-amount-box">
-                    <span>Số tiền thanh toán tại sân</span>
+                    <span>Số tiền thanh toán đặt cọc</span>
                     <strong class="payment-amount-num" id="finalAmountDisplay">0đ</strong>
                 </div>
 
@@ -130,9 +126,8 @@
         }
 
         function updateTotals() {
-            document.getElementById('subtotalDisplay').textContent = formatCurrency(subtotal);
             document.getElementById('totalDisplay').textContent = formatCurrency(subtotal);
-            document.getElementById('finalAmountDisplay').textContent = formatCurrency(subtotal);
+            document.getElementById('finalAmountDisplay').textContent = formatCurrency(subtotal * 0.5);
         }
 
         function confirmBooking() {
