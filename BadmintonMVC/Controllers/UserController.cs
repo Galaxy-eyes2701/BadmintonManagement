@@ -167,6 +167,45 @@ public class UserController : Controller
         return View();
     }
 
+    // POST: Change Password
+    [HttpPost]
+    public async Task<IActionResult> ChangePassword(string oldPassword, string newPassword)
+    {
+        if (!IsAuthenticated())
+            return RedirectToAction("Login", "Auth");
+
+        var userIdStr = HttpContext.Session.GetString("UserId");
+        if (!int.TryParse(userIdStr, out int userId))
+        {
+            TempData["Error"] = "Không xác định được người dùng, vui lòng đăng nhập lại!";
+            return RedirectToAction("Profile");
+        }
+
+        try
+        {
+            var payload = new { userId, oldPassword, newPassword };
+            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            var response = await _http.PostAsync($"{_api}/Auth/me/change-password", content);
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                TempData["Success"] = "Đổi mật khẩu thành công!";
+            }
+            else
+            {
+                var err = JsonSerializer.Deserialize<JsonElement>(json);
+                TempData["Error"] = err.TryGetProperty("message", out var msg) ? msg.GetString() : "Đổi mật khẩu thất bại!";
+            }
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = "Lỗi kết nối: " + ex.Message;
+        }
+
+        return RedirectToAction("Profile");
+    }
+
     // POST: Edit Profile
     [HttpPost]
     public async Task<IActionResult> EditProfile(string fullName, string? email, string? phone)

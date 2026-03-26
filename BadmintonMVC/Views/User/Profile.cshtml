@@ -20,6 +20,7 @@
 
     double completionRate   = totalBookings > 0 ? Math.Round((double)completedBookings / totalBookings * 100, 1) : 0;
     double cancellationRate = totalBookings > 0 ? Math.Round((double)cancelledBookings  / totalBookings * 100, 1) : 0;
+    double pendingRate      = totalBookings > 0 ? Math.Round((double)pendingBookings    / totalBookings * 100, 1) : 0;
 
     // donut
     double r = 38; double cx = 46; double cy = 46;
@@ -328,6 +329,21 @@
     color: #92400e;
     line-height: 1.5;
 }
+
+/* ─── password toggle ───────────────────────────────── */
+.pw-input-wrap {
+    position: relative; display: flex; align-items: center;
+}
+.pw-input-wrap input {
+    width: 100%; padding-right: 44px;
+}
+.pw-eye {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: #64748b; cursor: pointer;
+    font-size: 1.1rem; padding: 0; width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+}
+.pw-eye:hover { color: #0f766e; }
 </style>
 
 <div class="pp">
@@ -382,6 +398,7 @@
             </div>
 
             <button class="pp-edit-btn" onclick="openEditModal()">✏️ Sửa thông tin</button>
+            <button class="pp-edit-btn" style="margin-top:10px;background:linear-gradient(135deg,#1e40af,#3b82f6);box-shadow:0 4px 14px rgba(30,64,175,.25)" onclick="openChangePwModal()">🔒 Đổi mật khẩu</button>
         </div>
 
         <!-- ── Thống kê hoạt động ── -->
@@ -400,21 +417,34 @@
                             <circle cx="@F(cx)" cy="@F(cy)" r="@F(r)" fill="none" stroke="#e2e8f0" stroke-width="11"/>
                             @if (totalBookings > 0)
                             {
+                                double gap = 2;
+                                double completeAng = (double)completedBookings / totalBookings * 360;
+                                double cancelAng   = (double)cancelledBookings  / totalBookings * 360;
+                                double pendingAng  = (double)pendingBookings    / totalBookings * 360;
+
+                                double completeLen2 = Math.Max(0, completeAng / 360 * circ - gap);
+                                double cancelLen2   = Math.Max(0, cancelAng   / 360 * circ - gap);
+                                double pendingLen2  = Math.Max(0, pendingAng  / 360 * circ - gap);
+
+                                double rot0 = -90;
+                                double rot1 = rot0 + completeAng;
+                                double rot2 = rot1 + cancelAng;
+
                                 <circle cx="@F(cx)" cy="@F(cy)" r="@F(r)" fill="none"
                                         stroke="#10b981" stroke-width="11"
-                                        stroke-dasharray="@F(completeLen) @F(circ - completeLen)"
-                                        stroke-dashoffset="@F(circ * 0.25)"
-                                        stroke-linecap="round"/>
+                                        stroke-dasharray="@F(completeLen2) @F(circ)"
+                                        stroke-dashoffset="0"
+                                        transform="rotate(@F(rot0) @F(cx) @F(cy))"/>
                                 <circle cx="@F(cx)" cy="@F(cy)" r="@F(r)" fill="none"
                                         stroke="#f43f5e" stroke-width="11"
-                                        stroke-dasharray="@F(cancelLen) @F(circ - cancelLen)"
-                                        stroke-dashoffset="@F(circ * 0.25 + completeLen)"
-                                        stroke-linecap="round"/>
+                                        stroke-dasharray="@F(cancelLen2) @F(circ)"
+                                        stroke-dashoffset="0"
+                                        transform="rotate(@F(rot1) @F(cx) @F(cy))"/>
                                 <circle cx="@F(cx)" cy="@F(cy)" r="@F(r)" fill="none"
                                         stroke="#f59e0b" stroke-width="11"
-                                        stroke-dasharray="@F(pendingLen) @F(circ - pendingLen)"
-                                        stroke-dashoffset="@F(circ * 0.25 + completeLen + cancelLen)"
-                                        stroke-linecap="round"/>
+                                        stroke-dasharray="@F(pendingLen2) @F(circ)"
+                                        stroke-dashoffset="0"
+                                        transform="rotate(@F(rot2) @F(cx) @F(cy))"/>
                             }
                         </svg>
                         <div class="donut-label">
@@ -444,7 +474,9 @@
                             <span class="dl-left">
                                 <span class="dl-dot" style="background:#f59e0b"></span>Đang chờ
                             </span>
-                            <span class="dl-right" style="color:#f59e0b">@pendingBookings</span>
+                            <span class="dl-right" style="color:#f59e0b">
+                                @pendingBookings<span class="dl-pct">(@pendingRate%)</span>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -498,6 +530,73 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- ══ MODAL ĐỔI MẬT KHẨU ══ -->
+<div class="pp-modal-overlay" id="changePwModal" onclick="closeOnOverlayPw(event)">
+    <div class="pp-modal">
+        <h2 class="pp-modal-title">🔒 Đổi mật khẩu</h2>
+        <form method="post" action="/User/ChangePassword" id="changePwForm" onsubmit="return validatePwForm()">
+            <div class="pp-field">
+                <label>Mật khẩu cũ</label>
+                <div class="pw-input-wrap">
+                    <input type="password" name="oldPassword" id="oldPassword" placeholder="Nhập mật khẩu cũ" />
+                    <button type="button" class="pw-eye" onclick="togglePw('oldPassword', 'eyeOld', 'eyeOffOld')" tabindex="-1">
+                        <svg id="eyeOld" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                        </svg>
+                        <svg id="eyeOffOld" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style="display:none">
+                            <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/>
+                            <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/>
+                            <path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>
+                        </svg>
+                    </button>
+                </div>
+                <span class="pp-field-err" id="errOldPw"></span>
+            </div>
+            <div class="pp-field">
+                <label>Mật khẩu mới</label>
+                <div class="pw-input-wrap">
+                    <input type="password" name="newPassword" id="newPassword" placeholder="Ít nhất 6 ký tự" />
+                    <button type="button" class="pw-eye" onclick="togglePw('newPassword', 'eyeNew', 'eyeOffNew')" tabindex="-1">
+                        <svg id="eyeNew" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                        </svg>
+                        <svg id="eyeOffNew" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style="display:none">
+                            <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/>
+                            <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/>
+                            <path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>
+                        </svg>
+                    </button>
+                </div>
+                <span class="pp-field-err" id="errNewPw"></span>
+            </div>
+            <div class="pp-field">
+                <label>Xác nhận mật khẩu mới</label>
+                <div class="pw-input-wrap">
+                    <input type="password" id="confirmPassword" placeholder="Nhập lại mật khẩu mới" />
+                    <button type="button" class="pw-eye" onclick="togglePw('confirmPassword', 'eyeConfirm', 'eyeOffConfirm')" tabindex="-1">
+                        <svg id="eyeConfirm" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                        </svg>
+                        <svg id="eyeOffConfirm" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style="display:none">
+                            <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/>
+                            <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/>
+                            <path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>
+                        </svg>
+                    </button>
+                </div>
+                <span class="pp-field-err" id="errConfirmPw"></span>
+            </div>
+            <div class="pp-modal-actions">
+                <button type="button" class="pp-btn-cancel" onclick="closeChangePwModal()">Hủy</button>
+                <button type="submit" class="pp-btn-save">Lưu</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -609,5 +708,95 @@
         const warn = document.getElementById('phoneWarn');
         const originalPhone = _phone === 'Chưa cập nhật' ? '' : _phone;
         warn.style.display = this.value.trim() !== originalPhone ? 'block' : 'none';
+    });
+
+    // ── Change Password Modal ──
+    function openChangePwModal() {
+        ['oldPassword','newPassword','confirmPassword'].forEach(id => {
+            const el = document.getElementById(id);
+            el.value = '';
+            el.type = 'password';
+            el.style.borderColor = '';
+        });
+        [['eyeOld','eyeOffOld'],['eyeNew','eyeOffNew'],['eyeConfirm','eyeOffConfirm']].forEach(([on, off]) => {
+            document.getElementById(on).style.display = 'inline';
+            document.getElementById(off).style.display = 'none';
+        });
+        ['errOldPw','errNewPw','errConfirmPw'].forEach(id => document.getElementById(id).textContent = '');
+        document.getElementById('changePwModal').classList.add('open');
+    }
+    function closeChangePwModal() {
+        document.getElementById('changePwModal').classList.remove('open');
+    }
+    function closeOnOverlayPw(e) {
+        if (e.target === document.getElementById('changePwModal')) closeChangePwModal();
+    }
+
+    function togglePw(inputId, eyeId, eyeOffId) {
+        const input = document.getElementById(inputId);
+        const eye = document.getElementById(eyeId);
+        const eyeOff = document.getElementById(eyeOffId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            eye.style.display = 'none';
+            eyeOff.style.display = 'inline';
+        } else {
+            input.type = 'password';
+            eye.style.display = 'inline';
+            eyeOff.style.display = 'none';
+        }
+    }
+
+    function setPwError(inputId, errId, msg) {
+        const el = document.getElementById(inputId);
+        el.style.borderColor = msg ? '#ef4444' : '';
+        document.getElementById(errId).textContent = msg;
+    }
+
+    function validatePwForm() {
+        let valid = true;
+        const oldPw = document.getElementById('oldPassword').value;
+        const newPw = document.getElementById('newPassword').value;
+        const confirmPw = document.getElementById('confirmPassword').value;
+
+        if (!oldPw) {
+            setPwError('oldPassword', 'errOldPw', 'Vui lòng nhập mật khẩu cũ.');
+            valid = false;
+        } else {
+            setPwError('oldPassword', 'errOldPw', '');
+        }
+
+        if (newPw.length < 6) {
+            setPwError('newPassword', 'errNewPw', 'Mật khẩu mới phải có ít nhất 6 ký tự.');
+            valid = false;
+        } else {
+            setPwError('newPassword', 'errNewPw', '');
+        }
+
+        if (confirmPw && newPw !== confirmPw) {
+            setPwError('confirmPassword', 'errConfirmPw', 'Mật khẩu xác nhận không khớp.');
+            valid = false;
+        } else if (confirmPw) {
+            setPwError('confirmPassword', 'errConfirmPw', '');
+        }
+
+        return valid;
+    }
+
+    // Inline validation on input
+    document.getElementById('oldPassword')?.addEventListener('input', function() {
+        setPwError('oldPassword', 'errOldPw', this.value ? '' : 'Vui lòng nhập mật khẩu cũ.');
+    });
+    document.getElementById('newPassword')?.addEventListener('input', function() {
+        setPwError('newPassword', 'errNewPw', this.value.length >= 6 ? '' : 'Mật khẩu mới phải có ít nhất 6 ký tự.');
+        // re-check confirm
+        const confirmPw = document.getElementById('confirmPassword').value;
+        if (confirmPw) {
+            setPwError('confirmPassword', 'errConfirmPw', this.value === confirmPw ? '' : 'Mật khẩu xác nhận không khớp.');
+        }
+    });
+    document.getElementById('confirmPassword')?.addEventListener('input', function() {
+        const newPw = document.getElementById('newPassword').value;
+        setPwError('confirmPassword', 'errConfirmPw', this.value === newPw ? '' : 'Mật khẩu xác nhận không khớp.');
     });
 </script>

@@ -76,3 +76,10 @@ public class UpdateProfileWithIdDto
     public string? Email { get; set; }
     public string? Phone { get; set; }
 }
+
+public class ChangePasswordDto
+{
+    public int UserId { get; set; }
+    public string OldPassword { get; set; } = null!;
+    public string NewPassword { get; set; } = null!;
+}
