@@ -306,6 +306,28 @@
     font-weight: 700; font-size: .9rem; cursor: pointer; transition: all .2s;
 }
 .pp-btn-cancel:hover { background: #e2e8f0; }
+
+.pp-field-err {
+    display: block;
+    font-size: .78rem;
+    color: #ef4444;
+    font-weight: 600;
+    margin-top: 5px;
+    min-height: 1em;
+}
+
+.pp-phone-warn {
+    display: none;
+    margin-top: 7px;
+    padding: 9px 12px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    font-size: .78rem;
+    font-weight: 600;
+    color: #92400e;
+    line-height: 1.5;
+}
 </style>
 
 <div class="pp">
@@ -483,14 +505,24 @@
 <div class="pp-modal-overlay" id="editModal" onclick="closeOnOverlay(event)">
     <div class="pp-modal">
         <h2 class="pp-modal-title">✏️ Sửa thông tin cá nhân</h2>
-        <form method="post" action="/User/EditProfile">
+        <form method="post" action="/User/EditProfile" id="editProfileForm" onsubmit="return validateEditForm()">
             <div class="pp-field">
                 <label>Họ &amp; Tên</label>
                 <input type="text" name="fullName" id="editFullName" required maxlength="100" />
+                <span class="pp-field-err" id="errFullName"></span>
+            </div>
+            <div class="pp-field">
+                <label>Số điện thoại</label>
+                <input type="tel" name="phone" id="editPhone" maxlength="15" placeholder="Nhập số điện thoại" />
+                <div class="pp-phone-warn" id="phoneWarn">
+                    ⚠️ Số điện thoại dùng để đăng nhập. Sau khi đổi, bạn cần dùng số mới để đăng nhập.
+                </div>
+                <span class="pp-field-err" id="errPhone"></span>
             </div>
             <div class="pp-field">
                 <label>Email</label>
                 <input type="email" name="email" id="editEmail" maxlength="200" placeholder="Nhập email (không bắt buộc)" />
+                <span class="pp-field-err" id="errEmail"></span>
             </div>
             <div class="pp-modal-actions">
                 <button type="button" class="pp-btn-cancel" onclick="closeEditModal()">Hủy</button>
@@ -503,10 +535,13 @@
 <script>
     var _name  = '@Html.Raw(displayName.Replace("'", "\\'"))';
     var _email = '@Html.Raw((email ?? "").Replace("'", "\\'"))';
+    var _phone = '@Html.Raw((phone ?? "").Replace("'", "\\'"))';
 
     function openEditModal() {
         document.getElementById('editFullName').value = _name;
-        document.getElementById('editEmail').value = _email === 'Chưa cập nhật' ? '' : _email;
+        document.getElementById('editPhone').value  = _phone === 'Chưa cập nhật' ? '' : _phone;
+        document.getElementById('editEmail').value  = _email === 'Chưa cập nhật' ? '' : _email;
+        clearErrors();
         document.getElementById('editModal').classList.add('open');
     }
     function closeEditModal() {
@@ -516,4 +551,63 @@
         if (e.target === document.getElementById('editModal')) closeEditModal();
     }
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditModal(); });
+
+    function clearErrors() {
+        ['errFullName','errPhone','errEmail'].forEach(id => {
+            document.getElementById(id).textContent = '';
+        });
+        ['editFullName','editPhone','editEmail'].forEach(id => {
+            document.getElementById(id).style.borderColor = '';
+        });
+    }
+
+    function setError(inputId, errId, msg) {
+        document.getElementById(errId).textContent = msg;
+        document.getElementById(inputId).style.borderColor = '#ef4444';
+    }
+
+    function validateEditForm() {
+        clearErrors();
+        let valid = true;
+
+        const name  = document.getElementById('editFullName').value.trim();
+        const phone = document.getElementById('editPhone').value.trim();
+        const email = document.getElementById('editEmail').value.trim();
+
+        if (!name) {
+            setError('editFullName', 'errFullName', 'Họ & Tên không được để trống.');
+            valid = false;
+        } else if (name.length < 2) {
+            setError('editFullName', 'errFullName', 'Họ & Tên phải có ít nhất 2 ký tự.');
+            valid = false;
+        }
+
+        if (phone && !/^(0[3|5|7|8|9])[0-9]{8}$/.test(phone)) {
+            setError('editPhone', 'errPhone', 'Số điện thoại không hợp lệ (VD: 0912345678).');
+            valid = false;
+        }
+
+        if (email && !/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email)) {
+            setError('editEmail', 'errEmail', 'Địa chỉ email không hợp lệ.');
+            valid = false;
+        }
+
+        return valid;
+    }
+
+    // Realtime clear error on input
+    ['editFullName','editPhone','editEmail'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', function() {
+            this.style.borderColor = '';
+            const errMap = { editFullName:'errFullName', editPhone:'errPhone', editEmail:'errEmail' };
+            document.getElementById(errMap[id]).textContent = '';
+        });
+    });
+
+    // Phone change warning
+    document.getElementById('editPhone')?.addEventListener('input', function() {
+        const warn = document.getElementById('phoneWarn');
+        const originalPhone = _phone === 'Chưa cập nhật' ? '' : _phone;
+        warn.style.display = this.value.trim() !== originalPhone ? 'block' : 'none';
+    });
 </script>

@@ -41,6 +41,12 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Số điện thoại này đã được đăng ký!" });
         }
 
+        if (!string.IsNullOrWhiteSpace(registerDto.Email) &&
+            await _context.Users.AnyAsync(u => u.Email == registerDto.Email.Trim()))
+        {
+            return BadRequest(new { message = "Email này đã được sử dụng bởi tài khoản khác!" });
+        }
+
         var user = new User
         {
             FullName = registerDto.FullName,
@@ -217,6 +223,37 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpPut("me/update")]
+    public async Task<IActionResult> UpdateProfileNoAuth([FromBody] UpdateProfileWithIdDto dto)
+    {
+        var user = await _context.Users.FindAsync(dto.UserId);
+        if (user == null) return NotFound(new { message = "Người dùng không tồn tại!" });
+        if (user.Status != "active") return StatusCode(403, new { message = "Tài khoản đã bị khóa!" });
+
+        if (!string.IsNullOrWhiteSpace(dto.Email))
+        {
+            var emailExists = await _context.Users
+                .AnyAsync(u => u.Email == dto.Email.Trim() && u.Id != dto.UserId);
+            if (emailExists)
+                return BadRequest(new { message = "Email này đã được sử dụng bởi tài khoản khác!" });
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.Phone))
+        {
+            var phoneExists = await _context.Users
+                .AnyAsync(u => u.Phone == dto.Phone.Trim() && u.Id != dto.UserId);
+            if (phoneExists)
+                return BadRequest(new { message = "Số điện thoại này đã được sử dụng bởi tài khoản khác!" });
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.FullName)) user.FullName = dto.FullName.Trim();
+        if (!string.IsNullOrWhiteSpace(dto.Email))    user.Email    = dto.Email.Trim();
+        if (!string.IsNullOrWhiteSpace(dto.Phone))    user.Phone    = dto.Phone.Trim();
+
+        await _context.SaveChangesAsync();
+        return Ok(new { success = true, message = "Cập nhật thành công!", data = MapToDto(user) });
+    }
+
     [HttpPut("me")]
     [Authorize]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
@@ -226,8 +263,27 @@ public class AuthController : ControllerBase
         if (user == null) return NotFound();
         if (user.Status != "active") return StatusCode(403, new { message = "Tài khoản đã bị khóa!" });
 
+        // Validate trùng email
+        if (!string.IsNullOrWhiteSpace(dto.Email))
+        {
+            var emailExists = await _context.Users
+                .AnyAsync(u => u.Email == dto.Email.Trim() && u.Id != userId);
+            if (emailExists)
+                return BadRequest(new { message = "Email này đã được sử dụng bởi tài khoản khác!" });
+        }
+
+        // Validate trùng số điện thoại
+        if (!string.IsNullOrWhiteSpace(dto.Phone))
+        {
+            var phoneExists = await _context.Users
+                .AnyAsync(u => u.Phone == dto.Phone.Trim() && u.Id != userId);
+            if (phoneExists)
+                return BadRequest(new { message = "Số điện thoại này đã được sử dụng bởi tài khoản khác!" });
+        }
+
         if (!string.IsNullOrWhiteSpace(dto.FullName)) user.FullName = dto.FullName.Trim();
-        if (!string.IsNullOrWhiteSpace(dto.Email)) user.Email = dto.Email.Trim();
+        if (!string.IsNullOrWhiteSpace(dto.Email))    user.Email    = dto.Email.Trim();
+        if (!string.IsNullOrWhiteSpace(dto.Phone))    user.Phone    = dto.Phone.Trim();
 
         await _context.SaveChangesAsync();
         return Ok(new { success = true, message = "Cập nhật thành công!", data = MapToDto(user) });

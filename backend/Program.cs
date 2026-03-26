@@ -106,6 +106,13 @@ builder.Services.AddAuthentication(options =>
         {
             Console.WriteLine("JWT FAILED: " + context.Exception.GetType().Name + " - " + context.Exception.Message);
             return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            context.HandleResponse();
+            context.Response.StatusCode = 401;
+            context.Response.ContentType = "application/json";
+            return context.Response.WriteAsync("{\"message\":\"Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại!\"}");
         }
     };
 });
