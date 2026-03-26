@@ -1,63 +1,87 @@
 @{
     ViewData["Title"] = "Lịch Cố Định";
-    ViewData["Page"]  = "fixed";
+    ViewData["Page"] = "fixed";
     Layout = "_StaffLayout";
 }
 
 <div class="p-4">
-    <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div class="d-flex gap-2">
-            <button class="btn btn-sm @(true?"btn-dark":"btn-outline-secondary")" onclick="filterStatus('all')">Tất cả</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="filterStatus('active')">Đang hoạt động</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="filterStatus('inactive')">Đã kết thúc</button>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div class="d-flex gap-2 align-items-center">
+            <select id="statusFilter" class="form-select form-select-sm" style="width:170px" onchange="applyFilters()">
+                <option value="all">Tất cả trạng thái</option>
+                <option value="active">✅ Đang hoạt động</option>
+                <option value="inactive">❌ Đã kết thúc/Hủy</option>
+            </select>
+            
+            <div class="input-group input-group-sm ms-2" style="width: 250px;">
+                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" id="searchInput" class="form-control border-start-0"
+                       placeholder="Tìm tên khách hàng..." autocomplete="off" oninput="debounceSearch()">
+            </div>
+
+            <select id="pageSizeFilter" class="form-select form-select-sm ms-3 bg-light fw-bold" style="width: 140px;"
+                    onchange="changePageSize()">
+                <option value="6">Hiển thị: 6</option>
+                <option value="12">Hiển thị: 12</option>
+                <option value="24">Hiển thị: 24</option>
+            </select>
         </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
-            + Tạo hợp đồng mới
+
+        <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#createModal">
+            <i class="fas fa-plus"></i> Tạo hợp đồng mới
         </button>
     </div>
 
-    <!-- DANH SÁCH THẺ -->
-    <div class="row g-3" id="scheduleGrid">
-        <div class="col-12 text-center text-muted p-4">Đang tải...</div>
+    <div class="row g-3 mb-3" id="scheduleGrid">
+        <div class="col-12 text-center text-muted p-4">
+            Đang tải dữ liệu...
+        </div>
+    </div>
+    
+    <div class="p-3 border rounded bg-white shadow-sm d-flex justify-content-between align-items-center">
+        <span class="text-muted small" id="pageInfo">Hiển thị 0–0 / 0</span>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" id="btnPrev" onclick="changePage(-1)">« Trước</button>
+            <span class="btn btn-sm disabled fw-bold" id="pageNum">1 / 1</span>
+            <button class="btn btn-outline-secondary btn-sm" id="btnNext" onclick="changePage(1)">Tiếp »</button>
+        </div>
     </div>
 </div>
 
-<!-- MODAL TẠO HỢP ĐỒNG -->
-<div class="modal fade" id="createModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">📋 Tạo Hợp Đồng Khách Ruột</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold">📋 Tạo Hợp Đồng Khách Ruột</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Khách hàng</label>
+                    <label class="form-label fw-semibold text-secondary small text-uppercase">Khách hàng</label>
                     <select id="userId" class="form-select"></select>
                 </div>
                 <div class="row g-3 mb-3">
-                    <div class="col">
-                        <label class="form-label fw-semibold">Sân</label>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-secondary small text-uppercase">Sân</label>
                         <select id="courtId" class="form-select" onchange="calcPreview()"></select>
                     </div>
-                    <div class="col">
-                        <label class="form-label fw-semibold">Ca</label>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-secondary small text-uppercase">Ca chơi</label>
                         <select id="timeSlotId" class="form-select" onchange="calcPreview()"></select>
                     </div>
                 </div>
                 <div class="row g-3 mb-3">
-                    <div class="col">
-                        <label class="form-label fw-semibold">Ngày bắt đầu</label>
-                        <input type="date" id="startDate" class="form-control" oninput="calcPreview()"/>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-secondary small text-uppercase">Ngày bắt đầu</label>
+                        <input type="date" id="startDate" class="form-control" oninput="calcPreview()" />
                     </div>
-                    <div class="col">
-                        <label class="form-label fw-semibold">Ngày kết thúc</label>
-                        <input type="date" id="endDate" class="form-control" oninput="calcPreview()"/>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-secondary small text-uppercase">Ngày kết thúc</label>
+                        <input type="date" id="endDate" class="form-control" oninput="calcPreview()" />
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Đá vào thứ</label>
+                    <label class="form-label fw-semibold text-secondary small text-uppercase">Đá vào thứ</label>
                     <select id="dayOfWeek" class="form-select" onchange="calcPreview()">
                         <option value="2">Thứ 2</option>
                         <option value="3">Thứ 3</option>
@@ -68,170 +92,261 @@
                         <option value="8">Chủ nhật</option>
                     </select>
                 </div>
-                <!-- PREVIEW GIÁ -->
-                <div class="p-3 rounded" style="background:#f8fafc;border:1px solid #e2e8f0">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="text-muted small">Số buổi:</span>
+
+                <div class="p-3 rounded mt-4" style="background-color: #f8fafc; border: 1px dashed #cbd5e1;">
+                    <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-calculator"></i> Dự toán chi phí</h6>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small">Tổng số buổi:</span>
                         <strong id="previewDays">—</strong>
                     </div>
-                    <div class="d-flex justify-content-between mb-1">
+                    <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted small">Đơn giá/ca:</span>
                         <strong id="previewUnit">—</strong>
                     </div>
-                    <hr class="my-2"/>
-                    <div class="d-flex justify-content-between">
-                        <span class="fw-bold">Tổng tiền:</span>
+                    <hr class="my-2" style="border-color: #cbd5e1;" />
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-dark">Tổng tiền thanh toán:</span>
                         <strong class="text-success fs-5" id="previewTotal">—</strong>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button class="btn btn-primary" onclick="createSchedule()">💾 Lưu & Xếp lịch</button>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+                <button type="button" class="btn btn-primary px-4" onclick="createSchedule()">
+                    <i class="fas fa-save me-1"></i> Lưu & Xếp lịch
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
-<script>
-const API = 'http://localhost:5043/api';
-const token = '@Context.Session.GetString("AuthToken")';
-let allSchedules = [];
-let currentFilter = 'all';
+    <script>
+        const API = 'http://localhost:5043/api'; // KIỂM TRA LẠI PORT NHÉ
+        const token = '@Context.Session.GetString("AuthToken")';
+    
+        let allSchedulesOriginal = []; // Data gốc từ Server
+        let filteredSchedules = []; // Data sau khi áp dụng Status Filter
+        let currentPage = 1;
+        let itemsPerPage = 6;
+        let searchTimeout = null;
 
-// Load dữ liệu ban đầu
-async function init() {
-    const [schedulesRes, setupRes] = await Promise.all([
-        fetch(`${API}/staff/fixed-schedules`, { headers: { 'Authorization': 'Bearer ' + token } }),
-        fetch(`${API}/staff/setup-data`,      { headers: { 'Authorization': 'Bearer ' + token } })
-    ]);
-    allSchedules = await schedulesRes.json();
-    const setup  = await setupRes.json();
+        // LẤY DỮ LIỆU (Ép Server nhả hết ra bằng pageSize=1000 để tự phân trang Client như Booking)
+        async function loadData() {
+            try {
+                const search = document.getElementById('searchInput').value.trim();
+                const url = `${API}/staff/fixed-schedules?searchName=${encodeURIComponent(search)}&page=1&pageSize=1000`;
 
-    // Điền dropdown
-    document.getElementById('userId').innerHTML =
-        setup.customers.map(c => `<option value="${c.id}">${c.fullName} (${c.phone})</option>`).join('');
-    document.getElementById('courtId').innerHTML =
-        setup.courts.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-    document.getElementById('timeSlotId').innerHTML =
-        setup.timeSlots.map(t => `<option value="${t.id}">${t.time}</option>`).join('');
+                const [schedulesRes, setupRes] = await Promise.all([
+                    fetch(url, { headers: { 'Authorization': 'Bearer ' + token } }),
+                    fetch(`${API}/staff/setup-data`, { headers: { 'Authorization': 'Bearer ' + token } })
+                ]);
+            
+                if (schedulesRes.ok) {
+                    const rawData = await schedulesRes.json();
+                    // Nhận dạng được cả Backend cũ (Mảng) và Backend mới (Object có data)
+                    allSchedulesOriginal = Array.isArray(rawData) ? rawData : (rawData.data || []);
+                    applyFilters(); // Bắt đầu lọc và phân trang
+                }
 
-    renderCards();
-}
+                if (setupRes.ok) {
+                    const setup = await setupRes.json();
+                    if (setup && setup.customers) {
+                        document.getElementById('userId').innerHTML = setup.customers.map(c => `<option value="${c.id}">${c.fullName} (${c.phone})</option>`).join('');
+                        document.getElementById('courtId').innerHTML = setup.courts.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                        document.getElementById('timeSlotId').innerHTML = setup.timeSlots.map(t => `<option value="${t.id}">${t.time}</option>`).join('');
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
 
-function filterStatus(f) {
-    currentFilter = f;
-    renderCards();
-}
+        // LỌC STATUS THEO CLIENT (Giúp tính toán số trang chính xác tuyệt đối)
+        function applyFilters() {
+            const status = document.getElementById('statusFilter').value;
+            currentPage = 1; // Về trang 1 khi lọc
 
-function renderCards() {
-    const list = allSchedules.filter(s => {
-        if (currentFilter === 'active')   return s.status === 'active' || s.status === 'warning';
-        if (currentFilter === 'inactive') return s.status === 'expired' || s.status === 'cancelled';
-        return true;
-    });
+            filteredSchedules = allSchedulesOriginal.filter(s => {
+                if (status === 'active') return s.status === 'active' || s.status === 'warning';
+                if (status === 'inactive') return s.status === 'expired' || s.status === 'cancelled';
+                return true;
+            });
 
-    if (!list.length) {
-        document.getElementById('scheduleGrid').innerHTML =
-            '<div class="col-12 text-center text-muted p-4">Không có hợp đồng nào</div>';
-        return;
-    }
+            renderGrid();
+        }
 
-    const colorMap = { active:'#ecfdf5', warning:'#fffbeb', expired:'#f8fafc', cancelled:'#f8fafc' };
-    const borderMap = { active:'#10b981', warning:'#f59e0b', expired:'#94a3b8', cancelled:'#94a3b8' };
+        // TÌM KIẾM GÕ ĐẾN ĐÂU TÌM ĐẾN ĐÓ
+        function debounceSearch() {
+            if (searchTimeout) clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                loadData();
+            }, 500);
+        }
 
-    document.getElementById('scheduleGrid').innerHTML = list.map(s => `
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm" style="border-left:5px solid ${borderMap[s.status]||'#94a3b8'}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <h6 class="fw-bold mb-0">${s.teamName}</h6>
-                            <small class="text-muted">📞 ${s.phone}</small>
+        // THAY ĐỔI "HIỂN THỊ BAO NHIÊU"
+        function changePageSize() {
+            itemsPerPage = parseInt(document.getElementById('pageSizeFilter').value);
+            currentPage = 1;
+            renderGrid();
+        }
+
+        // THAY ĐỔI TRANG (Trở lại / Tiếp)
+        function changePage(dir) {
+            const totalPages = Math.ceil(filteredSchedules.length / itemsPerPage) || 1;
+            currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
+            renderGrid();
+        }
+
+        // VẼ LƯỚI & NÚT BẤM (Thuật toán SLICE giống hệt Booking)
+        function renderGrid() {
+            const grid = document.getElementById('scheduleGrid');
+        
+            // 1. Cắt mảng (SLICE)
+            const start = (currentPage - 1) * itemsPerPage;
+            const rows = filteredSchedules.slice(start, start + itemsPerPage);
+
+            // 2. Cập nhật chữ Phân Trang (Giống Booking)
+            const total = filteredSchedules.length;
+            const totalPages = Math.ceil(total / itemsPerPage) || 1;
+        
+            document.getElementById('pageInfo').textContent = `Hiển thị ${total === 0 ? 0 : start + 1}–${Math.min(start + itemsPerPage, total)} / ${total}`;
+            document.getElementById('pageNum').textContent = `${currentPage} / ${totalPages}`;
+        
+            // Khóa nút nếu hết cỡ
+            document.getElementById('btnPrev').disabled = (currentPage <= 1);
+            document.getElementById('btnNext').disabled = (currentPage >= totalPages);
+
+            // 3. Vẽ Cards
+            if (!rows.length) {
+                grid.innerHTML = `<div class="col-12 text-center text-muted p-5 bg-white rounded shadow-sm border">
+                                            <i class="fas fa-inbox fa-3x mb-3 text-light"></i>
+                                            <h5>Không tìm thấy hợp đồng nào</h5>
+                                          </div>`;
+                return;
+            }
+
+            const colorMap = { active: '#ecfdf5', warning: '#fffbeb', expired: '#f8fafc', cancelled: '#fef2f2' };
+            const borderMap = { active: '#10b981', warning: '#f59e0b', expired: '#94a3b8', cancelled: '#ef4444' };
+
+            grid.innerHTML = rows.map(s => `
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 shadow-sm transition-hover" style="border: none; border-left: 5px solid ${borderMap[s.status] || '#94a3b8'};">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div>
+                                            <h6 class="fw-bold mb-1 text-dark">${s.teamName}</h6>
+                                            <span class="badge bg-light text-dark border"><i class="fas fa-phone-alt text-muted me-1"></i> ${s.phone}</span>
+                                        </div>
+                                        ${badgeFixed(s.status)}
+                                    </div>
+                        
+                                    <div class="d-flex align-items-center mb-2 small text-muted">
+                                        <i class="fas fa-map-marker-alt fa-fw me-2 text-primary"></i> <span class="text-dark">${s.courtName}</span>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2 small text-muted">
+                                        <i class="far fa-clock fa-fw me-2 text-warning"></i> <span>${s.timeInfo}</span>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-3 small text-muted">
+                                        <i class="far fa-calendar-alt fa-fw me-2 text-info"></i> <span>${s.duration}</span>
+                                    </div>
+                        
+                                    <div class="p-2 rounded bg-light border text-center">
+                                        <span class="small text-muted d-block mb-1">Tổng giá trị</span>
+                                        <strong class="text-success fs-6">${fmt(s.totalPrice)}</strong>
+                                    </div>
+                                </div>
+                    
+                                ${s.status !== 'cancelled' && s.status !== 'expired' ? `
+                                <div class="card-footer bg-white border-top-0 pt-0 pb-3">
+                                    <button class="btn btn-outline-danger btn-sm w-100" onclick="cancelSchedule(${s.id}, '${s.teamName.replace(/'/g, "\\'")}')">
+                                        <i class="fas fa-times-circle me-1"></i> Hủy hợp đồng
+                                    </button>
+                                </div>` : ''}
+                            </div>
                         </div>
-                        ${badgeFixed(s.status)}
-                    </div>
-                    <div class="small text-muted mt-2">🏟️ ${s.courtName}</div>
-                    <div class="small text-muted">🕐 ${s.timeInfo}</div>
-                    <div class="small text-muted">📅 ${s.duration}</div>
-                    <div class="small text-success fw-bold mt-1">💰 ${fmt(s.totalPrice)}</div>
-                </div>
-                ${s.status !== 'cancelled' && s.status !== 'expired' ? `
-                <div class="card-footer bg-transparent">
-                    <button class="btn btn-danger btn-sm w-100" onclick="cancelSchedule(${s.id}, '${s.teamName}')">
-                        🗑️ Hủy hợp đồng
-                    </button>
-                </div>` : ''}
-            </div>
-        </div>
-    `).join('');
-}
+                    `).join('');
+        }
 
-async function calcPreview() {
-    const courtId    = document.getElementById('courtId').value;
-    const timeSlotId = document.getElementById('timeSlotId').value;
-    const dayOfWeek  = document.getElementById('dayOfWeek').value;
-    const startDate  = document.getElementById('startDate').value;
-    const endDate    = document.getElementById('endDate').value;
-    if (!courtId || !timeSlotId || !startDate || !endDate) return;
+        // CÁC HÀM TIỆN ÍCH
+        async function calcPreview() {
+            const courtId = document.getElementById('courtId').value;
+            const timeSlotId = document.getElementById('timeSlotId').value;
+            const dayOfWeek = document.getElementById('dayOfWeek').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            if (!courtId || !timeSlotId || !startDate || !endDate) return;
 
-    const res = await fetch(
-        `${API}/staff/preview-fixed-price?courtId=${courtId}&timeSlotId=${timeSlotId}&dayOfWeek=${dayOfWeek}&startDate=${startDate}&endDate=${endDate}`,
-        { headers: { 'Authorization': 'Bearer ' + token } }
-    );
-    const data = await res.json();
-    document.getElementById('previewDays').textContent  = data.playDays + ' buổi';
-    document.getElementById('previewUnit').textContent  = fmt(data.unitPrice) + '/ca';
-    document.getElementById('previewTotal').textContent = fmt(data.totalPrice);
-}
+            try {
+                const res = await fetch(`${API}/staff/preview-fixed-price?courtId=${courtId}&timeSlotId=${timeSlotId}&dayOfWeek=${dayOfWeek}&startDate=${startDate}&endDate=${endDate}`, { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('previewDays').textContent = data.playDays + ' buổi';
+                    document.getElementById('previewUnit').textContent = fmt(data.unitPrice);
+                    document.getElementById('previewTotal').textContent = fmt(data.totalPrice);
+                }
+            } catch (err) { }
+        }
 
-async function createSchedule() {
-    const body = {
-        userId:     parseInt(document.getElementById('userId').value),
-        courtId:    parseInt(document.getElementById('courtId').value),
-        timeSlotId: parseInt(document.getElementById('timeSlotId').value),
-        dayOfWeek:  parseInt(document.getElementById('dayOfWeek').value),
-        startDate:  document.getElementById('startDate').value,
-        endDate:    document.getElementById('endDate').value,
-        totalPrice: 0
-    };
-    const res = await fetch(`${API}/staff/fixed-schedules`, {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
-    const data = await res.json();
-    alert(data.message || 'Tạo thành công!');
-    bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
-    init();
-}
+        async function createSchedule() {
+            try {
+                const body = {
+                    userId: parseInt(document.getElementById('userId').value),
+                    courtId: parseInt(document.getElementById('courtId').value),
+                    timeSlotId: parseInt(document.getElementById('timeSlotId').value),
+                    dayOfWeek: parseInt(document.getElementById('dayOfWeek').value),
+                    startDate: document.getElementById('startDate').value,
+                    endDate: document.getElementById('endDate').value,
+                    totalPrice: 0
+                };
+                const res = await fetch(`${API}/staff/fixed-schedules`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Lỗi');
+                alert('✅ ' + data.message);
+                bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
+                loadData(); // Tải lại toàn bộ
+            } catch (err) {
+                alert('❌ Lỗi: ' + err.message);
+            }
+        }
 
-async function cancelSchedule(id, name) {
-    if (!confirm(`Hủy hợp đồng của ${name}?`)) return;
-    const res = await fetch(`${API}/staff/fixed-schedules/${id}/cancel`, {
-        method: 'PUT',
-        headers: { 'Authorization': 'Bearer ' + token }
-    });
-    const data = await res.json();
-    alert(data.message);
-    init();
-}
+        async function cancelSchedule(id, name) {
+            if (!confirm(`Hủy hợp đồng của đội "${name}"?`)) return;
+            try {
+                const res = await fetch(`${API}/staff/fixed-schedules/${id}/cancel`, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message);
+                alert('✅ ' + data.message);
+                loadData();
+            } catch (err) { alert('❌ Lỗi: ' + err.message); }
+        }
 
-function badgeFixed(status) {
-    const map = {
-        active:    '<span class="badge bg-success">Đang HĐ</span>',
-        warning:   '<span class="badge bg-warning text-dark">Sắp HH</span>',
-        expired:   '<span class="badge bg-secondary">Hết hạn</span>',
-        cancelled: '<span class="badge bg-danger">Đã hủy</span>',
-    };
-    return map[status] || '';
-}
+        function badgeFixed(status) {
+            const map = {
+                active: '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Đang HĐ</span>',
+                warning: '<span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Sắp HH</span>',
+                expired: '<span class="badge bg-secondary"><i class="fas fa-history me-1"></i>Hết hạn</span>',
+                cancelled: '<span class="badge bg-danger"><i class="fas fa-ban me-1"></i>Đã hủy</span>',
+            };
+            return map[status] || `<span class="badge bg-dark">${status}</span>`;
+        }
 
-function fmt(n) {
-    return new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ';
-}
+        function fmt(n) {
+            return new Intl.NumberFormat('vi-VN').format(n || 0) + ' ₫';
+        }
 
-init();
-</script>
+        // Chạy khi mở trang
+        loadData();
+    </script>
+
+    <style>
+        .transition-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
+        }
+    </style>
 }
