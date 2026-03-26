@@ -223,6 +223,22 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpPost("me/change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+    {
+        var user = await _context.Users.FindAsync(dto.UserId);
+        if (user == null) return NotFound(new { message = "Người dùng không tồn tại!" });
+        if (user.Status != "active") return StatusCode(403, new { message = "Tài khoản đã bị khóa!" });
+
+        if (!_passwordService.VerifyPassword(dto.OldPassword, user.PasswordHash))
+            return BadRequest(new { message = "Mật khẩu cũ không chính xác!" });
+
+        user.PasswordHash = _passwordService.HashPassword(dto.NewPassword);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "Đổi mật khẩu thành công!" });
+    }
+
     [HttpPut("me/update")]
     public async Task<IActionResult> UpdateProfileNoAuth([FromBody] UpdateProfileWithIdDto dto)
     {
