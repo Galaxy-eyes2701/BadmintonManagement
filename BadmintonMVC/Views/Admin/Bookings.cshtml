@@ -37,6 +37,10 @@
                     <span class="bk-chip-num" id="hCancelled">0</span>
                     <span class="bk-chip-label">Đã hủy</span>
                 </div>
+                <div class="bk-chip-completed">
+                    <span class="bk-chip-num" id="hCompleted">0</span>
+                    <span class="bk-chip-label">Hoàn thành</span>
+                </div>
             </div>
             <button class="bk-btn-logout" onclick="handleLogout()">
                 <span>🚪</span><span>Đăng xuất</span>
@@ -70,6 +74,7 @@
                     <option value="pending">⏳ Chờ xác nhận</option>
                     <option value="confirmed">✅ Đã xác nhận</option>
                     <option value="cancelled">🚫 Đã hủy</option>
+                    <option value="completed">🏆 Hoàn thành</option>
                 </select>
                 <div class="bk-date-range">
                     <input type="date" class="bk-filter-select" id="fromDate" onchange="onFilterChange()" />
@@ -222,6 +227,7 @@
             document.getElementById('hPending').textContent   = filtered.filter(b => b.status?.toLowerCase() === 'pending').length;
             document.getElementById('hConfirmed').textContent = filtered.filter(b => b.status?.toLowerCase() === 'confirmed').length;
             document.getElementById('hCancelled').textContent = filtered.filter(b => b.status?.toLowerCase() === 'cancelled').length;
+            document.getElementById('hCompleted').textContent = filtered.filter(b => b.status?.toLowerCase() === 'completed').length;
         }
 
         function renderTable(items) {
@@ -242,8 +248,7 @@
                     <td><div class="bk-action-btns">
                         <button class="bk-btn-view" onclick="openDetail(${b.id})">👁️ Chi tiết</button>
                         ${st === 'pending'   ? `<button class="bk-btn-confirm" onclick="askAction(${b.id},'confirm')">✅ Duyệt</button>` : ''}
-                        ${st !== 'cancelled' ? `<button class="bk-btn-cancel"  onclick="askAction(${b.id},'cancel')">🚫 Hủy</button>`   : ''}
-                    </div></td>
+                        ${st !== 'cancelled' && st !== 'completed' ? `<button class="bk-btn-cancel" onclick="askAction(${b.id},'cancel')">🚫 Hủy</button>` : ''}                    </div></td>
                 </tr>`;
             }).join('');
         }
@@ -320,10 +325,10 @@
                         </table></div>
                     </div>`;
                 let footer = `<button class="bk-btn-close" onclick="closeDetailModalDirect()">Đóng</button>`;
-                if (st !== 'cancelled') {
-                    if (st === 'pending') footer += `<button class="bk-btn-do-confirm" onclick="closeDetailModalDirect();askAction(${b.id},'confirm')">✅ Duyệt booking</button>`;
-                    footer += `<button class="bk-btn-do-cancel-soft" onclick="closeDetailModalDirect();askAction(${b.id},'cancel')">🚫 Hủy booking</button>`;
-                }
+                        if (st !== 'cancelled' && st !== 'completed') {
+            if (st === 'pending') footer += `<button class="bk-btn-do-confirm" onclick="closeDetailModalDirect();askAction(${b.id},'confirm')">✅ Duyệt booking</button>`;
+            footer += `<button class="bk-btn-do-cancel-soft" onclick="closeDetailModalDirect();askAction(${b.id},'cancel')">🚫 Hủy booking</button>`;
+        }
                 document.getElementById('detailFooter').innerHTML = footer;
             } catch(e) { showError(e.message); closeDetailModalDirect(); }
         }
@@ -363,7 +368,12 @@
 
         // ── HELPERS ────────────────────────────────────────────
         function statusBadge(s) {
-            const m = { pending:'<span class="bk-status bk-status-pending">⏳ Chờ xác nhận</span>', confirmed:'<span class="bk-status bk-status-confirmed">✅ Đã xác nhận</span>', cancelled:'<span class="bk-status bk-status-cancelled">🚫 Đã hủy</span>' };
+            const m = { 
+                pending:'<span class="bk-status bk-status-pending">⏳ Chờ xác nhận</span>', 
+                confirmed:'<span class="bk-status bk-status-confirmed">✅ Đã xác nhận</span>', 
+                cancelled:'<span class="bk-status bk-status-cancelled">🚫 Đã hủy</span>',
+                completed:'<span class="bk-status bk-status-completed">🏆 Hoàn thành</span>'
+            };
             return m[s?.toLowerCase()] || `<span class="bk-status bk-status-pending">${s}</span>`;
         }
         function fmt(n)    { return new Intl.NumberFormat('vi-VN').format(Math.round(n||0)) + 'đ'; }

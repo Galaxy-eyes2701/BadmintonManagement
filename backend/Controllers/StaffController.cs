@@ -564,9 +564,29 @@ namespace backend.Controllers
                 })
                 .ToListAsync();
 
+            var courts = await _context.Courts
+                .Where(c => !branchId.HasValue || c.BranchId == branchId.Value)
+                .Select(c => new
+                {
+                    id = c.Id,
+                    name = c.Name
+                })
+                .ToListAsync();
+
+            var timeSlots = await _context.TimeSlots
+                .OrderBy(t => t.StartTime)
+                .Select(t => new
+                {
+                    id = t.Id,
+                    time = $"{t.StartTime:HH\\:mm} - {t.EndTime:HH\\:mm}"
+                })
+                .ToListAsync();
+
             return Ok(new
             {
-                customers = customers
+                customers,
+                courts,
+                timeSlots
             });
         }
         // =======================================================

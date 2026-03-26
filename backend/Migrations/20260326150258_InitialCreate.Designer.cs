@@ -12,7 +12,7 @@ using backend.Models;
 namespace backend.Migrations
 {
     [DbContext(typeof(BadmintonManagementContext))]
-    [Migration("20260311013639_InitialCreate")]
+    [Migration("20260326150258_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -217,8 +217,16 @@ namespace backend.Migrations
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("status");
+
                     b.Property<int>("TimeSlotId")
                         .HasColumnType("int");
+
+                    b.Property<decimal?>("TotalPrice")
+                        .HasColumnType("decimal(18, 2)")
+                        .HasColumnName("total_price");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -423,6 +431,9 @@ namespace backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
@@ -451,8 +462,14 @@ namespace backend.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id")
                         .HasName("PK__Users__3214EC07C0157EF0");
+
+                    b.HasIndex("BranchId");
 
                     b.HasIndex(new[] { "Phone" }, "UQ__Users__5C7E359EB2F0C04F")
                         .IsUnique();
@@ -642,6 +659,15 @@ namespace backend.Migrations
                         .HasConstraintName("FK_Products_Categories");
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("backend.Models.User", b =>
+                {
+                    b.HasOne("backend.Models.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId");
+
+                    b.Navigation("Branch");
                 });
 
             modelBuilder.Entity("backend.Models.Booking", b =>
