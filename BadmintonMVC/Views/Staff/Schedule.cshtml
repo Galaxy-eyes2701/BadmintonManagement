@@ -226,7 +226,11 @@
         loadCustomersForDropdown();
         loadSched();
 
-        function todayStr() { return new Date().toISOString().split('T')[0]; }
+        function todayStr() { 
+            const d = new Date();
+            const tz = d.getTimezoneOffset() * 60000;
+            return new Date(d.getTime() - tz).toISOString().split('T')[0];
+        }
         function goToday() { dp.value = todayStr(); loadSched(); }
 
         // ==========================================
@@ -285,7 +289,7 @@
             // BODY
             var bodyRows = '';
             slots.forEach((slot, si) => {
-                var parts = slot.time.split(' - ');
+                var parts = slot.time.split(/\s*-\s*/);
                 var tStart = (parts[0] || '').trim(), tEnd = (parts[1] || '').trim();
                 var sp = tStart.split(':'), ep = tEnd.split(':');
                 var startMin = parseInt(sp[0]||0) * 60 + parseInt(sp[1]||0);
