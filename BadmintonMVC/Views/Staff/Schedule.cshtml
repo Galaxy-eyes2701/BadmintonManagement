@@ -297,7 +297,7 @@
                 bodyRows += `<tr id="row-${si}" class="${rowActive ? 'row-now' : ''}">`;
 
                 bodyRows += `<td class="sch-time-cell">`;
-                if (rowActive) bodyRows += `<div class="time-now-badge">Đang đá</div>`;
+                if (rowActive) bodyRows += `<div class="time-now-badge">Đang đánh</div>`;
                 bodyRows += `<div class="time-start">${tStart}</div><div class="time-end">${tEnd}</div></td>`;
 
                 schedData.forEach(court => {
@@ -322,8 +322,8 @@
 
                         if (isDone) { stateClass = 'state-done'; badgeText = 'Đã xong'; }
                         else if (rowOvertime) { stateClass = 'state-overtime'; badgeText = 'Quá giờ'; }
-                        else if (rowActive) { stateClass = 'state-active'; badgeText = 'Đang đá'; }
-                        else { stateClass = 'state-waiting'; badgeText = 'Chờ đá'; }
+                        else if (rowActive) { stateClass = 'state-active'; badgeText = 'Đang đánh'; }
+                        else { stateClass = 'state-waiting'; badgeText = 'Chờ đánh'; }
 
                         var onclick = isDone ? '' : `onclick="openBill(${b.bookingId}, ${court.courtId}, '${tEnd}', '${court.courtName}', '${b.customerName}')"`;
 

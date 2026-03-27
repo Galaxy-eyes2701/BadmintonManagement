@@ -220,26 +220,40 @@ namespace backend.Controllers
             if (booking == null) return NotFound(new { message = "Không tìm thấy đơn đặt sân." });
             if (booking.Status == "completed") return BadRequest(new { message = "Đơn đã thanh toán, không thể gia hạn." });
 
+            // Lấy ngày khách đang chơi trong booking này cho sân này
+            var bookingDate = booking.BookingDetails
+                .Where(bd => bd.CourtId == courtId)
+                .Select(bd => bd.PlayDate)
+                .FirstOrDefault();
+
+            if (bookingDate == default) 
+                return BadRequest(new { message = "Sân này không có lịch trong mã đặt sân hiện tại." });
+
             var today = DateOnly.FromDateTime(DateTime.Now);
+            if (bookingDate < today)
+                return BadRequest(new { message = "Lỗi: Không thể thao tác trên lịch đặt sân trong quá khứ!" });
 
             // 🛑 CHỐT CHẶN 1: Ca muốn gia hạn đã có người khác đặt chưa?
-            var isBooked = await _context.BookingDetails.AnyAsync(bd => bd.CourtId == courtId && bd.TimeSlotId == nextSlotId && bd.PlayDate == today && bd.Booking.Status != "cancelled");
+            var isBooked = await _context.BookingDetails.AnyAsync(bd => bd.CourtId == courtId && bd.TimeSlotId == nextSlotId && bd.PlayDate == bookingDate && bd.Booking.Status != "cancelled");
             if (isBooked) return BadRequest(new { message = "Ca tiếp theo đã có người khác đặt mất rồi!" });
 
             // 🛑 CHỐT CHẶN 2 (QUAN TRỌNG): CẤM NHẢY CÓC!
-            // Lấy ca cuối cùng mà khách đang đánh trên sân này
-            var currentLastDetail = booking.BookingDetails
-                .Where(bd => bd.CourtId == courtId && bd.PlayDate == today)
-                .OrderByDescending(bd => bd.TimeSlot.EndTime)
-                .FirstOrDefault();
+            // Lấy tất cả các ca mà khách đang đánh trên sân này trong ngày hôm nay
+            var currentDetails = booking.BookingDetails
+                .Where(bd => bd.CourtId == courtId && bd.PlayDate == bookingDate)
+                .ToList();
 
-            if (currentLastDetail != null)
+            if (currentDetails.Any())
             {
                 var nextSlotObj = await _context.TimeSlots.FindAsync(nextSlotId);
                 if (nextSlotObj == null) return NotFound(new { message = "Ca gia hạn không tồn tại." });
 
-                // So sánh: Giờ bắt đầu của ca mới PHẢI BẰNG giờ kết thúc của ca cũ
-                if (nextSlotObj.StartTime != currentLastDetail.TimeSlot.EndTime)
+                // So sánh: Ca mới phải nối tiếp (ngay trước hoặc ngay sau) với bất kỳ ca nào khách đã đặt
+                bool isContiguous = currentDetails.Any(bd => 
+                    bd.TimeSlot.EndTime == nextSlotObj.StartTime || 
+                    bd.TimeSlot.StartTime == nextSlotObj.EndTime);
+
+                if (!isContiguous)
                 {
                     return BadRequest(new { message = "Lỗi: Ca gia hạn bắt buộc phải nối tiếp liền kề với ca hiện tại! Không được nhảy cóc." });
                 }
@@ -247,13 +261,13 @@ namespace backend.Controllers
 
             // 3. Hợp lệ -> Tiến hành tính tiền và lưu
             var court = await _context.Courts.FindAsync(courtId);
-            int csharpDow = (int)today.DayOfWeek;
+            int csharpDow = (int)bookingDate.DayOfWeek;
             int vnDow = csharpDow == 0 ? 8 : csharpDow + 1;
 
             var priceConfig = await _context.PriceConfigs.FirstOrDefaultAsync(p => p.CourtTypeId == court.CourtTypeId && p.TimeSlotId == nextSlotId && p.DayOfWeek == vnDow);
             decimal actualPrice = priceConfig != null ? priceConfig.Price : 50000;
 
-            var newDetail = new BookingDetail { BookingId = bookingId, CourtId = courtId, TimeSlotId = nextSlotId, PlayDate = today, PriceSnapshot = actualPrice };
+            var newDetail = new BookingDetail { BookingId = bookingId, CourtId = courtId, TimeSlotId = nextSlotId, PlayDate = bookingDate, PriceSnapshot = actualPrice };
             _context.BookingDetails.Add(newDetail);
 
             booking.TotalPrice = (booking.TotalPrice ?? 0) + actualPrice;
@@ -548,7 +562,6 @@ namespace backend.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = "Đã hủy lịch đặt sân thành công!" });
         }
-
         [HttpGet("setup-data")]
         public async Task<IActionResult> GetSetupData()
         {
@@ -596,7 +609,11 @@ namespace backend.Controllers
         public async Task<IActionResult> CreateWalkInBooking([FromBody] WalkInBookingDto dto)
         {
             if (!DateOnly.TryParse(dto.PlayDate, out DateOnly playDate))
-                return BadRequest("Ngày không hợp lệ.");
+                return BadRequest(new { message = "Ngày không hợp lệ." });
+
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            if (playDate < today)
+                return BadRequest(new { message = "Lỗi: Không thể tạo lịch đặt sân cho ngày trong quá khứ!" });
 
             // 1. Kiểm tra xem ca này đã có ai đặt chưa
             var isBooked = await _context.BookingDetails.Include(bd => bd.Booking)
@@ -627,7 +644,7 @@ namespace backend.Controllers
                 if (user == null)
                 {
                     // Tạo 1 tài khoản mặc định duy nhất cho tất cả Khách Vãng Lai (chỉ tạo 1 lần)
-                    user = new User { FullName = "Khách Vãng Lai", Phone = "0000000000", Role = "Customer", Status = "active", LoyaltyPoints = 0 };
+                    user = new User { FullName = "Khách Vãng Lai", Phone = "0000000000", Role = "Customer", Status = "active", LoyaltyPoints = 0, PasswordHash = "WALKIN_GUEST" };
                     _context.Users.Add(user);
                     await _context.SaveChangesAsync();
                 }
